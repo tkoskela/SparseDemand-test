@@ -1,0 +1,80 @@
+    allocate(parms%B(K,J),parms%D(J))
+    allocate(parms%BC(parms%nBC))
+    allocate(parms%MuE(K))
+    allocate(parms%SIG(K,K))
+    allocate(parms%CSig(K,K))
+    allocate(parms%InvC(K,K))
+    allocate(parms%InvCDiag(K))
+    allocate(parms%InvCOffDiag(nC))
+    allocate(parms%GradBC(parms%K,parms%nBC))
+    allocate(parms%GradBD(parms%K,parms%J))
+    allocate(parms%GradInvCOffDiag(parms%K,nC))
+    allocate(parms%GradInvCDiag(parms%K,parms%K))
+
+    allocate(HHData%q(parms%K,HHData%N))
+    allocate(HHData%p(parms%J,HHData%N))
+    allocate(HHData%e(parms%K,HHData%N))
+    allocate(HHData%market(HHData%N))
+    allocate(HHData%iNonZero(parms%K,HHData%N))
+    allocate(HHData%iZero(parms%J,HHData%N))
+    allocate(HHData%nNonZero(HHData%N))
+    allocate(HHData%ColumnLabels(parms%J))
+    allocate(HHData%eta(parms%dim_eta,HHData%N))
+
+   
+      allocate(parms%BC_beta(parms%BC_z_dim))
+      allocate(parms%BC_CDiag(parms%nBC))
+      allocate(parms%BC_COffDiag(parms%nBC_COffDiag))
+      allocate(parms%GradBC_C_CDiag(parms%dim_eta,parms%nBC))
+      allocate(parms%GradBC_C_COffDiag(parms%dim_eta,parms%nBC_COffDiag))
+      allocate(parms%BC_C(parms%nBC,parms%dim_eta))
+      allocate(parms%BC_Z(parms%nBC,parms%BC_z_dim))
+
+      allocate(parms%BD_beta(parms%BD_z_dim))
+      allocate(parms%BD_CDiag(parms%J))
+      allocate(parms%BD_COffDiag(parms%nBD_COffDiag))
+      allocate(parms%GradBD_C_CDiag(parms%dim_eta,parms%J))
+      allocate(parms%GradBD_C_COffDiag(parms%dim_eta,parms%nBD_COffDiag))
+      allocate(parms%BD_C(parms%J,parms%dim_eta))
+      allocate(parms%BD_Z(parms%J,parms%BD_z_dim))
+
+      allocate(parms%sigp(parms%J,parms%J))
+-----------------------------------------------------------------------------
+    allocate(IntRule%flag(parms%K))
+    allocate(IntRule%nall(parms%K))
+    allocate(IntRule%rule(parms%K))
+
+IntRule%rule(:)%nQuad
+IntRule%rule(:)%nodes
+IntRule%rule(:)%weights
+RandomB%nQuad
+RandomB%nodes
+RandomB%weights
+
+
+----------------------------------------------------------------------
+    allocate(iFree%D(parms%J))
+    allocate(iFree%xD(parms%J))
+    allocate(iFree%BC(parms%nBC))
+    allocate(iFree%xBC(parms%nBC))
+    allocate(iFree%MuE(parms%K))
+    allocate(iFree%xMuE(parms%K))
+    allocate(iFree%InvCDiag(parms%K))
+    allocate(iFree%xInvCDiag(parms%K))
+    allocate(iFree%InvCOffDiag(iFree%nInvCOffDiag))
+    allocate(iFree%xInvCOffDiag(iFree%nInvCOffDiag))
+      allocate(iFree%BD_beta(iFree%nBD_beta))
+      allocate(iFree%xBD_beta(iFree%nBD_beta))
+      allocate(iFree%BC_beta(iFree%nBC_beta))
+      allocate(iFree%xBC_beta(iFree%nBC_beta))
+      allocate(iFree%BD_CDiag(iFree%nBD_CDiag))
+      allocate(iFree%xBD_CDiag(iFree%nBD_CDiag))
+      allocate(iFree%BD_COffDiag(iFree%nBD_COffDiag))
+      allocate(iFree%xBD_COffDiag(iFree%nBD_COffDiag))
+      allocate(iFree%BC_CDiag(iFree%nBC_CDiag))
+      allocate(iFree%xBC_CDiag(iFree%nBC_CDiag))
+      allocate(iFree%BC_COffDiag(iFree%nBC_COffDiag))
+      allocate(iFree%xBC_COffDiag(iFree%nBC_COffDiag))
+
+----------------------------------------------------------
+

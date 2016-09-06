@@ -1,0 +1,3 @@
+# Revision history.
+# 01may08 lpn created file.
+rm *mod *exe *dbg *.e* *.pe* fort.1 *.o
