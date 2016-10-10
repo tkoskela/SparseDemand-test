@@ -1714,7 +1714,7 @@ subroutine MaximizeLikelihood1(x,LValue,Grad,Hess,ierr)
 #if USE_MPI==1
   use mpi
 #endif
-  use GlobalModule, only : ControlOptions,parms,InputDir,MasterID,HHData,iFree
+  use GlobalModule, only : ControlOptions,parms,InputDir,OutDir,MasterID,HHData,iFree
   use nag_library, only : E04WCF,E04WDF,E04WDP,E04WEF,E04WFF, &
                           X04AAF,X04ABF,X04ACF,X04ADF
 !  use LikelihoodModule2, only : LikeFunc,DummyConFunc
@@ -1760,9 +1760,10 @@ subroutine MaximizeLikelihood1(x,LValue,Grad,Hess,ierr)
   real(dp), allocatable       :: ccon(:)
   real(dp), allocatable       :: cjac(:,:)
   integer(i4b)                :: E04Unit   ! unit number for E04WDF options file
-  character(30)               :: E04File   ! file name for E04WDF options file
+  character(99)               :: E04File   ! file name for E04WDF options file
+  character(99)               :: OutFile   ! file name for E04WDF options file
   
-  ! Workspace for E04WCF and E04WDF (constrained optimisation subroutines from NAG)
+! Workspace for E04WCF and E04WDF (constrained optimisation subroutines from NAG)
   real(dp)                    :: RW(lenrw)
   integer(i4b)                :: IW(leniw)
   
@@ -1900,7 +1901,8 @@ subroutine MaximizeLikelihood1(x,LValue,Grad,Hess,ierr)
      call ComputeHess(x,LValue,GRAD,Hess,iuser,ruser)
   end if
 
-  open(unit = 130,file = '../temp/temp.txt',action = 'write')
+  OutFile = trim(OutDir) // '/results.txt'
+  open(unit = 130,file = OutFile,action = 'write')
   write(130,'(a20,2a25)') 'Var. Name','x','Gradient'
   do i1=1,nx
     write(130,'(a20,2d25.12)') trim(iFree%xlabels(i1)), x(i1), Grad(i1)
