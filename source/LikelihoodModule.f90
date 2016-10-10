@@ -1349,6 +1349,174 @@ subroutine DensityFunc2(xT,epsilon1,nu1,Omega12,C2,CPsi,Q,S1,d1,d2,F,GradF)
   deallocate(e2,z1T)
 end subroutine DensityFunc2
 
+subroutine SparseGridBayes(iFree,model,N)
+  use nrtype
+  use GlobalModule, only : SelectFreeType
+  implicit none
+  type(SelectFreeType), intent(in) :: iFree
+  integer(i4b),         intent(in) :: model,N
+
+
+  ! D01ESF:   multidimensional Sparse Grid quadrature
+  INTEGER(i4b)              :: NI,NDIM, NDIM, LIOPTS,LOPTS,ifail
+  integer(i4b), allocatable :: MAXDLV(:), IVALID(:), IOPTS(:), IUSER(:)
+  REAL (dp),    allocatable :: DINEST(:), ERREST(:), OPTS(:), RUSER(:)
+  CHARACTER(len=100) 	    :: OPTSTR
+
+  ! set options for D01ESF
+  ifail = -1
+  LIOPTS = 100
+  LOPTS  = 100
+  NI     = 1 + 2*iFree%nall
+  NDIM   = iFree%nall
+
+  allocate(IOPTS(LIOPTS))
+  allocate(OPTS(LOPTS))
+  allocate(MAXDLV(NDIM))
+  allocate(IVALID(NI))
+  allocate(IUSER(3))
+  allocate(DINEST(NI))
+  allocate(ERREST(NI))
+  allocate(RUSER(1))
+
+  iuser(1) = model
+  iuser(2) = N
+
+  OPTSTR = "Initialize = D01ESF"
+  MAXDLV = 0  ! default
+
+  call D01ZKF (	OPTSTR, IOPTS, LIOPTS, OPTS, LOPTS, IFAIL)
+  ifail = -1
+  call D01ESF (	NI, NDIM, IntegrateLikeFunc, MAXDLV, DINEST, ERREST, IVALID, IOPTS, OPTS, IUSER, RUSER, IFAIL)
+
+  deallocate(IOPTS)
+  deallocate(OPTS)
+  deallocate(MAXDLV)
+  deallocate(IVALID)
+  deallocate(IUSER)
+  deallocate(DINEST)
+  deallocate(ERREST)
+  deallocate(RUSER)
+
+end subroutine SparseGridBayes
+
+SUBROUTINE IntegrateLikeFunc(	NI, NDIM, NX, XTR, NNTR, ICOLZP, IROWIX, XS, QS, FM, IFLAG, IUSER, RUSER)
+  implicit none
+  INTEGER(i4b), intent(in)    ::  NI,NDIM,NX,NNTR,ICOLZP(NX+1),IROWIX(NNTR),QS(NNTR)
+  integer(i4b), intent(inout) :: IFLAG, IUSER(*)
+  REAL(dp),     intent(in)    :: XTR, XS(NNTR)
+  real(dp),     intent(out)   :: FM(NI,NX)
+  real(dp),     intent(inout) :: RUSER(*)
+
+  real(dp), allocatable :: x0(:),x1(:)
+  integer(i4b)          :: i1
+
+  allocate(x0(ndim),x1(ndim))
+  x0 = XTR
+  do i1=1,nx
+    x0(irowix(icolzp(i1):icolzp(i1+1)-1)) = xs(icolzp(i1):icolzp(i1+1)-1)
+    ! change of variable from x0 to x1
+    x1 = ChangeX(x0)
+    call LikeFunc_QuadWrapper(x1,FM(:,i1))
+    x0(irowix(icolzp(i1):icolzp(i1+1)-1)) = xtr
+  end do
+
+  deallocate(x)
+end subroutine IntegrateLikeFunc
+
+bayes%BD_beta_lo = -10.0d0
+bayes%BD_beta_hi = 10.0d0
+bayes%BD_CDiag_lo = 0.0001d0
+bayes%BD_CDiag_hi = 2.0d0
+bayes%BD_CDiag_lo = 0.01d0 * pi_d
+bayes%BD_CDiag_hi = 0.98d0 * pi_d
+
+bayes%BC_beta_lo = -10.0d0
+bayes%BC_beta_hi = 10.0d0
+bayes%BC_CDiag_lo = 0.0001d0
+bayes%BC_CDiag_hi = 2.0d0
+bayes%BC_CDiag_lo = 0.01d0 * pi_d
+bayes%BC_CDiag_hi = 0.98d0 * pi_d
+bayes%MUE_lo      = 10.0d0
+bayes%MUE_hi      = 30.0d0
+bayes%InvCDiag_lo = 1.0d0 / 2.0d0
+bayes%InvCDiag_hi = 1.0d0 / 0.01d0
+bayes%InvCOffDiag_lo = 0.05d0 * pi_d
+bayes%InvCOffDiag_hi = 0.95d0 * pi_d
+
+function ChangeX(x0,nx,model) result(x1)
+  use nrtype
+  implicit none
+  integer(i4b), intent(in) :: nx,model
+  real(dp), intent(in) :: x0(nx)
+  real(dp)             :: x1(nx)
+
+  if (model==1) then
+    print *, "Code for Bayesian estimation of model 1 not yet completed."
+    stop
+  else if (model==2) then
+
+    ! parameters impacting BD
+    if (iFree%nBD_beta>0) then
+      x1(iFree%xBD_beta) = bayes%BD_beta_lo + (bayes%BD_beta_hi - bayes%BD_beta_lo)*x0(iFree%xBD_beta)
+    end if
+    if (iFree%nBD_CDiag>0) then
+      x1(iFree%xBD_CDiag) = bayes%BD_CDiag_lo + (bayes%BD_CDiag_hi - bayes%BD_CDiag_lo)*x0(iFree%xBD_CDiag)
+    end if
+    if (iFree%nBD_COffDiag>0) then
+      x1(iFree%xBD_COffDiag) = bayes%BD_COffDiag_lo + (bayes%BD_COffDiag_hi - bayes%BD_COffDiag_lo)*x0(iFree%xBD_COffDiag)
+    end if
+
+    ! Parameters impacting BC
+    if (iFree%nBC_beta>0) then
+      x1(iFree%xBC_beta) = bayes%BC_beta_lo + (bayes%BC_beta_hi - bayes%BC_beta_lo)*x0(iFree%xBC_beta)
+    end if
+    if (iFree%nBC_CDiag>0) then
+      x1(iFree%xBC_CDiag) = bayes%BC_CDiag_lo + (bayes%BC_CDiag_hi - bayes%BC_CDiag_lo)*x0(iFree%xBC_CDiag)
+    end if
+    if (iFree%nBC_COffDiag>0) then
+      x1(iFree%xBC_COffDiag) = bayes%BC_COffDiag_lo + (bayes%BC_COffDiag_hi - bayes%BC_COffDiag_lo)*x0(iFree%xBC_COffDiag)
+    end if
+
+    ! MUE
+    if (iFree%nMUE>0) then
+      x1(iFree%xMUE) = bayes%MUE_lo + (bayes%MUE_hi-bayes%MUE_lo) * x0(iFree%xMUE)
+    end if
+
+    ! InvCDiag
+    if (iFree%nInvCDiag>0) then
+      x1(iFree%xInvCDiag) = bayes%CInvDiag_lo +(bayes%InvCDiag_hi - bayes%InvCDiag_lo)* x0(iFree%xInvCDiag)
+    end if
+
+    ! InvCOffDiag
+    if (iFree%nInvCOffDiag>0) then
+      x1(iFree%xInvCOffDiag) = bayes%InvCOffDiag_lo +(bayes%InvCOffDiag_hi - bayes%InvCOffDiag_lo)* x0(iFree%xInvCOffDiag)
+    end if
+  end if
+end function ChangeX
+
+subroutine LikeFunc_QuadWrapper(x,nx,iuser,ruser,F)
+  use nrtype
+  implicit none
+  real(dp),     intent(in)    :: x(nx)
+  integer(i4b), intent(in)    :: nx
+  integer(i4b), intent(inout) :: iuser(*)
+  real(dp),     intent(inout) :: ruser(*)
+  real(dp),     intent(out)   :: F(:)
+
+  integer(i4b) :: mode,nstate
+  real(dp)     :: L,GradL(nx)
+
+  mode=0
+  nstate = 0
+
+  call LikeFunc(mode,nx,x,L,GradL,nstate,iuser,ruser)
+  F(1) = L
+  F(2:nx+1) = x*L
+  F(nx+2:2*nx+1) = x*F(2:nx+1)
+
+end subroutine LikeFunc_QuadWrapper
+
 subroutine SetupBayesPrior(parms,iFree)
   use nrtype
   use GlobalModule, only : ParmsStructure,SelectFreeType,Bayes
@@ -1369,8 +1537,6 @@ subroutine SetupBayesPrior(parms,iFree)
       
 
   end if
-
-
 
   deallocate(bayes%x)
   deallocate(bayes%w)
