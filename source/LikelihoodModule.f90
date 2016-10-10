@@ -1705,8 +1705,50 @@ subroutine MaximizeLikelihood(x,LValue,Grad,Hess,ierr)
 !    call MaximizeLikelihood2(x,LValue,Grad,Hess,ierr)
   elseif (MaxOptions%Algorithm==3) then
      call Max_E04JCF(x,LValue,Grad,Hess,ierr)
+  elseif (MaxOptions%Algorithm==4) then
+    ! Bayesian estimation
+    call ComputeBayes(x,LValue,Grad,Hess,ierr)
   end if
 end subroutine MaximizeLikelihood
+
+subroutine ComputeBayes(x,LValue,Grad,Hess,ierr)
+  use nrtype
+  use GlobalModule, only : bayes
+
+  implicit none
+  real(dp), intent(in) :: x(:)
+  real(dp), intent(out) :: L,Grad(:),Hess(:,:)
+  integer(i4b), intent(out) :: ierr
+
+  integer(i4b)  :: mode,nx
+  integer(i4b), allocatable :: nstate(:)
+  real(dp)  :: L
+  real(dp), allocatable :: GradL(:)
+  integer(i4b) :: iuser(3)
+  real(dp)     :: ruser(1)
+
+  ! moments of x: zero, one and two
+  real(dp)              :: m0
+  real(dp), allocatable :: m1(:),m2(:,:)
+
+  mode=0
+  nx = size(x)
+  allocate(m1(nx))
+  allocate(m2(nx,nx))
+
+  m0 = 0.0d0
+  m1 = 0.0d0
+  m2 = 0.0d0
+
+  do i1=1,bayes%nAll
+    call LikeFunc(mode,nx,bayes%x(:,i1),L,GradL,nstate,iuser,ruser)
+    m0 = m0 + bayes%w(i1) * bayes%prior(i1) * L
+    m1 = m1 + bayes%w(i1) * bayes%prior(i1) * L * bayes%x(:,i1)
+    m2 = m2 + bayes%w(i1) * bayes%prior(i1) * L * matmul(bayes%x(:,i1),transpose(bayes%x(:,i1)))
+  end do
+
+  deallocate(m1,m2)
+end subroutine ComputeBayes
 
 ! Maximise using Constrained maximization: E04WDF
 subroutine MaximizeLikelihood1(x,LValue,Grad,Hess,ierr)
