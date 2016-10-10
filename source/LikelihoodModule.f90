@@ -1349,16 +1349,46 @@ subroutine DensityFunc2(xT,epsilon1,nu1,Omega12,C2,CPsi,Q,S1,d1,d2,F,GradF)
   deallocate(e2,z1T)
 end subroutine DensityFunc2
 
+subroutine SetupBayesPrior(parms,iFree)
+  use nrtype
+  use GlobalModule, only : ParmsStructure,SelectFreeType,Bayes
+  implicit none
+  type (parmsStructure), intent(in) :: parms
+  type(SelectFreeTYpe),  intent(in) :: iFree
+
+  bayes%nAll = 10000
+  allocate(bayes%x(iFree%nall,bayes%nall))
+  allocate(bayes%w(bayes%nall))
+  allocate(bayes%prior(bayes%nall))
+
+  if (parms%model==1) then
+
+  else if (parms%model==2) then
+
+    if (iFree%flagMUE==1) then
+      
+
+  end if
+
+
+
+  deallocate(bayes%x)
+  deallocate(bayes%w)
+  deallocate(bayes%prior)
+
+end subroutine SetupBayesPrior
+
 subroutine RunMonteCarlo(IMC1,IMC2,pid)
   use nrtype
   use GlobalModule, only : parms,parms0,iFree,            &
+                           MaxOptions,                    &
                            ResultStructure,               &
                            ReadWriteParameters,CopyParameters, &
                            ControlOptions,MasterID
 #if USE_MPI==0
   use DataModule, only   : CreateData
 #else
-  use DataModule, only : CreateData,SendData
+  use DataModule, only   : CreateData,SendData
   use GlobalModule, only : BroadcastIFree,BroadcastParms
 #endif
   use OutputModule, only : SaveMCOutputs
@@ -1379,6 +1409,10 @@ subroutine RunMonteCarlo(IMC1,IMC2,pid)
 
   NMC = IMC2-IMC1+1
   call SelectFreeParameters(parms,iFree)
+  if (MaxOptions%Algorithm==6) then
+    call SetupBayesPrior(parms,iFree)
+  end if
+
 #if USE_MPI==1
   call BroadcastParms(parms)
   call BroadcastIFree(pid)
@@ -1494,13 +1528,13 @@ subroutine SelectFreeParameters(parms,iFree)
   type(ParmsStructure), intent(in)    :: parms
   type(SelectFreeType), intent(inout) :: iFree
 
-integer(i4b) :: i1
+  integer(i4b) :: i1
 
-!  FreeFlags.D           = 1;
-!  FreeFlags.C           = 1;
-!  FreeFlags.MuE         = 0;
-!  FreeFlags.InvCDiag    = 0;
-!  FreeFlags.InvCOffDiag = 0;
+  !  FreeFlags.D           = 1;
+  !  FreeFlags.C           = 1;
+  !  FreeFlags.MuE         = 0;
+  !  FreeFlags.InvCDiag    = 0;
+  !  FreeFlags.InvCOffDiag = 0;
 
   ! parms%D  = (J x 1) scaling factors in B
   ! iFree.D  = elements of D that are free
@@ -1710,6 +1744,7 @@ subroutine MaximizeLikelihood(x,LValue,Grad,Hess,ierr)
     call ComputeBayes(x,LValue,Grad,Hess,ierr)
   end if
 end subroutine MaximizeLikelihood
+
 
 subroutine ComputeBayes(x,LValue,Grad,Hess,ierr)
   use nrtype

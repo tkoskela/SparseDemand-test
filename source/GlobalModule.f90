@@ -219,6 +219,15 @@ module GlobalModule
     integer(i4b)      :: Algorithm
   end type
 
+  type BayesType
+    integer(i4b)    :: nAll
+    real(dp), allocatable :: x(:,:)   ! x(:,i1) = draw number i1 from density of x
+    real(dp), allocatable :: w(:)     ! integration weights
+    real(dp), allocatable :: p(:)     ! prior evaluated at x(:,i1)
+  end type
+
+  type(BayesType)             :: BayesType ! information for Bayesian computations
+
   type(FlagStructure)         :: ControlOptions
   type(MaxStructure)          :: MaxOptions
 
