@@ -1424,35 +1424,17 @@ SUBROUTINE IntegrateLikeFunc(	NI, NDIM, NX, XTR, NNTR, ICOLZP, IROWIX, XS, QS, F
   deallocate(x)
 end subroutine IntegrateLikeFunc
 
-bayes%BD_beta_lo = -10.0d0
-bayes%BD_beta_hi = 10.0d0
-bayes%BD_CDiag_lo = 0.0001d0
-bayes%BD_CDiag_hi = 2.0d0
-bayes%BD_CDiag_lo = 0.01d0 * pi_d
-bayes%BD_CDiag_hi = 0.98d0 * pi_d
-
-bayes%BC_beta_lo = -10.0d0
-bayes%BC_beta_hi = 10.0d0
-bayes%BC_CDiag_lo = 0.0001d0
-bayes%BC_CDiag_hi = 2.0d0
-bayes%BC_CDiag_lo = 0.01d0 * pi_d
-bayes%BC_CDiag_hi = 0.98d0 * pi_d
-bayes%MUE_lo      = 10.0d0
-bayes%MUE_hi      = 30.0d0
-bayes%InvCDiag_lo = 1.0d0 / 2.0d0
-bayes%InvCDiag_hi = 1.0d0 / 0.01d0
-bayes%InvCOffDiag_lo = 0.05d0 * pi_d
-bayes%InvCOffDiag_hi = 0.95d0 * pi_d
 
 function ChangeX(x0,nx,model) result(x1)
   use nrtype
   implicit none
   integer(i4b), intent(in) :: nx,model
-  real(dp), intent(in) :: x0(nx)
-  real(dp)             :: x1(nx)
+  real(dp),     intent(in) :: x0(nx)
+  real(dp)                 :: x1(nx)
 
   if (model==1) then
-    print *, "Code for Bayesian estimation of model 1 not yet completed."
+    print *, "Code for Bayesian estimation of model==1 not yet completed."
+    print *, "Currently, Bayesian estimation only works for model==2."
     stop
   else if (model==2) then
 
@@ -1517,6 +1499,7 @@ subroutine LikeFunc_QuadWrapper(x,nx,iuser,ruser,F)
 
 end subroutine LikeFunc_QuadWrapper
 
+#ifdef BAYES
 subroutine SetupBayesPrior(parms,iFree)
   use nrtype
   use GlobalModule, only : ParmsStructure,SelectFreeType,Bayes
@@ -1543,6 +1526,7 @@ subroutine SetupBayesPrior(parms,iFree)
   deallocate(bayes%prior)
 
 end subroutine SetupBayesPrior
+#endif
 
 subroutine RunMonteCarlo(IMC1,IMC2,pid)
   use nrtype
@@ -2599,7 +2583,7 @@ end subroutine ComputeHess
 
 subroutine SetBounds(x,BL,BU)
   use nrtype
-  use GlobalModule, only : iFree
+  use GlobalModule, only : iFree,MaxOptions,bayes
   implicit none
   real(dp), intent(in)  :: x(:)
   real(dp), intent(out) :: BL(:)
@@ -2664,6 +2648,28 @@ subroutine SetBounds(x,BL,BU)
   if (iFree%nBD_COffDiag>0) then
     BL(iFree%xBD_COffDiag) = -0.90d0*pi
     BU(iFree%xBD_COffDiag) = 0.90d0*pi
+  end if
+
+  if (MaxOptions%Algorithm==6) then
+    bayes%BD_beta_lo = -2.0d0
+    bayes%BD_beta_hi = 3.0d0
+    bayes%BD_CDiag_lo = -1.0d0
+    bayes%BD_CDiag_hi = 1.0d0
+    bayes%BD_COffDiag_lo = -0.90d0*pi
+    bayes%BD_COffDiag_hi = 0.90d0 * pi
+
+    bayes%BC_beta_lo = -2.0d0
+    bayes%BC_beta_hi = 3.0d0
+    bayes%BC_CDiag_lo = -1.0d0
+    bayes%BC_CDiag_hi = 1.0d0
+    bayes%BC_CDiag_lo = -.90d0 * pi
+    bayes%BC_CDiag_hi = 0.90d0 * pi
+    bayes%MUE_lo      = 10.0d0
+    bayes%MUE_hi      = 30.0d0
+    bayes%InvCDiag_lo = 0.1d0
+    bayes%InvCDiag_hi = 1.0d0 / 0.1d0
+    bayes%InvCOffDiag_lo = -0.90d0 * pi
+    bayes%InvCOffDiag_hi = 0.90d0 * pi
   end if
 
 end subroutine SetBounds
