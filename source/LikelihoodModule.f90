@@ -1349,19 +1349,20 @@ subroutine DensityFunc2(xT,epsilon1,nu1,Omega12,C2,CPsi,Q,S1,d1,d2,F,GradF)
   deallocate(e2,z1T)
 end subroutine DensityFunc2
 
-subroutine SparseGridBayes(iFree,model,N)
+subroutine SparseGridBayes(iFree,iuser,ruser)
   use nrtype
   use GlobalModule, only : SelectFreeType
+  use nag_library, only : D01ESF,D01ZKF
   implicit none
   type(SelectFreeType), intent(in) :: iFree
-  integer(i4b),         intent(in) :: model,N
-
+  integer(i4b),         intent(inout) :: iuser(*)
+  real(dp),             intent(inout) :: ruser(*)
 
   ! D01ESF:   multidimensional Sparse Grid quadrature
-  INTEGER(i4b)              :: NI,NDIM, NDIM, LIOPTS,LOPTS,ifail
-  integer(i4b), allocatable :: MAXDLV(:), IVALID(:), IOPTS(:), IUSER(:)
-  REAL (dp),    allocatable :: DINEST(:), ERREST(:), OPTS(:), RUSER(:)
-  CHARACTER(len=100) 	    :: OPTSTR
+  INTEGER(i4b)              :: NI,NDIM,LIOPTS,LOPTS,ifail
+  integer(i4b), allocatable :: MAXDLV(:), IVALID(:), IOPTS(:)
+  REAL (dp),    allocatable :: DINEST(:), ERREST(:), OPTS(:)
+  CHARACTER(len=100)        :: OPTSTR
 
   ! set options for D01ESF
   ifail = -1
@@ -1374,33 +1375,26 @@ subroutine SparseGridBayes(iFree,model,N)
   allocate(OPTS(LOPTS))
   allocate(MAXDLV(NDIM))
   allocate(IVALID(NI))
-  allocate(IUSER(3))
   allocate(DINEST(NI))
   allocate(ERREST(NI))
-  allocate(RUSER(1))
-
-  iuser(1) = model
-  iuser(2) = N
 
   OPTSTR = "Initialize = D01ESF"
   MAXDLV = 0  ! default
 
-  call D01ZKF (	OPTSTR, IOPTS, LIOPTS, OPTS, LOPTS, IFAIL)
+  call D01ZKF (OPTSTR, IOPTS, LIOPTS, OPTS, LOPTS, IFAIL)
   ifail = -1
-  call D01ESF (	NI, NDIM, IntegrateLikeFunc, MAXDLV, DINEST, ERREST, IVALID, IOPTS, OPTS, IUSER, RUSER, IFAIL)
+  call D01ESF (NI, NDIM, IntegrateLikeFunc, MAXDLV, DINEST, ERREST, IVALID, IOPTS, OPTS, IUSER, RUSER, IFAIL)
 
   deallocate(IOPTS)
   deallocate(OPTS)
   deallocate(MAXDLV)
   deallocate(IVALID)
-  deallocate(IUSER)
   deallocate(DINEST)
   deallocate(ERREST)
-  deallocate(RUSER)
 
 end subroutine SparseGridBayes
 
-SUBROUTINE IntegrateLikeFunc(	NI, NDIM, NX, XTR, NNTR, ICOLZP, IROWIX, XS, QS, FM, IFLAG, IUSER, RUSER)
+SUBROUTINE IntegrateLikeFunc(NI, NDIM, NX, XTR, NNTR, ICOLZP, IROWIX, XS, QS, FM, IFLAG, IUSER, RUSER)
   implicit none
   INTEGER(i4b), intent(in)    ::  NI,NDIM,NX,NNTR,ICOLZP(NX+1),IROWIX(NNTR),QS(NNTR)
   integer(i4b), intent(inout) :: IFLAG, IUSER(*)
@@ -1416,17 +1410,17 @@ SUBROUTINE IntegrateLikeFunc(	NI, NDIM, NX, XTR, NNTR, ICOLZP, IROWIX, XS, QS, F
   do i1=1,nx
     x0(irowix(icolzp(i1):icolzp(i1+1)-1)) = xs(icolzp(i1):icolzp(i1+1)-1)
     ! change of variable from x0 to x1
-    x1 = ChangeX(x0)
-    call LikeFunc_QuadWrapper(x1,FM(:,i1))
+    x1 = ChangeX(x0,ndim,iuser(1))
+    call LikeFunc_QuadWrapper(x1,ndim,iuser,ruser,FM(:,i1))
     x0(irowix(icolzp(i1):icolzp(i1+1)-1)) = xtr
   end do
 
-  deallocate(x)
+  deallocate(x0,x1)
 end subroutine IntegrateLikeFunc
-
 
 function ChangeX(x0,nx,model) result(x1)
   use nrtype
+  use GlobalModule, only : ifree,bayes
   implicit none
   integer(i4b), intent(in) :: nx,model
   real(dp),     intent(in) :: x0(nx)
@@ -1467,7 +1461,7 @@ function ChangeX(x0,nx,model) result(x1)
 
     ! InvCDiag
     if (iFree%nInvCDiag>0) then
-      x1(iFree%xInvCDiag) = bayes%CInvDiag_lo +(bayes%InvCDiag_hi - bayes%InvCDiag_lo)* x0(iFree%xInvCDiag)
+      x1(iFree%xInvCDiag) = bayes%InvCDiag_lo +(bayes%InvCDiag_hi - bayes%InvCDiag_lo)* x0(iFree%xInvCDiag)
     end if
 
     ! InvCOffDiag
@@ -1559,9 +1553,9 @@ subroutine RunMonteCarlo(IMC1,IMC2,pid)
 
   NMC = IMC2-IMC1+1
   call SelectFreeParameters(parms,iFree)
-  if (MaxOptions%Algorithm==6) then
-    call SetupBayesPrior(parms,iFree)
-  end if
+  !if (MaxOptions%Algorithm==6) then
+  !  call SetupBayesPrior(parms,iFree)
+  !end if
 
 #if USE_MPI==1
   call BroadcastParms(parms)
@@ -1864,7 +1858,6 @@ subroutine SelectFreeParameters(parms,iFree)
     write(iFree%xlabels(iFree%xBC_COffDiag(i1)),'(a12,i2,a1)') 'BC_COffDiag(', iFree%BC_COffDiag(i1), ')'
   end do
 
-
 end subroutine SelectFreeParameters
 
 subroutine MaximizeLikelihood(x,LValue,Grad,Hess,ierr)
@@ -1889,14 +1882,14 @@ subroutine MaximizeLikelihood(x,LValue,Grad,Hess,ierr)
 !    call MaximizeLikelihood2(x,LValue,Grad,Hess,ierr)
   elseif (MaxOptions%Algorithm==3) then
      call Max_E04JCF(x,LValue,Grad,Hess,ierr)
-  elseif (MaxOptions%Algorithm==4) then
+  elseif (MaxOptions%Algorithm==6) then
     ! Bayesian estimation
-    call ComputeBayes(x,LValue,Grad,Hess,ierr)
+    call MaximizeLikelihood1(x,LValue,Grad,Hess,ierr)
+    !call ComputeBayes(x,LValue,Grad,Hess,ierr)
   end if
 end subroutine MaximizeLikelihood
 
-
-subroutine ComputeBayes(x,LValue,Grad,Hess,ierr)
+subroutine ComputeBayes(x,L,Grad,Hess,ierr)
   use nrtype
   use GlobalModule, only : bayes
 
@@ -1906,16 +1899,15 @@ subroutine ComputeBayes(x,LValue,Grad,Hess,ierr)
   integer(i4b), intent(out) :: ierr
 
   integer(i4b)  :: mode,nx
-  integer(i4b), allocatable :: nstate(:)
-  real(dp)  :: L
+  integer(i4b)  :: nstate,i1,i2
   real(dp), allocatable :: GradL(:)
-  integer(i4b) :: iuser(3)
+  integer(i4b) :: iuser(2)
   real(dp)     :: ruser(1)
 
   ! moments of x: zero, one and two
   real(dp)              :: m0
   real(dp), allocatable :: m1(:),m2(:,:)
-
+  
   mode=0
   nx = size(x)
   allocate(m1(nx))
@@ -1929,10 +1921,18 @@ subroutine ComputeBayes(x,LValue,Grad,Hess,ierr)
     call LikeFunc(mode,nx,bayes%x(:,i1),L,GradL,nstate,iuser,ruser)
     m0 = m0 + bayes%w(i1) * bayes%prior(i1) * L
     m1 = m1 + bayes%w(i1) * bayes%prior(i1) * L * bayes%x(:,i1)
-    m2 = m2 + bayes%w(i1) * bayes%prior(i1) * L * matmul(bayes%x(:,i1),transpose(bayes%x(:,i1)))
+    do i2=1,nx
+      m2(:,i2) = m2(:,i2) + bayes%w(i1) * bayes%prior(i1) * L  &
+                          * bayes%x(:,i1) * bayes%x(i2,i1)
+    end do
   end do
 
+  L    = m0
+  Grad = m1
+  Hess = m2
   deallocate(m1,m2)
+  deallocate(bayes%x,bayes%w,bayes%prior)
+  ierr = 0
 end subroutine ComputeBayes
 
 ! Maximise using Constrained maximization: E04WDF
@@ -2152,6 +2152,57 @@ subroutine MaximizeLikelihood1(x,LValue,Grad,Hess,ierr)
 #endif
   ierr = 0   ! no error in subroutine
 end subroutine MaximizeLikelihood1
+
+! commpute Bayes estimator using D01ESF
+subroutine BayesLikelihood1(x,LValue,Grad,Hess,ierr)
+  use nrtype
+#if USE_MPI==1
+  use mpi
+#endif
+  use GlobalModule, only : parms,HHData,iFree
+
+  implicit none
+  real(dp),     intent(inout) :: x(:)
+  real(dp),     intent(out)   :: LValue
+  real(dp),     intent(out)   :: Grad(:)
+  real(dp),     intent(out)   :: Hess(:,:)
+  integer(i4b), intent(out)   :: ierr
+
+  ! Dimensions of optimization problem
+  integer(i4b)                :: nx,iter
+
+  ! LOWER AND UPPER BOUNDS for optimisation
+  real(dp), allocatable       :: BL(:),BU(:)            
+
+  ! User INPUTS TO OBJECTIVE FUNCTION
+  REAL(DP)                    :: RUSER(1)
+  INTEGER(I4B)                :: iuser(2)
+
+  ! Dimensions of maximization problem
+  nx=size(x,1)    
+
+  allocate(BL(nx),BU(nx))
+
+  BL = -5.0d0
+  BU = 5.0d0
+  call SetBounds(x,BL(1:nx),BU(1:nx))
+
+  iuser(1) = parms%model
+  iuser(2) = HHData%N
+  ruser    = 0.0d0
+
+  LValue = 0.0D0
+  Grad   = 0.0d0
+  Hess   = 0.0d0
+  do iter=1,nx
+    Hess(iter,iter)=1.0d0
+  end do
+  call SparseGridBayes(iFree,iuser,ruser)
+
+  deallocate(BL,BU)
+
+  ierr = 0   ! no error in subroutine
+end subroutine BayesLikelihood1
 
 ! Maximise using Constrained maximization: E04WDF
 subroutine MaximizePenalizedLikelihood(x,LValue,Grad,Hess,ierr)
@@ -2670,6 +2721,10 @@ subroutine SetBounds(x,BL,BU)
     bayes%InvCDiag_hi = 1.0d0 / 0.1d0
     bayes%InvCOffDiag_lo = -0.90d0 * pi
     bayes%InvCOffDiag_hi = 0.90d0 * pi
+
+    bayes%nall = 100
+    allocate(bayes%x(iFree%nall,bayes%nall))
+    allocate(bayes%w(bayes%nall),bayes%prior(bayes%nall))
   end if
 
 end subroutine SetBounds
