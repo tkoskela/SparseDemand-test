@@ -11,11 +11,12 @@ TestLikeFlag : 4     # 0 = maximise likelihood
 #                    # 3 = test non-linear constraint
 #                    # 4 = no non-linear constraints
 TestIntegrationFlag : 0 # 1 to test accuracy of integration
+SimulateDataFlag    : 0 # 1 simulate data, 2 = load data from file
 BICFlag             : 0 # 1 to minimize BIC
 MPIFlag             : 1 # 1 = each processor, subset of data
                         # 2 = each processor, subset of MC replications
 #  Name of output directory
-OutDir: /SAN/economics/Nesheim-IO/FruitDemand/output/exe
+OutDir: /SAN/economics/Nesheim-IO/FruitDemand/output/B
 InputDir: /home/uctpln0/FruitDemand/code/fortran/inputs/A24
  
 #           0101    # HotStart(1):  0 for default value, 2 to load from file

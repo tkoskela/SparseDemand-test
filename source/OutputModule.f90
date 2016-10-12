@@ -46,6 +46,7 @@ subroutine DefineFileNames(pid)
 
 !  OutDir        = 'output'
   Results1_File         = MakeFullFileName('Results1.txt')
+  BayesResults_File     = MakeFullFileName('BayesResults.txt')
   Hess1_FILE            = MakeFullFileName('Hess1.txt')
   SaveDataFile_q        = MakeFullFileName('q.csv')
   SaveDataFile_p        = MakeFullFileName('p.csv')

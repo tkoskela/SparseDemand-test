@@ -1351,7 +1351,7 @@ end subroutine DensityFunc2
 
 subroutine SparseGridBayes(iFree,iuser,ruser)
   use nrtype
-  use GlobalModule, only : SelectFreeType
+  use GlobalModule, only : SelectFreeType,MaxOptions
   use OutputModule, only : WriteBayes
   use nag_library,  only : D01ESF,D01ZKF
   implicit none
@@ -1382,7 +1382,27 @@ subroutine SparseGridBayes(iFree,iuser,ruser)
   OPTSTR = "Initialize = D01ESF"
   MAXDLV = 0  ! default
 
+  ! Initialize options
   call D01ZKF(OPTSTR, IOPTS, LIOPTS, OPTS, LOPTS, IFAIL)
+
+  ! set options
+  if (MaxOptions%AbsTol>0.0d0) then
+    write(OPTSTR,'(a21,d12.4)') "Absolute Tolerance = ",MaxOptions%AbsTol
+    ifail = -1
+    call D01ZKF(OPTSTR, IOPTS, LIOPTS, OPTS, LOPTS, IFAIL)
+  end if
+
+  if (MaxOptions%RelTol>0.0d0) then
+    write(OPTSTR,'(a21,d12.4)') "Relative Tolerance = ",MaxOptions%RelTol
+    ifail = - 1
+    call D01ZKF(OPTSTR, IOPTS, LIOPTS, OPTS, LOPTS, IFAIL)
+  end if
+
+  if (MaxOptions%MaxLevel>0) then
+    write(OPTSTR,'(a21,i2)') "Maximum Level = ",MaxOptions%MaxLevel
+    ifail=-1
+    call D01ZKF(OPTSTR, IOPTS, LIOPTS, OPTS, LOPTS, IFAIL)
+  end if 
   ifail = -1
   call D01ESF(NI, NDIM, IntegrateLikeFunc, MAXDLV, DINEST, ERREST, IVALID, IOPTS, OPTS, IUSER, RUSER, IFAIL)
 

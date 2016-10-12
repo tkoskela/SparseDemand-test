@@ -21,6 +21,7 @@ module GlobalModule
   type FlagStructure
     integer(i4b) :: OutputFlag
     integer(i4b) :: SaveDataFlag
+    integer(i4b) :: SimulateData
     integer(i4b) :: TestLikeFlag
     integer(i4b) :: TestIntegrationFlag
     integer(i4b) :: BICFlag
@@ -56,6 +57,7 @@ module GlobalModule
     integer(i4b), allocatable :: nNonZero(:)   ! nNonZero(i1)      = number of goods with nonzero demand for i1
     character(20), allocatable :: ColumnLabels(:) ! (J x 1) labels for columns of B
     real(dp),      allocatable :: eta(:,:)
+    character(200)             :: RawDataFile
   end type
 
   type ParmsStructure
@@ -217,6 +219,9 @@ module GlobalModule
     ! MaxAlgorithm = 1   E04WDF  : Dense problem
     ! MaxAlgorithm = 2   E04VHF  : Sparse problem
     integer(i4b)      :: Algorithm
+    real(dp)          :: AbsTol     ! absolute tolerance for D01ESF Bayesian computations
+    real(dp)          :: RelTol     ! relative tolerance for D01ESF Bayesian computations
+    real(dp)          :: MaxLevel   ! maximum level for D01ESF Bayesian computations
   end type
 
   type BayesType
@@ -814,6 +819,9 @@ subroutine InitializeParameters(InputFile)
       stop
     end if
 
+   ! Raw data file
+   ErrFlag = GetVal(PropList,'RawData_FILE',HHData%RawDataFile)
+
    ! outputFlag: 0 do not save output
    !             1 save output
    ErrFlag = GetVal(PropList,'OutputFlag',cTemp)
@@ -829,6 +837,11 @@ subroutine InitializeParameters(InputFile)
    ErrFlag = GetVal(PropList,'TestIntegrationFlag',cTemp)
    read(cTemp,'(i2)') ControlOptions%TestIntegrationFlag
 
+  ! SaveDataFlag : 0 do not save data
+  !                1 save data to file
+  ErrFlag = GetVal(PropList,'SaveDataFlag',cTemp)
+  read(cTemp,'(i2)') ControlOptions%SaveDataFlag
+  
   ! SaveDataFlag : 0 do not save data
   !                1 save data to file
   ErrFlag = GetVal(PropList,'SaveDataFlag',cTemp)
@@ -852,6 +865,18 @@ subroutine InitializeParameters(InputFile)
   ! set maximization options
   ErrFlag = GetVal(PropList,'MaxAlgorithm',cTemp)
   read(cTemp,'(i2)') MaxOptions%Algorithm
+  
+  ! Absolute tolerance for D01ESF Bayesian estimator
+  ErrFlag = GetVal(PropList,'AbsoluteTolerance',cTemp)
+  read(cTemp,'(d12.4)') MaxOptions%AbsTol
+  
+  ! Relative tolerance for D01ESF Bayesian estimator
+  ErrFlag = GetVal(PropList,'RelativeTolerance',cTemp)
+  read(cTemp,'(d12.4)') MaxOptions%RelTol
+
+  ! Maximum level for D01ESF Bayesian estimator
+  ErrFlag = GetVal(PropList,'MaxLevel',cTemp)
+  read(cTemp,'(i2)') MaxOptions%MaxLevel
 
   ! NMC : 0 no MC repetitions
   !     > 0 number of MC repetitions
@@ -1461,7 +1486,10 @@ subroutine BroadcastParameters(pid)
   call mpi_bcast(ControlOptions%SaveDataFlag,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr)
   call mpi_bcast(ControlOptions%BICFlag,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr)
   call mpi_bcast(ControlOptions%MPIFlag,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr)
-  call mpi_bcast(MaxOptions%Algorithm,2,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr)
+  call mpi_bcast(MaxOptions%Algorithm,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr)
+  call mpi_bcast(MaxOptions%AbsTol,1,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr)
+  call mpi_bcast(MaxOptions%RelsTol,1,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr)
+  call mpi_bcast(MaxOptions%MaxLevel,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr)
 
   call mpi_bcast(small,1,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr)
   call mpi_bcast(inf,1,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr)

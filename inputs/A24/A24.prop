@@ -53,7 +53,9 @@ InitialGuess2_FILE : InitialGuess2.txt
 #            : 01
 MaxAlgorithm : 6 # 1 = E04WDF, 2 = E04VHF, 3 = E04JCF, 4 = E04JYF, 5 = E04CBF
                  # 6 = Bayes MC integration
-
+AbsoluteTolerance : 0.01  # absolute tolerance for D01ESF for Bayesian computation   
+RelativeTolerance : 0.01  # relative tolerance for D01ESF for Bayesian computation   
+MaxLevel          : 6     # maximum level for D01ESF for Bayesian computation   
 # Penalty parameters
 # method = 0  no penalty
 #          1  max L(x1,x2) subject to x2 = xPlus-xMinus, xPlus>=0, xMinus>=0
