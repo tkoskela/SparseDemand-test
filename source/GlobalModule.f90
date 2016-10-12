@@ -51,13 +51,14 @@ module GlobalModule
     real(dp), allocatable     :: e(:,:)    ! bliss points
     real(dp), allocatable     :: q(:,:)    ! q(1:d1,i1) = nonzero elements of quantity for i1
     real(dp), allocatable     :: p(:,:)    ! p(:,i1)    = prices for household i1
-    integer(i4b), allocatable :: market(:) ! market id
-    integer(i4b), allocatable :: iNonZero(:,:) ! iNonZero(1:d1,i1) = indexes of nonzero elements of q for i1
-    integer(i4b), allocatable :: iZero(:,:)    ! iZero(1:d3,i1)    = indexes of zero elements of q for i1
-    integer(i4b), allocatable :: nNonZero(:)   ! nNonZero(i1)      = number of goods with nonzero demand for i1
-    character(20), allocatable :: ColumnLabels(:) ! (J x 1) labels for columns of B
-    real(dp),      allocatable :: eta(:,:)
-    character(200)             :: RawDataFile
+    integer(i4b),   allocatable :: market(:) ! market id
+    integer(i4b),   allocatable :: iNonZero(:,:) ! iNonZero(1:d1,i1) = indexes of nonzero elements of q for i1
+    integer(i4b),   allocatable :: iZero(:,:)    ! iZero(1:d3,i1)    = indexes of zero elements of q for i1
+    integer(i4b),   allocatable :: nNonZero(:)   ! nNonZero(i1)      = number of goods with nonzero demand for i1
+    character(20),  allocatable :: ColumnLabels(:) ! (J x 1) labels for columns of B
+    real(dp),       allocatable :: eta(:,:)
+    character(200)              :: RawDataFile
+    character(100), allocatable :: RawDataLabels(:)
   end type
 
   type ParmsStructure

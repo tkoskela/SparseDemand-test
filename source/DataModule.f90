@@ -357,9 +357,20 @@ end subroutine SendData
 #endif
 
 #ifdef LOADDATA
-subroutine LoadData
+subroutine LoadData(nx,n)
   use GlobalModule, only : HHData
   implicit none
+  integer(i4b)  :: data_unit
+
+  data_unit = 20
+  open(unit = data_unit, &
+       file = HHData%RawDataFile, &
+       action = 'read')
+
+  allocate(HHData%RawDataLabels(nx))
+  read(data_unit,369) HHData%RawDataLabels
+369 format(
+
   HHData%N
   HHData%p
   HHData%q
