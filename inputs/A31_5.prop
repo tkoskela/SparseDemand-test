@@ -36,6 +36,7 @@ N     : 500
 M     : 100
 J     : 24
 K     : 5
+nRawVars : 77  # number of variables in raw data file
 
 RawData_FILE :  /data/home/uctpln0/research/IO/Lewbel/code/fortran/data/MCData.raw
 NewData_FILE :  temp/Temp.txt

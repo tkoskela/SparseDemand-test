@@ -59,6 +59,10 @@ module GlobalModule
     real(dp),       allocatable :: eta(:,:)
     character(200)              :: RawDataFile
     character(100), allocatable :: RawDataLabels(:)
+    integer(i4b),   allocatable :: HHID(:)
+    integer(i4b),   allocatable :: shopid(:)
+    integer(i4b),   allocatable :: date(:),day(:)
+    integer(i4b)                :: nRawVars    ! nunmber of variables in raw data file
   end type
 
   type ParmsStructure
@@ -397,6 +401,11 @@ contains
     allocate(HHData%iZero(parms%J,HHData%N))
     allocate(HHData%nNonZero(HHData%N))
     allocate(HHData%ColumnLabels(parms%J))
+    allocate(HHData%HHID(HHData%N))
+    allocate(HHData%date(HHData%N))
+    allocate(HHData%day(HHData%N))
+    allocate(HHData%shopid(HHData%N))
+
     if (parms%model==2) then
       allocate(HHData%eta(parms%dim_eta,HHData%N))
     end if
@@ -652,11 +661,13 @@ subroutine DeallocateGlobalVariables
   !--------------------------------------------------------------------------
   ! deallocate HHData
   deallocate(HHData%q,HHData%p,HHData%iNonZero,HHData%iZero,HHData%nNonZero)
+  deallocate(HHData%HHID,HHData%shopid,HHData%date,HHData%day)
   deallocate(HHData%market,HHData%e)
   deallocate(HHData%ColumnLabels)
   if (allocated(HHData%eta)) then
     deallocate(HHData%eta)
   end if
+
 
   ! Deallocate integration rule
   deallocate(IntRule%flag)
@@ -893,6 +904,9 @@ subroutine InitializeParameters(InputFile)
   read(cTemp,'(i5)') HHData%N
   ErrFlag = GetVal(PropList,'M',cTemp)
   read(cTemp,'(i5)') HHData%M
+
+  ErrFlag = GetVal(PropList,'nRawVars',cTemp)
+  read(cTemp,'(i4)') HHData%nRawVars
 
   ! file for parms output
   TempDir = trim(OutDir) // '/parms'

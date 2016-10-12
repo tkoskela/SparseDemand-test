@@ -357,13 +357,18 @@ end subroutine SendData
 #endif
 
 #ifdef LOADDATA
-subroutine LoadData(nx)
-  use GlobalModule, only : HHData
+HHData%N
+HHData%nRawVars
+
+subroutine LoadData
+  use GlobalModule, only : HHData,parms
   implicit none
   integer(i4b)  :: DataUnit,iComma,i1
   character(400) :: AllLabels
+  real(dp),     allocatable :: qp(:,:)
 
-  data_unit = 20
+
+  DataUnit = 20
   open(unit = DataUnit, &
        file = HHData%RawDataFile, &
        action = 'read')
@@ -373,8 +378,8 @@ subroutine LoadData(nx)
 371 format(a)
 
   ! copy variable labels to a vector of characters
-  allocate(HHData%RawDataLabels(nx))
-  do i1=1,nx
+  allocate(HHData%RawDataLabels(HHData%nRawVars))
+  do i1=1,HHData%nRawVars
     ! iCOmma = end of current data field
     iComma = index(AllLabels,',')
     if (iComma>0) then
@@ -385,19 +390,17 @@ subroutine LoadData(nx)
     end if
   end do
 
+  allocate(qp(HHData%N,2*parms%J))
   do i1=1,HHData%N
-    read(DataUnit,389) CurrentData(i1,:)
+    read(DataUnit,389) HHData%HHID(i1),HHData%date(i1),HHData%shopid(i1),  &
+                       qp(i1,:),HHData%nNonZero(i1),HHData%day(i1)
+    HHData%q(1:HHData%nNonZero(i1),i1) = pack(qp(i1,1:2*parms%J:2),qp(i1,1:2*parms%J:2)>0.0d0)
+    HHData%p(:,i1) = qp(i1,2:2*parms%J:2)
+    HHData%iNonZero(1:HHData%nNonZero(i1)) = pack((/1:parms%J/),qp(i1,1:2*parms%J:2)>0.0d0)
+    HHData%iZero(1:parms%J-HHData%nNonZero(i1)) = pack((/1:parms%J/),qp(i1,1:2*parms%J:2)==0.0d0)
   end do
+389 format(i6,i8,i8,<2*parms%J>d25.16,2i4)
 
-  do i1=1,nx
-    if (HHData%RawVarLabels(i1,1) =='q') then
-      HHData%q i)a
-    doData2)
-  HHData%p
-  HHData%q
-  HHData%iNonZero
-  HHData%izero
-  HHData%nNonZero
   close(DataUnit)
 
 end subroutine LoadData

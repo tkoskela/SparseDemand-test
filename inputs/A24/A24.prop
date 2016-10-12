@@ -37,6 +37,7 @@ N     : 2000
 M     : 2000
 J     : 24
 K     : 5
+nRawVars : 77  # number of variables in raw data file
 
 RawData_FILE :  /SAN/economics/Nesheim-IO/data/TNS/fruit/FruitDemand.csv
 NewData_FILE :  temp/Temp.txt
