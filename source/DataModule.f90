@@ -356,6 +356,7 @@ subroutine SendData(pid)
 end subroutine SendData
 #endif
 
+#ifdef LOADDATA
 subroutine LoadData
   use GlobalModule, only : HHData
   implicit none
@@ -367,5 +368,5 @@ subroutine LoadData
   HHData%nNonZero
   HHData%ColumnLabels
 end subroutine LoadData
-
+#endif
 end module DataModule
