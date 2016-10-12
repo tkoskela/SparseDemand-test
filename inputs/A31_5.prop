@@ -14,10 +14,9 @@ TestIntegrationFlag : 0 # 1 to test accuracy of integration
 BICFlag             : 0 # 1 to minimize BIC
 MPIFlag             : 1 # 1 = each processor, subset of data
                         # 2 = each processor, subset of MC replications
- # Name of output directory
-OutDir: ../output/A31_5
-InputDir: ../inputs
-#InputDir: /data/uctpln0/IO/Lewbel/code/fortran/inputs
+#  Name of output directory
+OutDir: /SAN/economics/Nesheim-IO/FruitDemand/output
+InputDir: /home/uctpln0/FruitDemand/code/fortran/inputs/A24
  
 #           0101    # HotStart(1):  0 for default value, 2 to load from file
 #                                   2 to load (beta,C) from data 
@@ -52,7 +51,14 @@ InitialGuess1_FILE : InitialGuess1.txt
 InitialGuess2_FILE : InitialGuess2.txt
 
 #            : 01
-MaxAlgorithm : 3 # 1 = E04WDF, 2 = E04VHF, 3 = E04JCF, 4 = E04JYF, 5 = E04CBF
+MaxAlgorithm : 3 # 1 = E04WDF gradient based, dense
+                 # 2 = E04VHF gradient based,sparse
+                 # 3 = E04JCF,non-gradient based
+                 # 4 = E04JYF, 5 = E04CBF
+                 # 6 = Bayes MC integration
+AbsoluteTolerance : 0.01  # absolute tolerance for D01ESF for Bayesian computation   
+RelativeTolerance : 0.01  # relative tolerance for D01ESF for Bayesian computation   
+MaxLevel          : 6     # maximum level for D01ESF for Bayesian computation   
 
 # Penalty parameters
 # method = 0  no penalty
@@ -73,11 +79,11 @@ MaxLambda : 0.050
 # 7 = pseudo-MC on (-1,1)
 #                 1 2 3 4 5 6 7 8 9 101112131415161718192021222324252627282930
 #                 010101010101010101010101010101010101010101010101010101010101
-IntegrationFlag : 6 6 6 6 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 
+IntegrationFlag : 6 6 6 6 6 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 
 # Number of quadrature nodes in each dimension
 #          1  2  3  4  5  6  7  8  9  10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30
 #          012012012012012012012012012012012012012012012012012012012012012012012012012012012012012012
-nQuad    : 5  5  5  5  5  5  5  5  2  2  2  2  2  2  2  2  2  2  2  2  2  2  2  2  2  2  2  2  2  2 
+nQuad    : 10 10 10 5  5  5  5  5  2  2  2  2  2  2  2  2  2  2  2  2  2  2  2  2  2  2  2  2  2  2 
 # nQuadAll : total number of quadrature nodes for use when flag ==2,3,or 7
 #
 #          1   2   3   4   5   6   7   8   9   10  11  12  13  14  15  16  17  18  19  20  21  22  23  24  25  26  27  28  29  30

@@ -6,10 +6,10 @@
 OutputFlag   : 1     #  0 don't print output and 1 to print output
 SaveDataFlag : 1     # 1 to save data, 0 otherwise
 TestLikeFlag : 4     # 0 = maximise likelihood
-#                    # 1 = test likelihood gradient
-#                    # 2 = plot likelihood
-#                    # 3 = test non-linear constraint
-#                    # 4 = no non-linear constraints
+                     # 1 = test likelihood gradient
+                     # 2 = plot likelihood
+                     # 3 = test non-linear constraint
+                     # 4 = no non-linear constraints
 TestIntegrationFlag : 0 # 1 to test accuracy of integration
 SimulateDataFlag    : 0 # 1 simulate data, 2 = load data from file
 BICFlag             : 0 # 1 to minimize BIC
@@ -57,6 +57,9 @@ MaxAlgorithm : 3 # 1 = E04WDF gradient based, dense
                  # 3 = E04JCF,non-gradient based
                  # 4 = E04JYF, 5 = E04CBF
                  # 6 = Bayes MC integration
+AbsoluteTolerance : 0.01  # absolute tolerance for D01ESF for Bayesian computation   
+RelativeTolerance : 0.01  # relative tolerance for D01ESF for Bayesian computation   
+MaxLevel          : 6     # maximum level for D01ESF for Bayesian computation   
 
 # Penalty parameters
 # method = 0  no penalty
