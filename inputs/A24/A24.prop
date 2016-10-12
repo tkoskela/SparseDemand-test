@@ -52,7 +52,7 @@ InitialGuess1_FILE : InitialGuess1.txt
 InitialGuess2_FILE : InitialGuess2.txt
 
 #            : 01
-MaxAlgorithm : 3 # 1 = E04WDF gradient based, dense
+MaxAlgorithm : 6 # 1 = E04WDF gradient based, dense
                  # 2 = E04VHF gradient based,sparse
                  # 3 = E04JCF,non-gradient based
                  # 4 = E04JYF, 5 = E04CBF

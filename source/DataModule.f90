@@ -357,27 +357,49 @@ end subroutine SendData
 #endif
 
 #ifdef LOADDATA
-subroutine LoadData(nx,n)
+subroutine LoadData(nx)
   use GlobalModule, only : HHData
   implicit none
-  integer(i4b)  :: data_unit
+  integer(i4b)  :: DataUnit,iComma,i1
+  character(400) :: AllLabels
 
   data_unit = 20
-  open(unit = data_unit, &
+  open(unit = DataUnit, &
        file = HHData%RawDataFile, &
        action = 'read')
+ 
+  ! read in variable labels
+  read(DataUnit,371) AllLabels
+371 format(a)
 
+  ! copy variable labels to a vector of characters
   allocate(HHData%RawDataLabels(nx))
-  read(data_unit,369) HHData%RawDataLabels
-369 format(
+  do i1=1,nx
+    ! iCOmma = end of current data field
+    iComma = index(AllLabels,',')
+    if (iComma>0) then
+      HHData%RawDataLabels(i1) = AllLabels(1:iComma-1)
+      AllLabels = AllLabels(iComma+1:400)
+    else 
+      exit
+    end if
+  end do
 
-  HHData%N
+  do i1=1,HHData%N
+    read(DataUnit,389) CurrentData(i1,:)
+  end do
+
+  do i1=1,nx
+    if (HHData%RawVarLabels(i1,1) =='q') then
+      HHData%q i)a
+    doData2)
   HHData%p
   HHData%q
   HHData%iNonZero
   HHData%izero
   HHData%nNonZero
-  HHData%ColumnLabels
+  close(DataUnit)
+
 end subroutine LoadData
 #endif
 end module DataModule
