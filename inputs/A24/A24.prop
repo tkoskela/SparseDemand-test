@@ -51,7 +51,7 @@ InitialGuess1_FILE : InitialGuess1.txt
 InitialGuess2_FILE : InitialGuess2.txt
 
 #            : 01
-MaxAlgorithm : 1 # 1 = E04WDF, 2 = E04VHF, 3 = E04JCF, 4 = E04JYF, 5 = E04CBF
+MaxAlgorithm : 6 # 1 = E04WDF, 2 = E04VHF, 3 = E04JCF, 4 = E04JYF, 5 = E04CBF
                  # 6 = Bayes MC integration
 
 # Penalty parameters

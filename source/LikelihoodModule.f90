@@ -1352,7 +1352,8 @@ end subroutine DensityFunc2
 subroutine SparseGridBayes(iFree,iuser,ruser)
   use nrtype
   use GlobalModule, only : SelectFreeType
-  use nag_library, only : D01ESF,D01ZKF
+  use OutputModule, only : WriteBayes
+  use nag_library,  only : D01ESF,D01ZKF
   implicit none
   type(SelectFreeType), intent(in) :: iFree
   integer(i4b),         intent(inout) :: iuser(*)
@@ -1368,8 +1369,8 @@ subroutine SparseGridBayes(iFree,iuser,ruser)
   ifail = -1
   LIOPTS = 100
   LOPTS  = 100
-  NI     = 1 + 2*iFree%nall
   NDIM   = iFree%nall
+  NI     = 1 + ndim + ndim*(ndim+1)/2
 
   allocate(IOPTS(LIOPTS))
   allocate(OPTS(LOPTS))
@@ -1381,10 +1382,11 @@ subroutine SparseGridBayes(iFree,iuser,ruser)
   OPTSTR = "Initialize = D01ESF"
   MAXDLV = 0  ! default
 
-  call D01ZKF (OPTSTR, IOPTS, LIOPTS, OPTS, LOPTS, IFAIL)
+  call D01ZKF(OPTSTR, IOPTS, LIOPTS, OPTS, LOPTS, IFAIL)
   ifail = -1
-  call D01ESF (NI, NDIM, IntegrateLikeFunc, MAXDLV, DINEST, ERREST, IVALID, IOPTS, OPTS, IUSER, RUSER, IFAIL)
+  call D01ESF(NI, NDIM, IntegrateLikeFunc, MAXDLV, DINEST, ERREST, IVALID, IOPTS, OPTS, IUSER, RUSER, IFAIL)
 
+  call WriteBayes(DINEST,ERREST,IVALID)
   deallocate(IOPTS)
   deallocate(OPTS)
   deallocate(MAXDLV)
@@ -1480,7 +1482,7 @@ subroutine LikeFunc_QuadWrapper(x,nx,iuser,ruser,F)
   real(dp),     intent(inout) :: ruser(*)
   real(dp),     intent(out)   :: F(:)
 
-  integer(i4b) :: mode,nstate
+  integer(i4b) :: mode,nstate,i1
   real(dp)     :: L,GradL(nx)
 
   mode=0
@@ -1489,7 +1491,9 @@ subroutine LikeFunc_QuadWrapper(x,nx,iuser,ruser,F)
   call LikeFunc(mode,nx,x,L,GradL,nstate,iuser,ruser)
   F(1) = L
   F(2:nx+1) = x*L
-  F(nx+2:2*nx+1) = x*F(2:nx+1)
+  do i1=1,nx
+    F(1+nx+i1*(i1-1)/2 + (/1:i1/)) = x(i1) * F(2:i1+1)
+  end do
 
 end subroutine LikeFunc_QuadWrapper
 
@@ -1884,7 +1888,7 @@ subroutine MaximizeLikelihood(x,LValue,Grad,Hess,ierr)
      call Max_E04JCF(x,LValue,Grad,Hess,ierr)
   elseif (MaxOptions%Algorithm==6) then
     ! Bayesian estimation
-    call MaximizeLikelihood1(x,LValue,Grad,Hess,ierr)
+    call BayesLikelihood1(x,LValue,Grad,Hess,ierr)
     !call ComputeBayes(x,LValue,Grad,Hess,ierr)
   end if
 end subroutine MaximizeLikelihood
@@ -2153,7 +2157,7 @@ subroutine MaximizeLikelihood1(x,LValue,Grad,Hess,ierr)
   ierr = 0   ! no error in subroutine
 end subroutine MaximizeLikelihood1
 
-! commpute Bayes estimator using D01ESF
+! compute Bayes estimator using D01ESF
 subroutine BayesLikelihood1(x,LValue,Grad,Hess,ierr)
   use nrtype
 #if USE_MPI==1

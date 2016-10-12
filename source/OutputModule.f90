@@ -5,6 +5,7 @@ module OutputModule
   
   ! Output filenames
   character(len=200)          :: Results1_FILE
+  character(len=200)          :: BayesResults_FILE
   character(len=200)          :: Results1P_FILE
   character(len=200)          :: Hess1_FILE
   character(len=200)          :: SaveDataFile_q
@@ -21,6 +22,7 @@ module OutputModule
 
   ! Output file: unit numbers
   integer(i4b), parameter :: Results1_UNIT          = 2
+  integer(i4b), parameter :: BayesResults_UNIT      = 18
   integer(i4b), parameter :: Results1P_UNIT         = 3
   integer(i4b), parameter :: Hess1_UNIT             = 4
   integer(i4b), parameter :: SaveData_UNIT_q        = 16
@@ -496,4 +498,25 @@ subroutine SaveMCOutputs(model,MCX,MCLambda,IMC)
   ! 3) 
 end subroutine SaveMCOutputs
 
+subroutine WriteBayes(DINEST,ERREST,IVALID)
+  implicit none
+  real(dp), intent(in) :: DINEST(:),ERREST(:)
+  integer(i4b), intent(in) :: IVALID(:)
+  integer(i4b)             :: n,i1
+
+  ! write bayes results
+  open(UNIT = BayesResults_UNIT, &
+       FILE = BayesResults_FILE, &
+       ACTION = 'write')
+
+  N = size(DINEST,1)
+  write(BayesResults_UNIT,'(a4,2a25,a8)') 'i1','Integral','Error','status'
+  do i1=1,N
+    write(BayesResults_UNIT,514) i1,DINEST(i1),ERREST(i1),IVALID(i1)
+    514 format(i4,2es25.16,i4)
+  end do
+
+  close(BayesResults_UNIT)
+  
+end subroutine WriteBayes
 end module OutputModule
