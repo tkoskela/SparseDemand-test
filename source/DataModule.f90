@@ -299,7 +299,9 @@ subroutine SendData(pid)
 
   ! send subset of data to each pid
   ! HHData%N = sample size
-  integer(i4b) :: N1,R,iHH1,iHH2,iw,i1,ierr
+  integer(i4b) :: N1,N2,R,iHH1,iHH2,iw,i1,ierr
+  real(dp),     allocatable :: temp1(:)
+  integer(i4b), allocatable :: itemp1(:)
 
   ! N1+1 = size of data sent to processors (1:R)
   ! N1   = size of data sent to processors (R+1:N)
@@ -311,6 +313,7 @@ subroutine SendData(pid)
     ! send data
     ! iHH1 = index of first element in data to send
     ! iHH2 = index of last element in data to send
+    print *, "Begin sending data to workers."
     do iw=1,nWorkers
       if (R==0) then
         ! Send N1 observations to each processor
@@ -328,29 +331,86 @@ subroutine SendData(pid)
         end if
       end if
 
-      ! send (q,p,market,iNonZero,iZero,nNonZero)
-      do i1=iHH1,iHH2
-        call mpi_send(HHData%q(:,i1),parms%K,MPI_DOUBLE_PRECISION,iw,0,MPI_COMM_WORLD,ierr)
-        call mpi_send(HHData%p(:,i1),parms%J,MPI_DOUBLE_PRECISION,iw,0,MPI_COMM_WORLD,ierr)
-        call mpi_send(HHData%market(i1),1,MPI_INTEGER,iw,0,MPI_COMM_WORLD,ierr)
-        call mpi_send(HHData%iNonZero(:,i1),parms%K,MPI_INTEGER,iw,0,MPI_COMM_WORLD,ierr)
-        call mpi_send(HHData%iZero(:,i1),parms%J,MPI_INTEGER,iw,0,MPI_COMM_WORLD,ierr)
-        call mpi_send(HHData%nNonZero(i1),1,MPI_INTEGER,iw,0,MPI_COMM_WORLD,ierr)
-      end do
+      N2 = merge(N1,N1+1,iw>R)
+      ! send q
+      allocate(temp1(parms%J*N2))
+      temp1(1:parms%K*N2) = reshape(HHData%q(:,iHH1:iHH2),(/parms%K*N2/))
+      call mpi_send(temp1(1:parms%K*N2),parms%K*N2,MPI_DOUBLE_PRECISION,iw,0,MPI_COMM_WORLD,ierr)
+   
+      ! send p 
+      temp1 = reshape(HHData%p(:,iHH1:iHH2),(/parms%J*N2/))
+      call mpi_send(temp1,parms%J*N2,MPI_DOUBLE_PRECISION,iw,0,MPI_COMM_WORLD,ierr)
+      deallocate(temp1)
+ 
+      ! send market
+      allocate(itemp1(parms%J*N2))
+      itemp1(1:N2) = HHData%market(iHH1:iHH2)
+      call mpi_send(itemp1(1:N2),N2,MPI_INTEGER,iw,0,MPI_COMM_WORLD,ierr)
+
+      ! send iNonZero
+      itemp1(1:parms%K*N2) = reshape(HHData%iNonZero(:,iHH1:iHH2),(/parms%K*N2/))
+      call mpi_send(itemp1(1:N2*parms%K),N2*parms%K,MPI_INTEGER,iw,0,MPI_COMM_WORLD,ierr)
+
+      ! end iZero
+      itemp1               = reshape(HHData%iZero(:,iHH1:iHH2),(/parms%J*N2/))
+      call mpi_send(itemp1,N2*parms%J,MPI_INTEGER,iw,0,MPI_COMM_WORLD,ierr)
+
+      ! end nNonZero
+      itemp1(1:N2) = HHData%nNonZero(iHH1:iHH2)
+      call mpi_send(itemp1(1:N2),N2,MPI_INTEGER,iw,0,MPI_COMM_WORLD,ierr)
+      deallocate(itemp1)
+      print *, "Data send to worker ",i1,"successful."
     end do
+!      do i1=iHH1,iHH2
+!        call mpi_send(HHData%q(:,i1),parms%K,MPI_DOUBLE_PRECISION,iw,0,MPI_COMM_WORLD,ierr)
+!        call mpi_send(HHData%p(:,i1),parms%J,MPI_DOUBLE_PRECISION,iw,0,MPI_COMM_WORLD,ierr)
+!        call mpi_send(HHData%market(i1),1,MPI_INTEGER,iw,0,MPI_COMM_WORLD,ierr)
+!        call mpi_send(HHData%iNonZero(:,i1),parms%K,MPI_INTEGER,iw,0,MPI_COMM_WORLD,ierr)
+!        call mpi_send(HHData%iZero(:,i1),parms%J,MPI_INTEGER,iw,0,MPI_COMM_WORLD,ierr)
+!        call mpi_send(HHData%nNonZero(i1),1,MPI_INTEGER,iw,0,MPI_COMM_WORLD,ierr)
+!      end do
   else if (pid .ne. MasterID) then
     ! receive subset of data
-    HHData%N = merge(N1+1,N1,R>0 .and. pid<=R )
+    N2 = merge(N1+1,N1,pid<=R)
+    HHData%N = N2
     ! allocate memory for HHData
     call AllocateHHData
-    do i1=1,HHData%N
-      call mpi_recv(HHData%q(:,i1),parms%K,MPI_DOUBLE_PRECISION,MasterID,0,MPI_COMM_WORLD,status,ierr)
-      call mpi_recv(HHData%p(:,i1),parms%J,MPI_DOUBLE_PRECISION,MasterID,0,MPI_COMM_WORLD,status,ierr)
-      call mpi_recv(HHData%market(i1),1,MPI_INTEGER,MasterID,0,MPI_COMM_WORLD,status,ierr)
-      call mpi_recv(HHData%iNonZero(:,i1),parms%K,MPI_INTEGER,MasterID,0,MPI_COMM_WORLD,status,ierr)
-      call mpi_recv(HHData%iZero(:,i1),parms%J,MPI_INTEGER,MasterID,0,MPI_COMM_WORLD,status,ierr)
-      call mpi_recv(HHData%nNonZero(i1),1,MPI_INTEGER,MasterID,0,MPI_COMM_WORLD,status,ierr)
-    end do
+    allocate(temp1(parms%J*N2))
+    
+    ! receive q
+    call mpi_recv(temp1(1:parms%K*N2),parms%K*N2,MPI_DOUBLE_PRECISION,MasterID,0,MPI_COMM_WORLD,status,ierr)
+    HHData%q = reshape(temp1(1:parms%K*N2),(/parms%K,n2/))
+   
+    ! receive p 
+    call mpi_recv(temp1,parms%J*N2,MPI_DOUBLE_PRECISION,MasterID,0,MPI_COMM_WORLD,status,ierr)
+    HHData%p = reshape(temp1,(/parms%J,N2/))
+    deallocate(temp1)
+
+    allocate(iTemp1(N2*parms%J))
+    ! receive market
+    call mpi_recv(itemp1(1:N2),N2,MPI_INTEGER,MasterID,0,MPI_COMM_WORLD,status,ierr)
+    HHData%market = itemp1(1:N2)
+
+    ! receive iNonZero
+    call mpi_recv(itemp1(1:parms%K*N2),parms%K*N2,MPI_INTEGER,MasterID,0,MPI_COMM_WORLD,status,ierr)
+    HHData%iNonZero = reshape(itemp1(1:parms%K*N2),(/parms%K,N2/))
+
+    ! receive iZero
+    call mpi_recv(itemp1,parms%J*N2,MPI_INTEGER,MasterID,0,MPI_COMM_WORLD,status,ierr)
+    HHData%iZero = reshape(itemp1,(/parms%J,N2/))
+
+    ! receive nNonZero
+    call mpi_recv(itemp1(1:N2),N2,MPI_INTEGER,MasterID,0,MPI_COMM_WORLD,status,ierr)
+    HHData%nNonZero = itemp1(1:N2)
+    deallocate(itemp1) 
+    !do i1=1,HHData%N
+    !  call mpi_recv(HHData%q(:,i1),parms%K,MPI_DOUBLE_PRECISION,MasterID,0,MPI_COMM_WORLD,status,ierr)
+    !  call mpi_recv(HHData%p(:,i1),parms%J,MPI_DOUBLE_PRECISION,MasterID,0,MPI_COMM_WORLD,status,ierr)
+    !  call mpi_recv(HHData%market(i1),1,MPI_INTEGER,MasterID,0,MPI_COMM_WORLD,status,ierr)
+    !  call mpi_recv(HHData%iNonZero(:,i1),parms%K,MPI_INTEGER,MasterID,0,MPI_COMM_WORLD,status,ierr)
+    !  call mpi_recv(HHData%iZero(:,i1),parms%J,MPI_INTEGER,MasterID,0,MPI_COMM_WORLD,status,ierr)
+    !  call mpi_recv(HHData%nNonZero(i1),1,MPI_INTEGER,MasterID,0,MPI_COMM_WORLD,status,ierr)
+    !end do
   end if
 
 end subroutine SendData

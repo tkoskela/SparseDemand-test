@@ -5,7 +5,7 @@
 # Flags
 OutputFlag   : 1     #  0 don't print output and 1 to print output
 SaveDataFlag : 1     # 1 to save data, 0 otherwise
-TestLikeFlag : 2     # 0 = maximise likelihood
+TestLikeFlag : 4     # 0 = maximise likelihood
                      # 1 = test likelihood gradient
                      # 2 = plot likelihood
                      # 3 = test non-linear constraint
@@ -35,7 +35,7 @@ small : 1.0d-50     # small number to prevent log of zero
 # K     = dimension of demand system
 NMC   : 1
 N     : 2000
-M     : 2000
+M     : 200
 J     : 24
 K     : 5
 nRawVars : 77  # number of variables in raw data file
@@ -55,7 +55,7 @@ InitialGuess1_FILE : InitialGuess1.txt
 InitialGuess2_FILE : InitialGuess2.txt
 
 #            : 01
-MaxAlgorithm : 1 # 1 = E04WDF gradient based, dense
+MaxAlgorithm : 3 # 1 = E04WDF gradient based, dense
                  # 2 = E04VHF gradient based,sparse
                  # 3 = E04JCF,non-gradient based
                  # 4 = E04JYF, 5 = E04CBF
@@ -118,27 +118,27 @@ BC_hi : 0.95   # maximum value of BC
 # select subsets of parameter to be free
 FreeFlagD           : 0   # 1 to be free, 0 to be fixed
 FreeFlagBC          : 0   # 1 to be free, 0 to be fixed
-FreeFlagMUE         : 1   # 1 to be free, 0 to be fixed
-FreeFlagInvCDiag    : 1   # 1 to be free, 0 to be fixed
+FreeFlagMUE         : 0   # 1 to be free, 0 to be fixed
+FreeFlagInvCDiag    : 0   # 1 to be free, 0 to be fixed
 FreeFlagInvCOffDiag : 0   # 1 to be free, 0 to be fixed
 
 FreeFlagBD_beta     : 1
 FreeFlagBD_CDiag    : 1
 FreeFlagBD_COffDiag : 0
-FreeFlagBC_beta     : 1
-FreeFlagBC_CDiag    : 1
+FreeFlagBC_beta     : 0
+FreeFlagBC_CDiag    : 0
 FreeFlagBC_COffDiag : 0
 
 # Parameter file names
-MUE_FILE : MUE.raw
-INVCDIAG_FILE : INVCDiag.raw
-INVCOFFDIAG_FILE : INCOffDiag.raw
-C_FILE : C.raw
-D_FILE : D.raw
-BC_BETA_FILE : BC_beta.raw
-BC_CDIAG_FILE : BC_CDiag.raw
-BC_COFFDIAG_FILE : BC_COffDiag.raw
-BD_BETA_FILE : BD_beta.raw
-BD_CDIAG_FILE : BD_CDiag.raw
-BD_COFFDIAG_FILE : BD_COffDiag.raw
+MUE_FILE : A/MUE.raw
+INVCDIAG_FILE : A/INVCDiag.raw
+INVCOFFDIAG_FILE : A/INVCOffDiag.raw
+C_FILE : A/C.raw
+D_FILE : A/D.raw
+BC_BETA_FILE : A/BC_beta.raw
+BC_CDIAG_FILE : A/BC_CDiag.raw
+BC_COFFDIAG_FILE : A/BC_COffDiag.raw
+BD_BETA_FILE : A/BD_beta.raw
+BD_CDIAG_FILE : A/BD_CDiag.raw
+BD_COFFDIAG_FILE : A/BD_COffDiag.raw
 
