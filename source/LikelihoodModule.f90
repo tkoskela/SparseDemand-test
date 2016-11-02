@@ -1570,6 +1570,7 @@ subroutine RunMonteCarlo(IMC1,IMC2,pid)
   type(ResultStructure)    :: stats
   integer(i4b)             :: NMC
   integer(i4b)             :: ifail
+  integer(i4b)             :: DateTime(8)
 
   if (pid==MasterID .and. ControlOptions%HotStart==1) then
     call ReadWriteParameters(parms,'read')
@@ -1610,7 +1611,12 @@ subroutine RunMonteCarlo(IMC1,IMC2,pid)
       if (ControlOptions%SimulateData==1) then
         call CreateData(iMC)
       else
+        call date_and_time(values=DateTime)
+        print 1616,"Begin load data. (day,hour,min) = (",DateTime(3),",",DateTime(5),",",DateTime(6),")"
+1616 format('a35,i2,a1,i2,a1,i2,a1') 
         call LoadData
+        call date_and_time(values=DateTime)
+        print 1616 ,"Completed load data. (day,hour,min) = (",DateTime(3),",",DateTime(5),",",DateTime(6),")"
       end if
     end if
 

@@ -31,6 +31,9 @@ program SparseDemand
   integer(i4b)            :: ierr  ! mpi error flag
   integer(i4b)            :: pid   ! process id number
 
+  ! Data and time
+  integer(i4b)            :: DateTime(8)
+
 ! Initialize MPI 
 #if USE_MPI==1
   call mpi_init(ierr)
@@ -52,11 +55,17 @@ program SparseDemand
   if (pid==MasterID) then
     call GetInputFile(InputFile)
     call InitializeParameters(InputFile)
+    call date_and_time(values = DateTime)
+    print *, "Parameter initialization complete. (day,hour,sec) = ",DateTime(3),DateTime(5),DateTime(6)
   end if
  
   ! broadcast stuff
 #if USE_MPI==1
   call BroadcastParameters(pid)
+  if (pid==MasterID) then
+    call date_and_time(values = DateTime)
+    print *, "Broadcast parameters complete. (day,hour,sec) = ",DateTime(3),DateTime(5),DateTime(6)
+  end if
 #endif
 
   if (CONTROLOPTIONS%MPIFLAG==1) then
