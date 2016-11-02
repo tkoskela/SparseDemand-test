@@ -9,7 +9,7 @@ module GlobalModule
   type(Property)    :: PropList   ! list of keys in input file
 
   ! structure storing filenames
-  type(FileNameStucture)
+  type FilenameStructure
     character(len=99) :: mue,C,D
     character(len=99) :: InvCDiag,InvCOffDiag
     character(len=99) :: BC_beta,BC_CDiag,BC_COffDiag

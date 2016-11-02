@@ -35,7 +35,7 @@ small : 1.0d-50     # small number to prevent log of zero
 # K     = dimension of demand system
 NMC   : 1
 N     : 20
-M     : 2000
+M     : 20
 J     : 24
 K     : 5
 nRawVars : 77  # number of variables in raw data file
@@ -130,15 +130,15 @@ FreeFlagBC_CDiag    : 1
 FreeFlagBC_COffDiag : 0
 
 # Parameter file names
-MUE_FILE : MUE.raw
-INVCDIAG_FILE : INVCDiag.raw
-INVCOFFDIAG_FILE : INCOffDiag.raw
-C_FILE : C.raw
-D_FILE : D.raw
-BC_BETA_FILE : BC_beta.raw
-BC_CDIAG_FILE : BC_CDiag.raw
-BC_COFFDIAG_FILE : BC_COffDiag.raw
-BD_BETA_FILE : BD_beta.raw
-BD_CDIAG_FILE : BD_CDiag.raw
-BD_COFFDIAG_FILE : BD_COffDiag.raw
+MUE_FILE : A/MUE.raw
+INVCDIAG_FILE : A/INVCDiag.raw
+INVCOFFDIAG_FILE : A/INVCOffDiag.raw
+C_FILE : A/C.raw
+D_FILE : A/D.raw
+BC_BETA_FILE : A/BC_beta.raw
+BC_CDIAG_FILE : A/BC_CDiag.raw
+BC_COFFDIAG_FILE : A/BC_COffDiag.raw
+BD_BETA_FILE : A/BD_beta.raw
+BD_CDIAG_FILE : A/BD_CDiag.raw
+BD_COFFDIAG_FILE : A/BD_COffDiag.raw
 
