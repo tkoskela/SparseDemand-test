@@ -11,7 +11,7 @@ TestLikeFlag : 2     # 0 = maximise likelihood
                      # 3 = test non-linear constraint
                      # 4 = no non-linear constraints
 TestIntegrationFlag : 0 # 1 to test accuracy of integration
-SimulateDataFlag    : 0 # 1 simulate data, 2 = load data from file
+SimulateDataFlag    : 0 # 1 simulate data, 0 = load data from file
 BICFlag             : 0 # 1 to minimize BIC
 MPIFlag             : 1 # 1 = each processor, subset of data
                         # 2 = each processor, subset of MC replications

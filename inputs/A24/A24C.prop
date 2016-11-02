@@ -11,7 +11,7 @@ TestLikeFlag : 2     # 0 = maximise likelihood
                      # 3 = test non-linear constraint
                      # 4 = no non-linear constraints
 TestIntegrationFlag : 0 # 1 to test accuracy of integration
-SimulateDataFlag    : 1 # 1 simulate data, 2 = load data from file
+SimulateDataFlag    : 0 # 1 simulate data, 0 = load data from file
 BICFlag             : 0 # 1 to minimize BIC
 MPIFlag             : 1 # 1 = each processor, subset of data
                         # 2 = each processor, subset of MC replications
@@ -55,13 +55,13 @@ InitialGuess1_FILE : InitialGuess1.txt
 InitialGuess2_FILE : InitialGuess2.txt
 
 #            : 01
-MaxAlgorithm : 3 # 1 = E04WDF gradient based, dense
+MaxAlgorithm : 1 # 1 = E04WDF gradient based, dense
                  # 2 = E04VHF gradient based,sparse
                  # 3 = E04JCF,non-gradient based
                  # 4 = E04JYF, 5 = E04CBF
                  # 6 = Bayes MC integration
-AbsoluteTolerance : 0.001  # absolute tolerance for D01ESF for Bayesian computation   
-RelativeTolerance : 0.001  # relative tolerance for D01ESF for Bayesian computation   
+AbsoluteTolerance : 0.01  # absolute tolerance for D01ESF for Bayesian computation   
+RelativeTolerance : 0.01  # relative tolerance for D01ESF for Bayesian computation   
 MaxLevel          : 6     # maximum level for D01ESF for Bayesian computation   
 
 # Penalty parameters
@@ -119,13 +119,26 @@ BC_hi : 0.95   # maximum value of BC
 FreeFlagD           : 0   # 1 to be free, 0 to be fixed
 FreeFlagBC          : 0   # 1 to be free, 0 to be fixed
 FreeFlagMUE         : 1   # 1 to be free, 0 to be fixed
-FreeFlagInvCDiag    : 0   # 1 to be free, 0 to be fixed
+FreeFlagInvCDiag    : 1   # 1 to be free, 0 to be fixed
 FreeFlagInvCOffDiag : 0   # 1 to be free, 0 to be fixed
 
-FreeFlagBD_beta     : 0
-FreeFlagBD_CDiag    : 0
+FreeFlagBD_beta     : 1
+FreeFlagBD_CDiag    : 1
 FreeFlagBD_COffDiag : 0
-FreeFlagBC_beta     : 0
-FreeFlagBC_CDiag    : 0
+FreeFlagBC_beta     : 1
+FreeFlagBC_CDiag    : 1
 FreeFlagBC_COffDiag : 0
+
+# Parameter file names
+MUE_FILE : MUE.raw
+INVCDIAG_FILE : INVCDiag.raw
+INVCOFFDIAG_FILE : INCOffDiag.raw
+C_FILE : C.raw
+D_FILE : D.raw
+BC_BETA_FILE : BC_beta.raw
+BC_CDIAG_FILE : BC_CDiag.raw
+BC_COFFDIAG_FILE : BC_COffDiag.raw
+BD_BETA_FILE : BD_beta.raw
+BD_CDIAG_FILE : BD_CDiag.raw
+BD_COFFDIAG_FILE : BD_COffDiag.raw
 
