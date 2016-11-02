@@ -5,18 +5,19 @@
 # Flags
 OutputFlag   : 1     #  0 don't print output and 1 to print output
 SaveDataFlag : 1     # 1 to save data, 0 otherwise
-TestLikeFlag : 4     # 0 = maximise likelihood
+TestLikeFlag : 2     # 0 = maximise likelihood
                      # 1 = test likelihood gradient
                      # 2 = plot likelihood
                      # 3 = test non-linear constraint
                      # 4 = no non-linear constraints
 TestIntegrationFlag : 0 # 1 to test accuracy of integration
-SimulateDataFlag    : 0 # 1 simulate data, 2 = load data from file
+SimulateDataFlag    : 1 # 1 simulate data, 2 = load data from file
 BICFlag             : 0 # 1 to minimize BIC
 MPIFlag             : 1 # 1 = each processor, subset of data
                         # 2 = each processor, subset of MC replications
 #  Name of output directory
-OutDir: /SAN/economics/Nesheim-IO/FruitDemand/output/B
+OutDir : ../output/A24B
+#OutDir: /SAN/economics/Nesheim-IO/FruitDemand/output
 InputDir: /home/uctpln0/FruitDemand/code/fortran/inputs/A24
  
 #           0101    # HotStart(1):  0 for default value, 2 to load from file
@@ -39,8 +40,8 @@ J     : 24
 K     : 5
 nRawVars : 77  # number of variables in raw data file
 
-
-RawData_FILE :  /SAN/economics/Nesheim-IO/data/TNS/fruit/FruitDemand.csv
+RawData_FILE :  /home/uctpln0/data/fruit/FruitDemand.csv
+#RawData_FILE :  /SAN/economics/Nesheim-IO/data/TNS/fruit/FruitDemand.csv
 NewData_FILE :  temp/Temp.txt
 Summary_FILE : SumStats.tex
 Results1_FILE : Results1.txt
@@ -54,7 +55,7 @@ InitialGuess1_FILE : InitialGuess1.txt
 InitialGuess2_FILE : InitialGuess2.txt
 
 #            : 01
-MaxAlgorithm : 3 # 1 = E04WDF gradient based, dense
+MaxAlgorithm : 1 # 1 = E04WDF gradient based, dense
                  # 2 = E04VHF gradient based,sparse
                  # 3 = E04JCF,non-gradient based
                  # 4 = E04JYF, 5 = E04CBF

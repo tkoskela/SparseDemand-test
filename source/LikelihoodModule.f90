@@ -1554,9 +1554,9 @@ subroutine RunMonteCarlo(IMC1,IMC2,pid)
                            ReadWriteParameters,CopyParameters, &
                            ControlOptions,MasterID
 #if USE_MPI==0
-  use DataModule, only   : CreateData
+  use DataModule, only   : CreateData,LoadData
 #else
-  use DataModule, only   : CreateData,SendData
+  use DataModule, only   : CreateData,SendData,LoadData
   use GlobalModule, only : BroadcastIFree,BroadcastParms
 #endif
   use OutputModule, only : SaveMCOutputs
@@ -1607,7 +1607,11 @@ subroutine RunMonteCarlo(IMC1,IMC2,pid)
     call CopyParameters(parms0,parms)
 
     if (pid==MasterID) then
-      call CreateData(iMC)
+      if (ControlOptions%SimulateData==1) then
+        call CreateData(iMC)
+      else
+        call LoadData
+      end if
     end if
 
 #if USE_MPI==1
@@ -2183,7 +2187,7 @@ subroutine BayesLikelihood1(x,LValue,Grad,Hess,ierr)
 #if USE_MPI==1
   use mpi
 #endif
-  use GlobalModule, only : parms,HHData,iFree
+  use GlobalModule, only : parms,HHData,iFree,MasterID
 
   implicit none
   real(dp),     intent(inout) :: x(:)
@@ -2193,7 +2197,7 @@ subroutine BayesLikelihood1(x,LValue,Grad,Hess,ierr)
   integer(i4b), intent(out)   :: ierr
 
   ! Dimensions of optimization problem
-  integer(i4b)                :: nx,iter
+  integer(i4b)                :: nx,iter,task
 
   ! LOWER AND UPPER BOUNDS for optimisation
   real(dp), allocatable       :: BL(:),BU(:)            
@@ -2221,10 +2225,23 @@ subroutine BayesLikelihood1(x,LValue,Grad,Hess,ierr)
   do iter=1,nx
     Hess(iter,iter)=1.0d0
   end do
+
+#if USE_MPI==1
+  ! broadcast (nx,iuser,ruser)
+  call mpi_bcast(nx,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr)
+  call mpi_bcast(2,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr)
+  call mpi_bcast(iuser,2,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr)
+  call mpi_bcast(1,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr)
+  call mpi_bcast(ruser,1,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr)
+#endif
   call SparseGridBayes(iFree,iuser,ruser)
 
   deallocate(BL,BU)
 
+#if USE_MPI==1
+  task=0
+  call mpi_bcast(task,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr)
+#endif
   ierr = 0   ! no error in subroutine
 end subroutine BayesLikelihood1
 
@@ -2756,6 +2773,7 @@ end subroutine SetBounds
 subroutine PlotLike(LikeFunc,nx,x,xlabels,xlo,xhi,nstate,iuser,ruser)
   use nrtype
   use ToolsModule, only : linspace
+  use GlobalModule, only : OutDir
   implicit none
   integer(i4b), intent(in)     :: nx
   real(dp),     intent(in)     :: x(:),xlo(:),xhi(:)
@@ -2783,7 +2801,7 @@ subroutine PlotLike(LikeFunc,nx,x,xlabels,xlo,xhi,nstate,iuser,ruser)
   character(30)         :: plot_file
   ! 
   plot_unit = 50
-  plot_file = '../temp/LikeData.txt' 
+  plot_file = trim(OutDir) // '/LikeData.txt' 
   open(UNIT = plot_unit,  &
        FILE = plot_file,  &
        ACTION = 'write')

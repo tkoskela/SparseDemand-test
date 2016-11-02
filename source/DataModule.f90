@@ -356,17 +356,13 @@ subroutine SendData(pid)
 end subroutine SendData
 #endif
 
-#ifdef LOADDATA
-HHData%N
-HHData%nRawVars
-
 subroutine LoadData
+  use nrtype
   use GlobalModule, only : HHData,parms
   implicit none
   integer(i4b)  :: DataUnit,iComma,i1
   character(400) :: AllLabels
-  real(dp),     allocatable :: qp(:,:)
-
+  real(dp),     allocatable :: qp(:,:),err(:,:)
 
   DataUnit = 20
   open(unit = DataUnit, &
@@ -386,23 +382,26 @@ subroutine LoadData
       HHData%RawDataLabels(i1) = AllLabels(1:iComma-1)
       AllLabels = AllLabels(iComma+1:400)
     else 
+      HHData%RawDataLabels(i1) = AllLabels
       exit
     end if
   end do
 
   allocate(qp(HHData%N,2*parms%J))
+  allocate(err(HHData%N,parms%J))
   do i1=1,HHData%N
     read(DataUnit,389) HHData%HHID(i1),HHData%date(i1),HHData%shopid(i1),  &
-                       qp(i1,:),HHData%nNonZero(i1),HHData%day(i1)
+                       qp(i1,:),HHData%nNonZero(i1),HHData%day(i1),err(i1,:)
     HHData%q(1:HHData%nNonZero(i1),i1) = pack(qp(i1,1:2*parms%J:2),qp(i1,1:2*parms%J:2)>0.0d0)
     HHData%p(:,i1) = qp(i1,2:2*parms%J:2)
-    HHData%iNonZero(1:HHData%nNonZero(i1)) = pack((/1:parms%J/),qp(i1,1:2*parms%J:2)>0.0d0)
-    HHData%iZero(1:parms%J-HHData%nNonZero(i1)) = pack((/1:parms%J/),qp(i1,1:2*parms%J:2)==0.0d0)
+    HHData%iNonZero(1:HHData%nNonZero(i1),i1) = pack((/1:parms%J/),qp(i1,1:2*parms%J:2)>0.0d0)
+    HHData%iZero(1:parms%J-HHData%nNonZero(i1),i1) = pack((/1:parms%J/),qp(i1,1:2*parms%J:2)==0.0d0)
   end do
-389 format(i6,i8,i8,<2*parms%J>d25.16,2i4)
+389 format(i10,i10,i10,<2*parms%J>d25.16,2i10,<parms%J>d25.16)
 
+  deallocate(qp,err)
   close(DataUnit)
 
 end subroutine LoadData
-#endif
+
 end module DataModule

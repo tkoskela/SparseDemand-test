@@ -8,6 +8,15 @@ module GlobalModule
 
   type(Property)    :: PropList   ! list of keys in input file
 
+  ! structure storing filenames
+  type(FileNameStucture)
+    character(len=99) :: mue,C,D
+    character(len=99) :: InvCDiag,InvCOffDiag
+    character(len=99) :: BC_beta,BC_CDiag,BC_COffDiag
+    character(len=99) :: BD_beta,BD_CDiag,BD_COffDiag
+  end type
+  type(FilenameStructure) :: ParmFiles
+
   type ResultStructure
     real(dp)     :: BIC
     real(dp)     :: MinEigHess
@@ -834,6 +843,19 @@ subroutine InitializeParameters(InputFile)
    ! Raw data file
    ErrFlag = GetVal(PropList,'RawData_FILE',HHData%RawDataFile)
 
+   ! Parameter filenames
+   ErrFlag = GetVal(PropList,'MUE_FILE',ParmFiles%MUE)
+   ErrFlag = GetVal(PropList,'C_FILE',ParmFiles%C)
+   ErrFlag = GetVal(PropList,'D_FILE',ParmFiles%D)
+   ErrFlag = GetVal(PropList,'INVCDIAG_FILE',ParmFiles%InvCDiag)
+   ErrFlag = GetVal(PropList,'INVCOFFDIAG_FILE',ParmFiles%InvCOffDiag)
+   ErrFlag = GetVal(PropList,'BC_BETA_FILE',ParmFiles%BC_beta)
+   ErrFlag = GetVal(PropList,'BC_CDIAG_FILE',ParmFiles%BC_CDiag)
+   ErrFlag = GetVal(PropList,'BC_COFFDIAG_FILE',ParmFiles%BC_COffDiag)
+   ErrFlag = GetVal(PropList,'BD_BETA_FILE',ParmFiles%BD_beta)
+   ErrFlag = GetVal(PropList,'BD_CDIAG_FILE',ParmFiles%BD_CDiag)
+   ErrFlag = GetVal(PropList,'BD_COFFDIAG_FILE',ParmFiles%BD_COffDiag)
+   
    ! outputFlag: 0 do not save output
    !             1 save output
    ErrFlag = GetVal(PropList,'OutputFlag',cTemp)
@@ -854,10 +876,10 @@ subroutine InitializeParameters(InputFile)
   ErrFlag = GetVal(PropList,'SaveDataFlag',cTemp)
   read(cTemp,'(i2)') ControlOptions%SaveDataFlag
   
-  ! SaveDataFlag : 0 do not save data
-  !                1 save data to file
-  ErrFlag = GetVal(PropList,'SaveDataFlag',cTemp)
-  read(cTemp,'(i2)') ControlOptions%SaveDataFlag
+  ! SimulateDataFlag : 0 load data from disk
+  !                    1 simulate data
+  ErrFlag = GetVal(PropList,'SimulateDataFlag',cTemp)
+  read(cTemp,'(i2)') ControlOptions%SimulateData
 
   ! BICFlag : 0 do not minimize BIC
   !           1 minimize BIC
@@ -921,7 +943,7 @@ subroutine InitializeParameters(InputFile)
       end if
     end if
   ! output file for parameters
-  parms%file  = trim(TempDir) // 'parms.csv'
+  parms%file  = trim(TempDir) // '/parms.csv'
   parms%unit = 51
 
   ErrFlag = GetVal(PropList,'J',cTemp)
@@ -1051,7 +1073,8 @@ subroutine InitializeParameters(InputFile)
 
     ! parms%MuE : mean of e
     unit_MUE = 496
-    file_MUE = trim(InputDir) // '/MUE.raw'
+    !file_MUE = trim(InputDir) // '/MUE.raw'
+    file_MUE = trim(InputDir) // '/' // trim(ParmFiles%MUE)
     open(UNIT = unit_MUE,  &
          FILE = file_MUE,  &
          ACTION = 'read')
@@ -1063,7 +1086,8 @@ subroutine InitializeParameters(InputFile)
 
     ! parms%InvCDiag : diagonal elements of inverse of C = chol(sig)
     unit_InvCDiag = 508
-    file_InvCDiag = trim(InputDir) // '/INVCDiag.raw'
+    !file_InvCDiag = trim(InputDir) // '/INVCDiag.raw'
+    file_InvCDiag = trim(InputDir) // '/' // trim(ParmFiles%InvCDiag)
     open(UNIT = unit_InvCDiag,  &
          FILE = file_InvCDiag,  &
          ACTION = 'read')
@@ -1075,7 +1099,8 @@ subroutine InitializeParameters(InputFile)
 
     ! parms%InvCOffDiag : off-diagonal elements of inverse of C = chol(sig)
     unit_InvCOffDiag = 520
-    file_InvCOffDiag = trim(InputDir) // '/INVCOffDiag.raw'
+    !file_InvCOffDiag = trim(InputDir) // '/INVCOffDiag.raw'
+    file_InvCOffDiag = trim(InputDir) // '/' // trim(ParmFiles%InvCOffDiag)
     open(UNIT = unit_InvCOffDiag,  &
          FILE = file_InvCOffDiag,  &
          ACTION = 'read')
@@ -1092,7 +1117,8 @@ subroutine InitializeParameters(InputFile)
     if (parms%model==2) then
       ! read in (BC_beta,BD_beta)
       unit_BC_beta = 618
-      file_BC_beta = trim(InputDir) // '/BC_beta.raw'
+      !file_BC_beta = trim(InputDir) // '/BC_beta.raw'
+      file_BC_beta = trim(InputDir) // '/' // trim(ParmFiles%BC_Beta)
       open(UNIT = unit_BC_beta,  &
            FILE = file_BC_beta,  &
            ACTION = 'read')
@@ -1103,7 +1129,8 @@ subroutine InitializeParameters(InputFile)
       close(unit_BC_beta)
     
       unit_BD_beta = 749
-      file_BD_beta = trim(InputDir) //  '/BD_beta.raw'
+      !file_BD_beta = trim(InputDir) //  '/BD_beta.raw'
+      file_BD_beta = trim(InputDir) //  '/' // trim(ParmFiles%BD_Beta)
       open(UNIT = unit_BD_beta,  &
            FILE = file_BD_beta,  &
            ACTION = 'read')
@@ -1115,7 +1142,8 @@ subroutine InitializeParameters(InputFile)
    
       ! read (BC_CDiag,BD_CDiag)
       unit_BC_CDiag = 761
-      file_BC_CDiag = trim(InputDir) // '/BC_CDiag.raw'
+      !file_BC_CDiag = trim(InputDir) // '/BC_CDiag.raw'
+      file_BC_CDiag = trim(InputDir) // '/' // trim(ParmFiles%BC_CDiag)
       open(UNIT = unit_BC_CDiag,  &
            FILE = file_BC_CDiag,  &
            ACTION = 'read')
@@ -1126,7 +1154,8 @@ subroutine InitializeParameters(InputFile)
       close(unit_BC_CDiag)
 
       unit_BD_CDiag = 771
-      file_BD_CDiag = trim(InputDir) // '/BD_CDiag.raw'
+      !file_BD_CDiag = trim(InputDir) // '/BD_CDiag.raw'
+      file_BD_CDiag = trim(InputDir) // '/' // trim(ParmFiles%BD_CDiag)
       open(UNIT = unit_BD_CDiag,  &
            FILE = file_BD_CDiag,  &
            ACTION = 'read')
@@ -1138,7 +1167,8 @@ subroutine InitializeParameters(InputFile)
 
       ! read (BC_COffDiag,BD_COffDiag)
       unit_BC_COffDiag = 782
-      file_BC_COffDiag = trim(InputDir) // '/BC_COffDiag.raw'
+      !file_BC_COffDiag = trim(InputDir) // '/BC_COffDiag.raw'
+      file_BC_COffDiag = trim(InputDir) // '/' // trim(ParmFiles%BC_COffDiag)
       open(UNIT = unit_BC_COffDiag,  &
            FILE = file_BC_COffDiag,  &
            ACTION = 'read')
@@ -1149,7 +1179,8 @@ subroutine InitializeParameters(InputFile)
       close(unit_BC_COffDiag)
 
       unit_BD_COffDiag = 792
-      file_BD_COffDiag = trim(InputDir) // '/BD_COffDiag.raw'
+      !file_BD_COffDiag = trim(InputDir) // '/BD_COffDiag.raw'
+      file_BD_COffDiag = trim(InputDir) // '/' // trim(ParmFiles%BD_COffDiag)
       open(UNIT = unit_BD_COffDiag,  &
            FILE = file_BD_COffDiag,  &
            ACTION = 'read')
@@ -1503,7 +1534,7 @@ subroutine BroadcastParameters(pid)
   call mpi_bcast(ControlOptions%MPIFlag,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr)
   call mpi_bcast(MaxOptions%Algorithm,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr)
   call mpi_bcast(MaxOptions%AbsTol,1,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr)
-  call mpi_bcast(MaxOptions%RelsTol,1,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr)
+  call mpi_bcast(MaxOptions%RelTol,1,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr)
   call mpi_bcast(MaxOptions%MaxLevel,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr)
 
   call mpi_bcast(small,1,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr)
