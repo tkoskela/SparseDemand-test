@@ -1,0 +1,13 @@
+#  To run mpi jobs on the cluster
+1) qsub sge_cs/A24A_sleep.sh 
+   (start 200 sleeping tasks using sge)
+2) ./gethosts.sh jid hosts.txt
+   (get list of hosts that are running and create hosts.txt)
+3) ssh host1
+   (logon to first host in list)
+4) cd to source directory
+5) mpirun -np 200 --hostfile hosts.txt SparseDemand_mpi.exe ../inputs/A24A.prop >out.txt
+
+
+# to extract parameters from output file
+awk '{print $2}' results.txt >BD_beta.txt
