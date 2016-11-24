@@ -6,8 +6,8 @@
 #$ -j y
 #$ -cwd
 #$ -l tmem=2G,h_vmem=2G
-#$ -l h_rt=24:0:0
-#$ -pe orte 80
+#$ -l h_rt=24:0:0,hostname=burns-*
+#$ -pe orte 40
 
 cd /home/uctpln0/FruitDemand/code/fortran/source
 source /home/uctpln0/GeneralCode/config/SetEnv.sh

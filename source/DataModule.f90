@@ -359,7 +359,7 @@ subroutine SendData(pid)
       itemp1(1:N2) = HHData%nNonZero(iHH1:iHH2)
       call mpi_send(itemp1(1:N2),N2,MPI_INTEGER,iw,0,MPI_COMM_WORLD,ierr)
       deallocate(itemp1)
-      print *, "Data send to worker ",i1,"successful."
+      print *, "Data send to worker ",iw,"successful."
     end do
 !      do i1=iHH1,iHH2
 !        call mpi_send(HHData%q(:,i1),parms%K,MPI_DOUBLE_PRECISION,iw,0,MPI_COMM_WORLD,ierr)

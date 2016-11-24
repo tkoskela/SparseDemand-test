@@ -1612,11 +1612,13 @@ subroutine RunMonteCarlo(IMC1,IMC2,pid)
         call CreateData(iMC)
       else
         call date_and_time(values=DateTime)
-        print 1616,"Begin load data. (day,hour,min) = (",DateTime(3),",",DateTime(5),",",DateTime(6),")"
-1616 format('a35,i2,a1,i2,a1,i2,a1') 
+        print *,"Begin load data. (day,hour,min) = ",DateTime(3),DateTime(5),DateTime(6)
+        !print 1616,"Begin load data. (day,hour,min) = (",DateTime(3),",",DateTime(5),",",DateTime(6),")"
+!1616 format('a35,i2,a1,i2,a1,i2,a1') 
         call LoadData
         call date_and_time(values=DateTime)
-        print 1616 ,"Completed load data. (day,hour,min) = (",DateTime(3),",",DateTime(5),",",DateTime(6),")"
+        print *,"Completed load data. (day,hour,min) = ",DateTime(3),DateTime(5),DateTime(6)
+        !print 1616 ,"Completed load data. (day,hour,min) = (",DateTime(3),",",DateTime(5),",",DateTime(6),")"
       end if
     end if
 
@@ -1849,47 +1851,47 @@ subroutine SelectFreeParameters(parms,iFree)
   !  create labels for x variables
   allocate(iFree%xlabels(iFree%nall))
   do i1=1,iFree%nD
-    write(iFree%xlabels(iFree%xD(i1)),'(a2,i2,a1)') 'D(', iFree%D(i1),')'
+    write(iFree%xlabels(iFree%xD(i1)),'(a2,i2.2,a1)') 'D(', iFree%D(i1),')'
   end do
 
   do i1=1,iFree%nBC
-    write(iFree%xlabels(iFree%xBC(i1)),'(a3,i2,a1)') 'BC(', iFree%BC(i1),')'
+    write(iFree%xlabels(iFree%xBC(i1)),'(a3,i2.2,a1)') 'BC(', iFree%BC(i1),')'
   end do
 
   do i1=1,iFree%nInvCDiag
-    write(iFree%xlabels(iFree%xInvCDiag(i1)),'(a9,i2,a1)') 'InvCDiag(', iFree%InvCDiag(i1), ')'
+    write(iFree%xlabels(iFree%xInvCDiag(i1)),'(a9,i2.2,a1)') 'InvCDiag(', iFree%InvCDiag(i1), ')'
   end do
 
   do i1=1,iFree%nInvCOffDiag
-    write(iFree%xlabels(iFree%xInvCOffDiag(i1)),'(a12,i2,a1)') 'InvCOffDiag(', iFree%InvCOffDiag(i1), ')'
+    write(iFree%xlabels(iFree%xInvCOffDiag(i1)),'(a12,i2.2,a1)') 'InvCOffDiag(', iFree%InvCOffDiag(i1), ')'
   end do
 
   do i1=1,iFree%nMuE
-    write(iFree%xlabels(iFree%xMUE(i1)),'(a4,i2,a1)') 'MUE(', iFree%MUE(i1), ')'
+    write(iFree%xlabels(iFree%xMUE(i1)),'(a4,i2.2,a1)') 'MUE(', iFree%MUE(i1), ')'
   end do
 
   do i1=1,iFree%nBD_BETA
-    write(iFree%xlabels(iFree%xBD_BETA(i1)),'(a8,i2,a1)') 'BD_beta(', iFree%BD_BETA(i1), ')'
+    write(iFree%xlabels(iFree%xBD_BETA(i1)),'(a8,i2.2,a1)') 'BD_beta(', iFree%BD_BETA(i1), ')'
   end do
 
   do i1=1,iFree%nBD_CDiag
-    write(iFree%xlabels(iFree%xBD_CDiag(i1)),'(a9,i2,a1)') 'BD_CDiag(', iFree%BD_CDiag(i1), ')'
+    write(iFree%xlabels(iFree%xBD_CDiag(i1)),'(a9,i2.2,a1)') 'BD_CDiag(', iFree%BD_CDiag(i1), ')'
   end do
 
   do i1=1,iFree%nBD_COffDiag
-    write(iFree%xlabels(iFree%xBD_COffDiag(i1)),'(a12,i2,a1)') 'BD_COffDiag(', iFree%BD_COffDiag(i1), ')'
+    write(iFree%xlabels(iFree%xBD_COffDiag(i1)),'(a12,i2.2,a1)') 'BD_COffDiag(', iFree%BD_COffDiag(i1), ')'
   end do
 
   do i1=1,iFree%nBC_BETA
-    write(iFree%xlabels(iFree%xBC_BETA(i1)),'(a8,i2,a1)') 'BC_beta(', iFree%BC_BETA(i1), ')'
+    write(iFree%xlabels(iFree%xBC_BETA(i1)),'(a8,i2.2,a1)') 'BC_beta(', iFree%BC_BETA(i1), ')'
   end do
 
   do i1=1,iFree%nBC_CDiag
-    write(iFree%xlabels(iFree%xBC_CDiag(i1)),'(a9,i2,a1)') 'BC_CDiag(', iFree%BC_CDiag(i1), ')'
+    write(iFree%xlabels(iFree%xBC_CDiag(i1)),'(a9,i2.2,a1)') 'BC_CDiag(', iFree%BC_CDiag(i1), ')'
   end do
 
   do i1=1,iFree%nBC_COffDiag
-    write(iFree%xlabels(iFree%xBC_COffDiag(i1)),'(a12,i2,a1)') 'BC_COffDiag(', iFree%BC_COffDiag(i1), ')'
+    write(iFree%xlabels(iFree%xBC_COffDiag(i1)),'(a12,i2.2,a1)') 'BC_COffDiag(', iFree%BC_COffDiag(i1), ')'
   end do
 
 end subroutine SelectFreeParameters
@@ -2006,6 +2008,10 @@ subroutine MaximizeLikelihood1(x,LValue,Grad,Hess,ierr)
   ! Loop counter
   integer(i4b)                :: i1
 
+  ! initial value of x and likelihood function
+  real(dp), allocatable       :: x0(:)
+  real(dp)                    :: LValue0
+
   ! linear constraints on optimization problem
   real(dp), allocatable       :: A(:,:)
 
@@ -2046,6 +2052,9 @@ subroutine MaximizeLikelihood1(x,LValue,Grad,Hess,ierr)
     
   ! Dimensions of maximization problem
   nx=size(x,1)    
+  allocate(x0(nx))
+  x0 = x
+
   nc_lin=0                 ! number of linear constraints
   if (ControlOptions%TestLikeFlag<4) then
     ! normal non-linear constraints
@@ -2136,9 +2145,12 @@ subroutine MaximizeLikelihood1(x,LValue,Grad,Hess,ierr)
   if (ControlOptions%TestLikeFlag==0) then
      ! Maximise likelihood 
      print *,'Begin maximization.'
+     call ComputeHess(x0,LValue0,GRAD,Hess,iuser,ruser)
+     print *,'LValue0',LValue0
      call E04WDF(nx,nc_lin,nc_nonlin,LDA,LDCJ,LDH,A,BL,BU,                     &
                  NAGConstraintWrapper,LikeFunc,iter,ISTATE,CCON,CJAC,CLAMBDA,  &
                  LValue,GRAD,HESS,x,IW,LENIW,RW,LENRW,iuser,RUSER,ifail)
+     call ComputeHess(x0,LValue0,GRAD,Hess,iuser,ruser)
      call ComputeHess(x,LValue,GRAD,Hess,iuser,ruser)
   else if (ControlOptions%TestLikeFlag==1) then
     ! test gradient of likelihood
@@ -2156,18 +2168,22 @@ subroutine MaximizeLikelihood1(x,LValue,Grad,Hess,ierr)
   else if (ControlOptions%TestLikeFlag==4) then
     ! maximise likelihood with no non-linear constraints
      print *,'Begin maximization with no non-linear constraints.'
+     call ComputeHess(x0,LValue0,GRAD,Hess,iuser,ruser)
+     print *,'LValue0',LValue0
      call E04WDF(nx,nc_lin,nc_nonlin,LDA,LDCJ,LDH,A,BL,BU,                     &
                  E04WDP,LikeFunc,iter,ISTATE,CCON,CJAC,CLAMBDA,                &
                  LValue,GRAD,HESS,x,IW,LENIW,RW,LENRW,iuser,RUSER,ifail)
+     call ComputeHess(x0,LValue0,GRAD,Hess,iuser,ruser)
      call ComputeHess(x,LValue,GRAD,Hess,iuser,ruser)
   end if
 
   OutFile = trim(OutDir) // '/results.txt'
   open(unit = 130,file = OutFile,action = 'write')
-  write(130,'(a20,2a25)') 'Var. Name','x','Gradient'
+  write(130,'(a20,3a25)') 'Var. Name','x0','x','Gradient'
   do i1=1,nx
-    write(130,'(a20,2d25.12)') trim(iFree%xlabels(i1)), x(i1), Grad(i1)
+    write(130,'(a20,3d25.12)') trim(iFree%xlabels(i1)), x0(i1),x(i1), Grad(i1)
   end do
+  write(130,'(a25,d25.12)') 'LValue0',LValue0
   write(130,'(a25,d25.12)') 'LValue',LValue
   close(130)
 
