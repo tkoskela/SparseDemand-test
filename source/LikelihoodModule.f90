@@ -270,7 +270,7 @@ subroutine Like1C(i1,parms,mode,L,GradL)
 
   ! M1 = LL*Q
   real(dp)                  :: R(parms%J,parms%K),Q(parms%K,parms%K)
-  integer(i4b)              :: RowGroup(parms%K)
+  integer(i4b)              :: RowGroup(parms%J)
 
   integer(i4b)              :: integrand
   integer(i4b)              :: ifail
@@ -286,7 +286,7 @@ subroutine Like1C(i1,parms,mode,L,GradL)
   ! 
   Integrand = 3
     
-  ! size(RowGroup) = d2
+  ! size(RowGroup) = d2 = parms%J
   ! RowGroup(j1) = max(i1) s.t.  R(i1,j1) .ne. 0.0d0
   call ComputeRowGroup(R,parms%J,parms%K,RowGroup)
 
@@ -465,7 +465,6 @@ subroutine Like1B(iHH,d1,d2,d3,parms,mode,L,GradL)
   DTilde = DTilde - matmul(transpose(B22Tilde),nu(index2))
   deallocate(Temp1)
 
-
   ! M1 = R*Q  : LQ Decomposition of M1
   !             R = lower triangular
   !             Q = orthogonal
@@ -480,7 +479,7 @@ subroutine Like1B(iHH,d1,d2,d3,parms,mode,L,GradL)
   !
   Integrand = 2
   
-  ! size(RowGroup) = d2
+  ! size(RowGroup) = d3
   ! RowGroup(j1) = max(i1) s.t.  LL(i1,j1) .ne. 0.0d0
 
   allocate(RowGroup(d3))
@@ -1583,7 +1582,7 @@ subroutine RunMonteCarlo(IMC1,IMC2,pid)
   !end if
 
 #if USE_MPI==1
-  call BroadcastParms(parms)
+  call BroadcastParms(parms,pid)
   call BroadcastIFree(pid)
 #endif
 
@@ -1647,6 +1646,7 @@ subroutine RunMonteCarlo(IMC1,IMC2,pid)
   end if
 end subroutine RunMonteCarlo
 
+#ifdef ANALYSE
 subroutine AnalyseResults(IMC)
   use nrtype
   use DataModule, only   : CreateData,LoadData,ComputeElasticities
@@ -1668,6 +1668,7 @@ subroutine AnalyseResults(IMC)
   call ComputeElasticities
 
 end subroutine AnalyseResults
+#endif
 
 subroutine ComputeInitialGuess(parms,iFree,x)
   use GlobalModule, only : ParmsStructure,SelectFreeType

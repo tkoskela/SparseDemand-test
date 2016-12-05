@@ -1604,7 +1604,9 @@ subroutine BroadcastParameters(pid)
 1568 format(a4,i4,24i3)
 
   ! broadcast the other parameters in parms
+  call mpi_barrier(MPI_COMM_WORLD,ierr(30))
   call BroadcastParms(parms,pid)
+  call mpi_barrier(MPI_COMM_WORLD,ierr(30))
 
   ! broadcast information on integration rule
   call mpi_bcast(IntRule%flag,parms%K,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr(25))
@@ -1633,6 +1635,7 @@ subroutine BroadcastParameters(pid)
   print 1596,'ierr_quad',pid,ierr(25:26),ierr_quad
 1596 format(a10,i4,2i3,<nerr>i3)
   deallocate(ierr_quad)
+  call mpi_barrier(MPI_COMM_WORLD,ierr(30))
 
   ! broadcast information on integration rule for RandomB
   call mpi_bcast(RandomB%nall,1,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr(27))
@@ -1658,6 +1661,7 @@ subroutine BroadcastParameters(pid)
   print 1619,'ierr_B',pid,ierr_B
 1619 format(a7,i4,<d+2>i3)
   deallocate(ierr_B)
+  call mpi_barrier(MPI_COMM_WORLD,ierr(30))
 end subroutine BroadcastParameters
 
 subroutine BroadcastParms(LocalParms,pid)
