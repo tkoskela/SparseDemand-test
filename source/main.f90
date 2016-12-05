@@ -61,7 +61,11 @@ program SparseDemand
  
   ! broadcast stuff
 #if USE_MPI==1
+  call date_and_time(values = DateTime)
+  print 101,'Process ',pid,': start BroadcastParameters: ',DateTime((/3,5,6/))
+101 format(a8,i4,a30,3i4)
   call BroadcastParameters(pid)
+  print 101,'Process ',pid,': finish BroadcastParameters: ',DateTime((/3,5,6/))
   if (pid==MasterID) then
     call date_and_time(values = DateTime)
     print *, "Broadcast parameters complete. (day,hour,sec) = ",DateTime(3),DateTime(5),DateTime(6)

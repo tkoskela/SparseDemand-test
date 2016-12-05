@@ -1519,43 +1519,44 @@ end subroutine DefineIntegrationNodes
 subroutine BroadcastParameters(pid)
   use mpi
   implicit none
-  integer(i4b), intent(in) :: pid
-  integer(i4b)             :: ierr,i1,i2
-  integer(i4b)             :: n,d  ! size of matrix for RandomB and RandomD
-
+  integer(i4b), intent(in)  :: pid
+  integer(i4b)              :: ierr(30),i1,i2,nerr
+  integer(i4b), allocatable :: ierr_quad(:),ierr_B(:)
+  integer(i4b)              :: n,d  ! size of matrix for RandomB and RandomD
 
   ! Broadcast OutDir and Control Flags
-  call mpi_bcast(OutDir,len(OutDir),MPI_CHARACTER,MasterID,MPI_COMM_WORLD,ierr)
-  call mpi_bcast(ControlOptions%OutputFlag,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr)
-  call mpi_bcast(ControlOptions%TestLikeFlag,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr)
-  call mpi_bcast(ControlOptions%TestIntegrationFlag,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr)
-  call mpi_bcast(ControlOptions%SaveDataFlag,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr)
-  call mpi_bcast(ControlOptions%BICFlag,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr)
-  call mpi_bcast(ControlOptions%MPIFlag,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr)
-  call mpi_bcast(MaxOptions%Algorithm,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr)
-  call mpi_bcast(MaxOptions%AbsTol,1,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr)
-  call mpi_bcast(MaxOptions%RelTol,1,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr)
-  call mpi_bcast(MaxOptions%MaxLevel,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr)
+  ierr = 0
+  call mpi_bcast(OutDir,len(OutDir),MPI_CHARACTER,MasterID,MPI_COMM_WORLD,ierr(1))
+  call mpi_bcast(ControlOptions%OutputFlag,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr(2))
+  call mpi_bcast(ControlOptions%TestLikeFlag,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr(3))
+  call mpi_bcast(ControlOptions%TestIntegrationFlag,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr(4))
+  call mpi_bcast(ControlOptions%SaveDataFlag,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr(5))
+  call mpi_bcast(ControlOptions%BICFlag,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr(6))
+  call mpi_bcast(ControlOptions%MPIFlag,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr(7))
+  call mpi_bcast(MaxOptions%Algorithm,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr(8))
+  call mpi_bcast(MaxOptions%AbsTol,1,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(9))
+  call mpi_bcast(MaxOptions%RelTol,1,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(10))
+  call mpi_bcast(MaxOptions%MaxLevel,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr(11))
 
-  call mpi_bcast(small,1,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr)
-  call mpi_bcast(inf,1,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr)
+  call mpi_bcast(small,1,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(12))
+  call mpi_bcast(inf,1,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(13))
 
   ! broadcast dimensions of problem size
-  call mpi_bcast(parms%J,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr)
-  call mpi_bcast(parms%K,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr)
-  call mpi_bcast(parms%model,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr)
+  call mpi_bcast(parms%J,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr(14))
+  call mpi_bcast(parms%K,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr(15))
+  call mpi_bcast(parms%model,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr(16))
   if (parms%model==2) then
-    call mpi_bcast(parms%BC_z_dim,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr)
-    call mpi_bcast(parms%BD_z_dim,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr)
-    call mpi_bcast(parms%dim_eta,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr)
-    call mpi_bcast(parms%BC_lo,1,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr)
-    call mpi_bcast(parms%BC_hi,1,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(parms%BC_z_dim,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr(17))
+    call mpi_bcast(parms%BD_z_dim,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr(18))
+    call mpi_bcast(parms%dim_eta,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr(19))
+    call mpi_bcast(parms%BC_lo,1,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(20))
+    call mpi_bcast(parms%BC_hi,1,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(21))
   end if
 
   ! data information
-  call mpi_bcast(HHData%NMC,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr)
-  call mpi_bcast(HHData%N,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr)
-  call mpi_bcast(HHData%M,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr)
+  call mpi_bcast(HHData%NMC,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr(22))
+  call mpi_bcast(HHData%N,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr(23))
+  call mpi_bcast(HHData%M,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr(24))
 
   ! allocate memory for (b,CDiag,COffDiag,xData,iXData)
   !  (this has already been done by pdi==MasterID)
@@ -1563,14 +1564,19 @@ subroutine BroadcastParameters(pid)
     call AllocateGlobalVariables
   end if
 
-  ! broadcast the other parameters in parms
-  call BroadcastParms(parms)
+  print 1568,'ierr',pid,ierr(1:24)
+1568 format(a4,i4,24i3)
 
+  ! broadcast the other parameters in parms
+  call BroadcastParms(parms,pid)
 
   ! broadcast information on integration rule
-  call mpi_bcast(IntRule%flag,parms%K,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr)
-  call mpi_bcast(IntRule%nAll,parms%K,MPI_INteger,MasterID,MPI_COMM_WORLD,ierr)
-  
+  call mpi_bcast(IntRule%flag,parms%K,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr(25))
+  call mpi_bcast(IntRule%nAll,parms%K,MPI_INteger,MasterID,MPI_COMM_WORLD,ierr(26))
+
+  nerr = 2*parms%K+parms%K*parms%K
+  allocate(ierr_quad(nerr))  
+  ierr_quad = 0
   do i1=1,parms%K
     ! rule(i1)%nodes
     ! rule(i1)%weights
@@ -1580,83 +1586,102 @@ subroutine BroadcastParameters(pid)
       allocate(IntRule%rule(i1)%nodes(IntRule%nAll(i1),i1))
       allocate(IntRule%rule(i1)%weights(IntRule%nAll(i1)))
     end if
-    call mpi_bcast(IntRule%rule(i1)%nQuad,i1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(IntRule%rule(i1)%nQuad,i1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr_quad(i1))
     call mpi_bcast(IntRule%rule(i1)%weights,IntRule%nAll(i1),MPI_DOUBLE_PRECISION, &
-                MasterID,MPI_COMM_WORLD,ierr)
+                MasterID,MPI_COMM_WORLD,ierr_quad(parms%K+i1))
     do i2=1,i1
       call mpi_bcast(IntRule%rule(i1)%nodes(:,i2),IntRule%nAll(i1),                &
-                     MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr)
+                     MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr_quad(2*parms%K+parms%K*(i1-1)+i2))
     end do            
   end do
+  print 1596,'ierr_quad',pid,ierr(25:26),ierr_quad
+1596 format(a10,i4,2i3,<nerr>i3)
+  deallocate(ierr_quad)
 
   ! broadcast information on integration rule for RandomB
-  call mpi_bcast(RandomB%nall,1,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
+  call mpi_bcast(RandomB%nall,1,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr(27))
   if (pid==MasterID) then
     n = size(RandomB%nodes,1)
     d = size(RandomB%nodes,2)
   end if
-  call mpi_bcast(n,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr)
-  call mpi_bcast(d,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr)
+  call mpi_bcast(n,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr(28))
+  call mpi_bcast(d,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr(29))
+  allocate(ierr_B(d+2))
+  ierr_B = 0
   if (pid>MasterID) then
     allocate(RandomB%nodes(n,d))
     allocate(RandomB%weights(n))
     allocate(RandomB%nQuad(d))
   end if
   
-  call mpi_bcast(RandomB%weights,n,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr)
-  call mpi_bcast(RandomB%nQuad,d,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr)
+  call mpi_bcast(RandomB%weights,n,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr_B(1))
+  call mpi_bcast(RandomB%nQuad,d,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr(2))
   do i1=1,d
-    call mpi_bcast(RandomB%nodes(:,i1),n,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(RandomB%nodes(:,i1),n,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr_B(2+i1))
   end do
-
+  print 1619,'ierr_B',pid,ierr_B
+1619 format(a7,i4,<d+2>i3)
+  deallocate(ierr_B)
 end subroutine BroadcastParameters
 
-subroutine BroadcastParms(LocalParms)
+subroutine BroadcastParms(LocalParms,pid)
   use mpi
   implicit none
   type(ParmsStructure), intent(inout) :: LocalParms
-  integer(i4b)                          :: i1,ierr
+  integer(i4b), intent(in)            :: pid
+  integer(i4b)                        :: i1,nerr
+  integer(i4b), allocatable           :: ierr(:)
 
+  allocate(ierr(5*LocalParms%J+3*LocalParms%K+11))
+  ierr = 0
   ! broadcast b,CDiag,COffDiag
-  call mpi_bcast(LocalParms%D,LocalParms%J,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr)
-  call mpi_bcast(LocalParms%BC,LocalParms%nBC,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr)
+  call mpi_bcast(LocalParms%D,LocalParms%J,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(1))
+  call mpi_bcast(LocalParms%BC,LocalParms%nBC,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(2))
   do i1=1,LocalParms%J
-    call mpi_bcast(LocalParms%B(:,i1),LocalParms%K,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(LocalParms%B(:,i1),LocalParms%K,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(2+i1))
   end do
 
-  call mpi_bcast(LocalParms%mue,LocalParms%K,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr)
+  nerr = 2+LocalParms%J
+  call mpi_bcast(LocalParms%mue,LocalParms%K,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(nerr+1))
 
-  call mpi_bcast(LocalParms%InvCDiag,LocalParms%K,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr)
-  call mpi_bcast(LocalParms%InvCOffDiag,LocalParms%K*(LocalParms%K-1)/2,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr)
+  call mpi_bcast(LocalParms%InvCDiag,LocalParms%K,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(nerr+2))
+  call mpi_bcast(LocalParms%InvCOffDiag,LocalParms%K*(LocalParms%K-1)/2,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(nerr+3))
+  nerr = nerr+3
   do i1=1,LocalParms%k
-    call mpi_bcast(LocalParms%InvC(:,i1),LocalParms%K,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr)
-    call mpi_bcast(LocalParms%CSig(:,i1),LocalParms%K,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr)
-    call mpi_bcast(LocalParms%Sig(:,i1),LocalParms%K,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(LocalParms%InvC(:,i1),LocalParms%K,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(nerr+i1))
+    call mpi_bcast(LocalParms%CSig(:,i1),LocalParms%K,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(nerr+Localparms%K+i1))
+    call mpi_bcast(LocalParms%Sig(:,i1),LocalParms%K,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(nerr+2*Localparms%K+i1))
   end do
+  nerr = nerr+3*LocalParms%K
 
   if (LocalParms%model==2) then
-    call mpi_bcast(LocalParms%BD_beta,LocalParms%J,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr)
-    call mpi_bcast(LocalParms%BD_CDiag,LocalParms%J,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr)
-    call mpi_bcast(LocalParms%BD_COffDiag,LocalParms%nBD_COffDiag,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(LocalParms%BD_beta,LocalParms%J,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(nerr+1))
+    call mpi_bcast(LocalParms%BD_CDiag,LocalParms%J,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(nerr+2))
+    call mpi_bcast(LocalParms%BD_COffDiag,LocalParms%nBD_COffDiag,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(nerr+3))
+    nerr = nerr+3
     do i1=1,LocalParms%dim_eta
-      call mpi_bcast(LocalParms%BD_C(:,i1),LocalParms%J,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr)
+      call mpi_bcast(LocalParms%BD_C(:,i1),LocalParms%J,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(nerr+i1))
     end do
-
-    call mpi_bcast(LocalParms%BC_beta,LocalParms%nBC,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr)
-    call mpi_bcast(LocalParms%BC_CDiag,LocalParms%nBC,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr)
-    call mpi_bcast(LocalParms%BC_COffDiag,LocalParms%nBC_COffDiag,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr)
+    nerr = nerr+LocalParms%dim_eta
+    call mpi_bcast(LocalParms%BC_beta,LocalParms%nBC,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(nerr+1))
+    call mpi_bcast(LocalParms%BC_CDiag,LocalParms%nBC,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(nerr+2))
+    call mpi_bcast(LocalParms%BC_COffDiag,LocalParms%nBC_COffDiag,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(nerr+3))
     do i1=1,LocalParms%dim_eta
-      call mpi_bcast(LocalParms%BC_C(:,i1),LocalParms%dim_eta,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr)
+      call mpi_bcast(LocalParms%BC_C(:,i1),LocalParms%dim_eta,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(nerr+3+i1))
     end do
-
+    nerr = nerr + 3 + LocalParms%dim_eta
     do i1=1,LocalParms%BD_Z_dim
-      call mpi_bcast(LocalParms%BD_Z(:,i1),LocalParms%J,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr)
+      call mpi_bcast(LocalParms%BD_Z(:,i1),LocalParms%J,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(nerr+i1))
     end do
+    nerr = nerr + LocalParms%BD_Z_dim
     do i1=1,LocalParms%BC_Z_dim
-      call mpi_bcast(LocalParms%BC_Z(:,i1),LocalParms%nBC,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr)
+      call mpi_bcast(LocalParms%BC_Z(:,i1),LocalParms%nBC,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(nerr+i1))
     end do
   end if
 
+  nerr = 5*LocalParms%J+3*LocalParms%K+11
+  print 1677,'parms_ierr',pid,ierr
+1677 format(a11,i4,<nerr>i3)
 end subroutine BroadcastParms
 
 subroutine BroadcastIFree(pid)

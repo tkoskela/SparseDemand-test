@@ -291,23 +291,27 @@ end subroutine ComputeCurrentB
 #if USE_MPI==1
 subroutine SendData(pid)
   use nrtype
+  use IFPORT
   use mpi
   use GlobalModule, only : HHData,parms,AllocateHHData,MasterID,nWorkers
   implicit none
   integer(i4b), intent(in) :: pid
-  integer(i4b)             :: status(MPI_STATUS_SIZE)
+  integer(i4b), allocatable :: stat_array(:,:)
 
   ! send subset of data to each pid
   ! HHData%N = sample size
   integer(i4b) :: N1,N2,R,iHH1,iHH2,iw,i1,ierr
   real(dp),     allocatable :: temp1(:)
   integer(i4b), allocatable :: itemp1(:)
+  integer(i4b), allocatable :: request(:)
 
   ! N1+1 = size of data sent to processors (1:R)
   ! N1   = size of data sent to processors (R+1:N)
   ! R    = number of remainder data points after subtracting numprocs * N1
   N1 = HHData%N/nWorkers     ! integer division
   R = HHData%N - nWorkers*N1
+  allocate(stat_array(MPI_STATUS_SIZE,12*nworkers))
+  allocate(request(12*nworkers))
 
   if (pid==MasterID) then
     ! send data
@@ -335,31 +339,41 @@ subroutine SendData(pid)
       ! send q
       allocate(temp1(parms%J*N2))
       temp1(1:parms%K*N2) = reshape(HHData%q(:,iHH1:iHH2),(/parms%K*N2/))
-      call mpi_send(temp1(1:parms%K*N2),parms%K*N2,MPI_DOUBLE_PRECISION,iw,0,MPI_COMM_WORLD,ierr)
+      call mpi_isend(temp1(1:parms%K*N2),parms%K*N2,MPI_DOUBLE_PRECISION,iw,1,MPI_COMM_WORLD, &
+                     request(6*(iw-1)+1),ierr)
    
       ! send p 
       temp1 = reshape(HHData%p(:,iHH1:iHH2),(/parms%J*N2/))
-      call mpi_send(temp1,parms%J*N2,MPI_DOUBLE_PRECISION,iw,0,MPI_COMM_WORLD,ierr)
+      call mpi_isend(temp1,parms%J*N2,MPI_DOUBLE_PRECISION,iw,2,MPI_COMM_WORLD,               &
+                     request(6*(iw-1)+2),ierr)
       deallocate(temp1)
  
       ! send market
       allocate(itemp1(parms%J*N2))
       itemp1(1:N2) = HHData%market(iHH1:iHH2)
-      call mpi_send(itemp1(1:N2),N2,MPI_INTEGER,iw,0,MPI_COMM_WORLD,ierr)
+      call mpi_isend(itemp1(1:N2),N2,MPI_INTEGER,iw,3,MPI_COMM_WORLD,      &
+                     request(6*(iw-1)+3),ierr)
 
       ! send iNonZero
       itemp1(1:parms%K*N2) = reshape(HHData%iNonZero(:,iHH1:iHH2),(/parms%K*N2/))
-      call mpi_send(itemp1(1:N2*parms%K),N2*parms%K,MPI_INTEGER,iw,0,MPI_COMM_WORLD,ierr)
+      call mpi_isend(itemp1(1:N2*parms%K),N2*parms%K,MPI_INTEGER,iw,4,MPI_COMM_WORLD, &
+                     request(6*(iw-1)+4),ierr)
 
       ! end iZero
       itemp1               = reshape(HHData%iZero(:,iHH1:iHH2),(/parms%J*N2/))
-      call mpi_send(itemp1,N2*parms%J,MPI_INTEGER,iw,0,MPI_COMM_WORLD,ierr)
+      call mpi_isend(itemp1,N2*parms%J,MPI_INTEGER,iw,5,MPI_COMM_WORLD, &
+                     request(6*(iw-1)+5),ierr)
 
       ! end nNonZero
       itemp1(1:N2) = HHData%nNonZero(iHH1:iHH2)
-      call mpi_send(itemp1(1:N2),N2,MPI_INTEGER,iw,0,MPI_COMM_WORLD,ierr)
+      call mpi_isend(itemp1(1:N2),N2,MPI_INTEGER,iw,6,MPI_COMM_WORLD, &
+                     request(6*(iw-1)+6),ierr)
       deallocate(itemp1)
       print *, "Data send to worker ",iw,"successful."
+      !call sleep(1)
+      do i1=1,6
+        call mpi_wait(request(6*(iw-1)+i1),stat_array(:,6*(iw-1)+i1),ierr)
+      end do
     end do
 !      do i1=iHH1,iHH2
 !        call mpi_send(HHData%q(:,i1),parms%K,MPI_DOUBLE_PRECISION,iw,0,MPI_COMM_WORLD,ierr)
@@ -378,31 +392,46 @@ subroutine SendData(pid)
     allocate(temp1(parms%J*N2))
     
     ! receive q
-    call mpi_recv(temp1(1:parms%K*N2),parms%K*N2,MPI_DOUBLE_PRECISION,MasterID,0,MPI_COMM_WORLD,status,ierr)
+    !call mpi_recv(temp1(1:parms%K*N2),parms%K*N2,MPI_DOUBLE_PRECISION,MasterID,1,MPI_COMM_WORLD,status,ierr)
+    call mpi_irecv(temp1(1:parms%K*N2),parms%K*N2,MPI_DOUBLE_PRECISION,MasterID,1,MPI_COMM_WORLD, &
+                   request(6*(nworkers+pid-1)+1),ierr)
     HHData%q = reshape(temp1(1:parms%K*N2),(/parms%K,n2/))
    
     ! receive p 
-    call mpi_recv(temp1,parms%J*N2,MPI_DOUBLE_PRECISION,MasterID,0,MPI_COMM_WORLD,status,ierr)
+    !call mpi_recv(temp1,parms%J*N2,MPI_DOUBLE_PRECISION,MasterID,2,MPI_COMM_WORLD,status,ierr)
+    call mpi_irecv(temp1,parms%J*N2,MPI_DOUBLE_PRECISION,MasterID,2,MPI_COMM_WORLD, &
+                   request(6*(nworkers+pid-1)+2),ierr)
     HHData%p = reshape(temp1,(/parms%J,N2/))
     deallocate(temp1)
 
     allocate(iTemp1(N2*parms%J))
     ! receive market
-    call mpi_recv(itemp1(1:N2),N2,MPI_INTEGER,MasterID,0,MPI_COMM_WORLD,status,ierr)
+    !call mpi_recv(itemp1(1:N2),N2,MPI_INTEGER,MasterID,3,MPI_COMM_WORLD,status,ierr)
+    call mpi_irecv(itemp1(1:N2),N2,MPI_INTEGER,MasterID,3,MPI_COMM_WORLD, &
+                   request(6*(nworkers+pid-1)+3),ierr)
     HHData%market = itemp1(1:N2)
 
     ! receive iNonZero
-    call mpi_recv(itemp1(1:parms%K*N2),parms%K*N2,MPI_INTEGER,MasterID,0,MPI_COMM_WORLD,status,ierr)
+    !call mpi_recv(itemp1(1:parms%K*N2),parms%K*N2,MPI_INTEGER,MasterID,4,MPI_COMM_WORLD,status,ierr)
+    call mpi_irecv(itemp1(1:parms%K*N2),parms%K*N2,MPI_INTEGER,MasterID,4,MPI_COMM_WORLD, &
+                   request(6*(nworkers+pid-1)+4),ierr)
     HHData%iNonZero = reshape(itemp1(1:parms%K*N2),(/parms%K,N2/))
 
     ! receive iZero
-    call mpi_recv(itemp1,parms%J*N2,MPI_INTEGER,MasterID,0,MPI_COMM_WORLD,status,ierr)
+    !call mpi_recv(itemp1,parms%J*N2,MPI_INTEGER,MasterID,5,MPI_COMM_WORLD,status,ierr)
+    call mpi_irecv(itemp1,parms%J*N2,MPI_INTEGER,MasterID,5,MPI_COMM_WORLD, &
+                   request(6*(nworkers+pid-1)+5),ierr)
     HHData%iZero = reshape(itemp1,(/parms%J,N2/))
 
     ! receive nNonZero
-    call mpi_recv(itemp1(1:N2),N2,MPI_INTEGER,MasterID,0,MPI_COMM_WORLD,status,ierr)
+    !call mpi_recv(itemp1(1:N2),N2,MPI_INTEGER,MasterID,6,MPI_COMM_WORLD,status,ierr)
+    call mpi_irecv(itemp1(1:N2),N2,MPI_INTEGER,MasterID,6,MPI_COMM_WORLD, &
+                   request(6*(nworkers+pid-1)+6),ierr)
     HHData%nNonZero = itemp1(1:N2)
     deallocate(itemp1) 
+    do i1=1,6
+      call mpi_wait(request(6*(nworkers+pid-1)+i1),stat_array(:,6*(nworkers+pid-1)+i1),ierr)
+    end do
     !do i1=1,HHData%N
     !  call mpi_recv(HHData%q(:,i1),parms%K,MPI_DOUBLE_PRECISION,MasterID,0,MPI_COMM_WORLD,status,ierr)
     !  call mpi_recv(HHData%p(:,i1),parms%J,MPI_DOUBLE_PRECISION,MasterID,0,MPI_COMM_WORLD,status,ierr)
@@ -413,6 +442,8 @@ subroutine SendData(pid)
     !end do
   end if
 
+  !call mpi_waitall(12*nworkers,request,stat_array,ierr) 
+  deallocate(stat_array,request)
 end subroutine SendData
 #endif
 
