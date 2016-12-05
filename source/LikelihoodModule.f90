@@ -1647,6 +1647,27 @@ subroutine RunMonteCarlo(IMC1,IMC2,pid)
   end if
 end subroutine RunMonteCarlo
 
+subroutine AnalyseResults(IMC)
+  use nrtype
+  use DataModule, only   : CreateData,LoadData,ComputeElasticities
+  implicit none
+  integer(i4b), intent(in) :: IMC
+  integer(i4b)             :: DateTime(8)
+
+  if (ControlOptions%SimulateData==1) then
+    call CreateData(iMC)
+  else
+    call date_and_time(values=DateTime)
+    print *,"Begin load data. (day,hour,min) = ",DateTime(3),DateTime(5),DateTime(6)
+    call LoadData
+    call date_and_time(values=DateTime)
+    print *,"Completed load data. (day,hour,min) = ",DateTime(3),DateTime(5),DateTime(6)
+  end if
+
+  ! reset prices = average price
+  call ComputeElasticities
+
+end subroutine AnalyseResults
 
 subroutine ComputeInitialGuess(parms,iFree,x)
   use GlobalModule, only : ParmsStructure,SelectFreeType
@@ -1657,7 +1678,7 @@ subroutine ComputeInitialGuess(parms,iFree,x)
   real(dp),             intent(out) :: x(:)
 
   x = 0.0d0
-  if (parms%model==1) then 
+  if (parms%model==1) then
     if (allocated(iFree%D)) then
       x(iFree%xD) = parms%D(iFree%D)
     end if

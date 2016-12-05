@@ -420,6 +420,29 @@ contains
     end if
   end subroutine AllocateHHData
 
+  ! allocate memory for data
+  subroutine AllocateLocalHHData(LocalHHData)
+    implicit none
+    type(DataStructure), intent(inout) :: LocalHHData
+
+    allocate(LocalHHData%q(parms%K,LocalHHData%N))
+    allocate(LocalHHData%p(parms%J,LocalHHData%N))
+    allocate(LocalHHData%e(parms%K,LocalHHData%N))
+    allocate(LocalHHData%market(LocalHHData%N))
+    allocate(LocalHHData%iNonZero(parms%K,LocalHHData%N))
+    allocate(LocalHHData%iZero(parms%J,LocalHHData%N))
+    allocate(LocalHHData%nNonZero(LocalHHData%N))
+    allocate(LocalHHData%ColumnLabels(parms%J))
+    allocate(LocalHHData%HHID(LocalHHData%N))
+    allocate(LocalHHData%date(LocalHHData%N))
+    allocate(LocalHHData%day(LocalHHData%N))
+    allocate(LocalHHData%shopid(LocalHHData%N))
+
+    if (parms%model==2) then
+      allocate(LocalHHData%eta(parms%dim_eta,LocalHHData%N))
+    end if
+end subroutine AllocateLocalHHData
+
 !------------------------------------------------------------------------------
   subroutine AllocatePenaltyParameters(pid)
 #if USE_MPI==1
@@ -656,6 +679,19 @@ subroutine DeallocateParms(LocalParms)
   end if
 
 end subroutine DeallocateParms
+
+subroutine DeallocateLocalHHData(LocalHHData)
+  implicit none
+  type(DataStructure), intent(inout) :: LocalHHData
+
+  deallocate(LocalHHData%q,LocalHHData%p,LocalHHData%iNonZero,LocalHHData%iZero,LocalHHData%nNonZero)
+  deallocate(LocalHHData%HHID,LocalHHData%shopid,LocalHHData%date,LocalHHData%day)
+  deallocate(LocalHHData%market,LocalHHData%e)
+  deallocate(LocalHHData%ColumnLabels)
+  if (allocated(LocalHHData%eta)) then
+    deallocate(LocalHHData%eta)
+  end if
+end subroutine DeallocateLocalHHData
 
 !------------------------------------------------------------------------------
 subroutine DeallocateGlobalVariables
