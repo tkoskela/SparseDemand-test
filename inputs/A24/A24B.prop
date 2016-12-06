@@ -55,13 +55,13 @@ InitialGuess1_FILE : InitialGuess1.txt
 InitialGuess2_FILE : InitialGuess2.txt
 
 #            : 01
-MaxAlgorithm : 6 # 1 = E04WDF gradient based, dense
+MaxAlgorithm : 1 # 1 = E04WDF gradient based, dense
                  # 2 = E04VHF gradient based,sparse
                  # 3 = E04JCF,non-gradient based
                  # 4 = E04JYF, 5 = E04CBF
                  # 6 = Bayes MC integration
-AbsoluteTolerance : 0.001  # absolute tolerance for D01ESF for Bayesian computation   
-RelativeTolerance : 0.001  # relative tolerance for D01ESF for Bayesian computation   
+AbsoluteTolerance : 0.01  # absolute tolerance for D01ESF for Bayesian computation   
+RelativeTolerance : 0.01  # relative tolerance for D01ESF for Bayesian computation   
 MaxLevel          : 6     # maximum level for D01ESF for Bayesian computation   
 
 # Penalty parameters
@@ -87,7 +87,7 @@ IntegrationFlag : 6 6 6 6 6 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7
 # Number of quadrature nodes in each dimension
 #          1  2  3  4  5  6  7  8  9  10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30
 #          012012012012012012012012012012012012012012012012012012012012012012012012012012012012012012
-nQuad    : 10 10 10 5  5  5  5  5  2  2  2  2  2  2  2  2  2  2  2  2  2  2  2  2  2  2  2  2  2  2 
+nQuad    : 10 10 10 10 10  5  5  5  2  2  2  2  2  2  2  2  2  2  2  2  2  2  2  2  2  2  2  2  2  2 
 # nQuadAll : total number of quadrature nodes for use when flag ==2,3,or 7
 #
 #          1   2   3   4   5   6   7   8   9   10  11  12  13  14  15  16  17  18  19  20  21  22  23  24  25  26  27  28  29  30
@@ -118,27 +118,27 @@ BC_hi : 0.95   # maximum value of BC
 # select subsets of parameter to be free
 FreeFlagD           : 0   # 1 to be free, 0 to be fixed
 FreeFlagBC          : 0   # 1 to be free, 0 to be fixed
-FreeFlagMUE         : 1   # 1 to be free, 0 to be fixed
+FreeFlagMUE         : 0   # 1 to be free, 0 to be fixed
 FreeFlagInvCDiag    : 1   # 1 to be free, 0 to be fixed
-FreeFlagInvCOffDiag : 0   # 1 to be free, 0 to be fixed
+FreeFlagInvCOffDiag : 1   # 1 to be free, 0 to be fixed
 
-FreeFlagBD_beta     : 1
-FreeFlagBD_CDiag    : 1
+FreeFlagBD_beta     : 0
+FreeFlagBD_CDiag    : 0
 FreeFlagBD_COffDiag : 0
-FreeFlagBC_beta     : 1
-FreeFlagBC_CDiag    : 1
+FreeFlagBC_beta     : 0
+FreeFlagBC_CDiag    : 0
 FreeFlagBC_COffDiag : 0
 
 # Parameter file names
-MUE_FILE : B/MUE.raw
-INVCDIAG_FILE : B/INVCDiag.raw
-INVCOFFDIAG_FILE : B/INVCOffDiag.raw
-C_FILE : B/C.raw
-D_FILE : B/D.raw
-BC_BETA_FILE : B/BC_beta.raw
-BC_CDIAG_FILE : B/BC_CDiag.raw
-BC_COFFDIAG_FILE : B/BC_COffDiag.raw
-BD_BETA_FILE : B/BD_beta.raw
-BD_CDIAG_FILE : B/BD_CDiag.raw
-BD_COFFDIAG_FILE : B/BD_COffDiag.raw
+MUE_FILE : A/MUE.raw
+INVCDIAG_FILE : A/INVCDiag.raw
+INVCOFFDIAG_FILE : A/INVCOffDiag.raw
+C_FILE : A/C.raw
+D_FILE : A/D.raw
+BC_BETA_FILE : A/BC_beta.raw
+BC_CDIAG_FILE : A/BC_CDiag.raw
+BC_COFFDIAG_FILE : A/BC_COffDiag.raw
+BD_BETA_FILE : A/BD_beta.raw
+BD_CDIAG_FILE : A/BD_CDiag.raw
+BD_COFFDIAG_FILE : A/BD_COffDiag.raw
 

@@ -8,7 +8,7 @@
 #$ -cwd
 #$ -V
 #$ -t 1-200
-#$ -l tmem=2G,h_vmem=2G
+#$ -l tmem=2.4G,h_vmem=2.4G
 #$ -l h_rt=48:0:0
 ##£,hostname=burns-*
 ##$ -pe orte 40
