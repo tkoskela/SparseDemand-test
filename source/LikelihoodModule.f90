@@ -1646,6 +1646,7 @@ subroutine RunMonteCarlo(IMC1,IMC2,pid)
   end if
 end subroutine RunMonteCarlo
 
+!!   BEGIN ANALYSIS of DEMAND
 #ifdef ANALYSE
 subroutine AnalyseResults(IMC)
   use nrtype
@@ -1669,7 +1670,319 @@ subroutine AnalyseResults(IMC)
 
 end subroutine AnalyseResults
 
+subroutine ComputeElasticities
+use nrtype
+use GlobalModule, only : parms,HHData,ControlOptions,InputDir, &
+DataStructure,AllocateLocalHHData,    &
+DeallocateLocalHHData
+use nag_library, only  : G05KFF,G05RZF,G05SAF
+use OutputModule, only : WriteElasticities,WriteDemandResults
+implicit none
+
+integer(i4b)              :: i1,i2,i3
+type(DataStructure)       :: HHData0,HHData1
+
+! variables to compute demand
+real(dp)                  :: h
+real(dp), allocatable     :: q0(:),q1(:)
+real(dp), allocatable     :: GradQ(:,:)
+real(dp), allocatable     :: elas(:,:)
+real(dp), allocatable     :: newQ(:,:),p(:)
+integer(i4b)              :: np
+
+! initialize random number generator
+integer(i4b)              :: genid,subid,lseed,ifail,lstate
+integer(i4b), allocatable :: seed(:),state(:)
+
+! variables used by E04RZF: normal random number generator
+integer(i4b)              :: mode,ldc,ldx,LR
+real(dp), allocatable     :: R(:)
+real(dp), allocatable     :: e(:,:)
+real(dp), allocatable     :: eye(:,:),zero(:)
+
+! allocate memory for HHData0
+HHData0%N = HHData%N
+call AllocateLocalHHData(HHData0)
+
+! set price = average price
+HHData0%p = spread(sum(HHData%p,2)/real(HHData0%n,8),2,HHData0%N)
+
+! initialize random number generator
+!  external G05KFF  ! NAG routine to set seed for random number generator
+!  external G05SAF  ! NAG routine to generate uniform random numbers
+
+genid  = 3 ! Mersenne twister algorithm
+subid  = 0 ! not used when genid = 3
+!lseed = 624 ! number of seeds needed for genid = 3
+!allocate(seed(lseed))
+lseed  = 1
+allocate(seed(lseed))
+lstate = 1260  ! min value for genid=3
+allocate(state(lstate))
+ifail  = -1
+seed   = 1
+
+call G05KFF(genid,subid,seed,lseed,state,lstate,ifail)
+
+! Generate HHData%e
+mode = 2
+ifail = 0
+ldc = parms%K
+ldx = parms%K
+LR = parms%K*(parms%K+1)+1
+allocate(R(LR))
+allocate(e(HHData0%N,parms%K))
+! generate normal random numbers
+call G05RZF(mode,HHData0%N,parms%K,parms%MuE,parms%sig,parms%K,R,LR,state,e,HHData%N,ifail)
+HHData0%e = transpose(e)
+deallocate(R,e)
+
+! Random coefficients in utility
+if (parms%model==2) then
+! Random coefficients in BD:  eta
+ifail = 0
+LR = parms%dim_eta*(parm0%dim_eta+1)+1
+allocate(zero(parms%dim_eta))
+allocate(eye(parms%dim_eta,parms%dim_eta))
+allocate(e(HHData%N,parms%dim_eta))
+allocate(R(LR))
+R    = 0.0d0
+zero = 0.0d0
+eye  = 0.0d0
+do i1=1,parms%dim_eta
+eye(i1,i1) = 1.0d0
+end do
+call G05RZF(mode,HHData%N,parms%dim_eta,zero,eye,parms%dim_eta,R,LR,state,e,HHData0%N,ifail)
+HHData0%eta = transpose(e)
+deallocate(zero,eye,e,R)
+end if
+
+deallocate(seed,state)
+
+! Compute baseline demand
+call ComputeDemand(HHData0)
+
+! baseline demand
+allocate(q0(Parms%J),q1(parms%J))
+q0 = 0.0d0
+q1 = 0.0d0
+call ComputeAggregateDemand(HHData0%q,HHData0%iNonZero,q0)
+
+! copy exogenous variables from HHData0 to HHData1
+HHData1%N = HHData0%N
+call AllocateLocalHHData(HHData1)
+HHData1%e   = HHData0%e
+HHData1%eta = HHData0%eta
+HHData1%p   = HHData0%p
+
+! Compute slope of demand
+allocate(GradQ(parms%J,parms%J))
+allocate(elas(parms%J,parms%J))
+GradQ = 0.0d0
+elas  = 0.0d0
+h = 1.0d-4
+do i1=1,parms%J
+! size(p) = (J x N)
+HHData1%p(i1,:) = HHData0%p(i1,:) + h
+call ComputeDemand(HHData1)
+call ComputeAggregateDemand(HHData1%q,HHData1%iNonZero,q1,HHData1%nNonZero,0)
+GradQ(:,i1) = (q1-q0)/(HHData1%p(i1,1)-HHData0%p(i1,1))
+elas(:,i1)  = HHData0%p(i1,1)*GradQ(:,i1)/q0
+HHData1%p(i1,:) = HHData0%p(i1,:)
+end do
+
+call WriteElasticities(elas)
+
+! Plot demand functions w.r.t. own price
+!   for each good save
+!   p(i1), q(i1), q1,q2,q3,q4,q5,n1,n2,n3,n4,n5
+np = 30
+allocate(newq(np,parms%k+1),p(np))
+newq = 0.0d0
+p    = HHData0%p(1,1) * (0.5d0+(2.0d0-0.5d0)*real((/0:np-1/),dp)/real(np-1,dp))
+do i1=1,parms%J
+do i2=1,np
+HHData1%p(i1,:) = p(i2)
+call ComputeDemand(HHData1)
+do i3=0,5
+! Compute q(i1) conditional on nNonZero==n
+!    if n==0, then compute total demand
+!    save results in matrix newq
+call ComputeAggregateDemand(HHData1%q,HHData1%iNonZero,newq(i2,i3+1),HHData1%nNonZero,i3)
+end do
+end do
+call WriteDemandResults(p,NewQ,i1)
+end do
+
+! deallocate memory for HHData0
+call DeallocateLocalHHData(HHData0)
+call DeallocateLocalHHData(HHData1)
+deallocate(q0,q1,GradQ)
+deallocate(newq)
+
+end subroutine ComputeElasticities
+
+subroutine ComputeAggregateDemand(q,iNonZero,TotalQ,nNonZero,n)
+use nrtype
+use GlobalModule, only : parms
+implicit none
+real(dp),     intent(in)  :: q(:,:)
+integer(i4b), intent(in)  :: iNonZero(:,:)
+real(dp),     intent(out) :: TotalQ(:)
+integer(i4b), intent(in)  :: nNonZero(:),n
+
+integer(i4b) :: i1,i2
+
+do i1=1,parms%J
+do i2=1,parms%K
+if
+if (n==0) then
+TotalQ(i1) = sum(q(i2,:),mask=iNonZero(i2,:)==i1)
+elseif (n>0 .and. n<=parms%K) then
+TotalQ(i1) = sum(q(i2,:),mask=(iNonZero(i2,:)==i1 .and. nNonZero==n))
+endif
+end do
+end do
+end subroutine ComputeAggregateDemand
+
+subroutine ComputeDemand(HHData1)
+use GlobalModule, only : parms,DataStructure
+use nrtype
+implicit none
+type(DataStructure), intent(inout) :: HHData1
+
+! variables used by E04NCA: solve quadratic program
+integer(i4b)               :: LCWSAV,LLWSAV,LIWSAV,LRWSAV
+integer(i4b), allocatable  :: IWSAV(:)
+real(dp),     allocatable  :: RWSAV(:)
+logical,      allocatable  :: LWSAV(:)
+character(6)               :: RNAME
+character(80), allocatable :: CWSAV(:)
+integer(i4b)               :: M,N,NCLIN,LDA
+integer(i4b), allocatable  :: istate(:),kx(:),iwork(:)
+integer(i4b)               :: iter,liwork,lwork,ifail
+real(dp), allocatable      :: C(:,:),BL(:),BU(:),CVEC(:),x(:),A(:,:),B(:)
+real(dp), allocatable      :: clamda(:),work(:)
+real(dp)                   :: obj
+real(dp)                   :: crit
+
+real(dp), allocatable      :: eye(:,:),zero(:)
+
+! set options for E04NCA
+integer(i4b) :: options_unit
+integer(i4b) :: err_unit
+integer(i4b) :: PriceFlag
+character(len=200) :: options_file
+
+! solve quadratic program
+! 1) E04NCA or E04NCF  (convex)
+! 2) E04NFA or E04NFF  (not convex)
+! 3) E04NKA or E04NKF  (sparse)
+! variables used by E04NCA
+RNAME = 'E04NCA'
+LCWSAV = 1
+LLWSAV = 120
+LIWSAV = 610
+LRWSAV = 475
+
+allocate(IWSAV(LIWSAV))
+allocate(RWSAV(LRWSAV))
+allocate(LWSAV(LLWSAV))
+allocate(CWSAV(LCWSAV))
+
+! initialize workspace for E04NCA
+call E04WBF(RNAME,CWSAV,LCWSAV,LWSAV,LLWSAV,IWSAV,LIWSAV,RWSAV,LRWSAV,ifail)
+
+! set advisory message unit number to standard output (i.e. unit=6)
+err_unit = 6
+CALL X04ABF(1,err_unit)
+
+! Open options file for reading
+ifail = -1
+mode = 0
+! set options for E04NCA
+options_unit=7
+options_file= trim(InputDir) // '/E04NCA_Options.txt'
+call X04ACF(options_unit,options_file,mode,ifail)
+!open(UNIT = ioptions, &
+!     FILE = 'inputs/E04NCA_Options.txt', &
+!     ACTION = 'read')
+ifail = 0
+call E04NDA(options_unit,LWSAV,IWSAV,RWSAV,ifail)
+!close(ioptions)
+ifail = -1
+call X04ADF(options_unit,ifail)
+
+! max -0.5*(B*q-e)'*(B*q-e) -p'*q
+!   subject to
+!   0 <=q <= q_max
+!
+! OR
+! min 0.5*(B*q-e)'*(B*q-e) + p'*q
+! min 0.5*q'*B'*B*q + (-e'*B + p')*q +0.5*e'*e
+!  A = 0.5*B'*B
+!  CVEC = -B'*e + p
+!
+! FOC    2*A*q -B'*e + p
+M = parms%J
+N = parms%J
+NCLIN = 0
+LDC   = 1
+LDA   = M
+allocate(C(LDC,1))
+C = 0.0d0
+allocate(BL(N),BU(N))
+BL = 0.0d0
+BU = 1.0d10
+allocate(CVEC(N))
+allocate(istate(n))
+allocate(KX(N))
+allocate(x(N))
+allocate(A(parms%J,parms%J))
+allocate(B(1))
+B = 0.0d0
+allocate(clamda(N))
+LIWORK = N
+allocate(IWORK(LIWORK))
+Lwork = 10*N
+allocate(work(LWORK))
+HHData1%q = 0.0d0
+crit = 1e-4
+
+do i1=1,HHData1%N
+if (parms%model==2) then
+! if model==2, each HH TempB is a random coefficient
+call ComputeCurrentB(HHData1%eta(:,i1),parms)
+end if
+
+CVEC = HHData1%p(:,i1) - matmul(transpose(parms%B),HHData1%e(:,i1))
+x = 0.0d0
+ifail = -1
+! compute X to solve
+!    min 0.5 * q'*A*q + cvec'*q   subject to q>=0
+! E04NCA transforms A: so A needs to be reset to initial value
+
+A = matmul(transpose(parms%B),parms%B)
+call E04NCA(M,N,NCLIN,LDC,LDA,C,BL,BU,CVEC,ISTATE,KX,X,A,B,iter,OBJ,CLAMDA, &
+IWORK,LIWORK,WORK,LWORK,LWSAV,IWSAV,RWSAV,ifail)
+
+HHData1%nNonZero(i1) = count(x>=crit)
+HHData1%iNonZero(1:HHData1%nNonZero(i1),i1) = pack((/1:parms%J/),x>=crit)
+HHData1%iZero(1:parms%J-HHData1%nNonZero(i1),i1) = pack((/1:parms%J/),x<crit)
+if (HHData1%nNonZero(i1)>0) then
+HHData1%q(1:HHData1%nNonZero(i1),i1) = pack(x,x>=crit)
+end if
+end do
+
+deallocate(IWSAV,RWSAV,LWSAV,CWSAV)
+deallocate(C,BL,BU,CVEC,istate,kx,x,A,B,clamda)
+deallocate(WORK,IWORK)
+deallocate(seed,state)
+
+end subroutine ComputeDemand
+
 #endif
+!!   END OF ANALYSIS of DEMAND
 
 subroutine ComputeInitialGuess(parms,iFree,x)
   use GlobalModule, only : ParmsStructure,SelectFreeType
