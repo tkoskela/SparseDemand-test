@@ -118,9 +118,9 @@ BC_hi : 0.95   # maximum value of BC
 # select subsets of parameter to be free
 FreeFlagD           : 0   # 1 to be free, 0 to be fixed
 FreeFlagBC          : 0   # 1 to be free, 0 to be fixed
-FreeFlagMUE         : 1   # 1 to be free, 0 to be fixed
-FreeFlagInvCDiag    : 0   # 1 to be free, 0 to be fixed
-FreeFlagInvCOffDiag : 0   # 1 to be free, 0 to be fixed
+FreeFlagMUE         : 0   # 1 to be free, 0 to be fixed
+FreeFlagInvCDiag    : 1   # 1 to be free, 0 to be fixed
+FreeFlagInvCOffDiag : 1   # 1 to be free, 0 to be fixed
 
 FreeFlagBD_beta     : 0
 FreeFlagBD_CDiag    : 0
