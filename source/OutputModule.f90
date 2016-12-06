@@ -19,6 +19,8 @@ module OutputModule
   character(len=200)          :: BIC1_File
   character(len=200)          :: MC_FILE1
   character(len=200)          :: MC_FILE2
+  character(len=200)          :: ElasFile
+  character(len=200)          :: DemandFile
 
   ! Output file: unit numbers
   integer(i4b), parameter :: Results1_UNIT          = 2
@@ -36,6 +38,8 @@ module OutputModule
   integer(i4b), parameter :: MC_UNIT1               = 13
   integer(i4b), parameter :: SaveData_UNIT_eta      = 14
   integer(i4b), parameter :: MC_UNIT2               = 15
+  integer(i4b), parameter :: Elas_UNIT              = 16
+  integer(i4b), parameter :: Demand_UNIT            = 17
 
 contains
 
@@ -56,6 +60,7 @@ subroutine DefineFileNames(pid)
   SaveDataFile_iZero    = MakeFullFileName('iZero.csv')
   SaveDataFile_nNonZero = MakeFullFileName('nNonZero.csv')
   SaveDataFile_market   = MakeFullFileName('market.csv')
+  ElasFile              = MakeFullFileName('elas.csv')
 
   write(TempFileName,'(A9,i4.4,a4)') 'MCResults',pid,'.txt'
   MC_FILE1      = MakeFullFileName(TempFileName)
@@ -520,4 +525,47 @@ subroutine WriteBayes(DINEST,ERREST,IVALID)
   close(BayesResults_UNIT)
   
 end subroutine WriteBayes
+
+subroutine WriteElasticities(elas)
+  implicit none
+  real(dp), intent(in) :: elas(:,:)
+
+  integer(i4b)         :: J,j1
+
+  open(UNIT = Elas_UNIT, &
+       FILE = Elas_FILE, &
+       ACTION = 'WRITE')
+  J = size(elas,1)
+  do j1=1,J
+    write(Elas_UNIT,534) elas(:,j1)
+  end do
+534 format(<parms%J>(g25.16,','))
+
+  close(Elas_UNIT)
+end subroutine WriteElasticities
+
+subroutine WriteDemandResults(p,NewQ,j1)
+  implicit none
+  real(dp), intent(in) :: p(:),NewQ(:,:)
+  integer(i4b), intent(in) :: j1
+
+  character(len=200)       :: ShortFileName
+  integer(i4b)             :: i1,np
+
+  write(ShortFileName,535) 'demand',j1,'.csv'
+535 format(a6,i2.2,a4)
+  DemandFile = MakeFullFileName(trim(ShortFileName))
+
+  open(unit = Demand_UNIT, &
+       File = DemandFile,  &
+       Action = 'WRITE')
+  np = size(p)
+  do i1,1,np
+    write(Demand_UNIT,536) p(i1),NewQ(i1,:)
+  end do
+536 format(7(g25.16,','))
+  close(Demand_Unit)
+
+end subroutine WriteDemandResults
+
 end module OutputModule

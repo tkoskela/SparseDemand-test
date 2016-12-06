@@ -1668,6 +1668,7 @@ subroutine AnalyseResults(IMC)
   call ComputeElasticities
 
 end subroutine AnalyseResults
+
 #endif
 
 subroutine ComputeInitialGuess(parms,iFree,x)
