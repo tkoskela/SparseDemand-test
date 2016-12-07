@@ -26,8 +26,13 @@ disp('\begin{center}');
 
 
 for j1=1:6
-    
+
+disp('\begin{table}[h]');
+disp(['\caption{Elasticities (',int2str(j1),')}']);
+disp(['\label{Table: elasticities ',int2str(j1),'}']);
+disp('\begin{center}');
 disp('\begin{tabular}{ccccc}');
+
 disp(['Price & ',q_labels{4*(j1-1)+1},' & ', ...
                  q_labels{4*(j1-1)+2},' & ', ...
                  q_labels{4*(j1-1)+3},' & ', ...
@@ -38,11 +43,11 @@ for i1=1:J
         num2str(elas(i1,4*(j1-1)+2)),' & ', ...
         num2str(elas(i1,4*(j1-1)+3)),' & ', ...
         num2str(elas(i1,4*(j1-1)+4)), ...
-        ' \\ \hline']);
+        ' \\ ']);
 end
 disp('\end{tabular}');
 disp('\end{center}');
-disp('\end{table}%');
+disp('\end{table}');
 disp('');
 disp('');
 disp('');
