@@ -533,18 +533,41 @@ subroutine WriteElasticities(elas)
   integer(i4b)         :: J,j1
 
   open(UNIT = Elas_UNIT, &
-       FILE = Elas_FILE, &
+       FILE = ElasFILE, &
        ACTION = 'WRITE')
   J = size(elas,1)
   do j1=1,J
     write(Elas_UNIT,534) elas(:,j1)
   end do
-534 format(<parms%J>(g25.16,','))
+534 format(<J>(g25.16,','))
 
   close(Elas_UNIT)
 end subroutine WriteElasticities
 
-subroutine WriteDemandResults(p,NewQ,j1)
+subroutine WriteDemandResults1(qdata,qhat,qaverage)
+  implicit none
+  real(dp), intent(in) :: qdata(:),qhat(:),qaverage(:)
+
+  character(len=200)       :: ShortFileName
+  integer(i4b)             :: J,i1
+
+  write(ShortFileName,*) 'demand_data.csv'
+  DemandFile = MakeFullFileName(trim(ShortFileName))
+
+  open(unit = Demand_UNIT, &
+       File = DemandFile,  &
+       Action = 'WRITE')
+  J = size(qdata)
+  do i1=1,J
+    write(Demand_UNIT,562) qdata(i1),qhat(i1),qaverage(i1)
+  end do
+562 format(3(g25.16,','))
+  close(Demand_Unit)
+
+end subroutine WriteDemandResults1
+
+
+subroutine WriteDemandResults2(p,NewQ,j1)
   implicit none
   real(dp), intent(in) :: p(:),NewQ(:,:)
   integer(i4b), intent(in) :: j1
@@ -560,12 +583,12 @@ subroutine WriteDemandResults(p,NewQ,j1)
        File = DemandFile,  &
        Action = 'WRITE')
   np = size(p)
-  do i1,1,np
+  do i1=1,np
     write(Demand_UNIT,536) p(i1),NewQ(i1,:)
   end do
 536 format(7(g25.16,','))
   close(Demand_Unit)
 
-end subroutine WriteDemandResults
+end subroutine WriteDemandResults2
 
 end module OutputModule

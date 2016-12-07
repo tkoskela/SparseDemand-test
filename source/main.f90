@@ -10,7 +10,7 @@ program SparseDemand
                                DeallocateGlobalVariables,         &
                                MasterID,nWorkers
   use OutputModule,     only : DefineFileNames
-  use LikelihoodModule, only : RunMonteCarlo
+  use LikelihoodModule, only : RunMonteCarlo,AnalyseResults
 
 #if USE_MPI==1
   use GlobalModule,     only : BroadcastParameters
@@ -94,8 +94,14 @@ program SparseDemand
     call ComputeNMC(pid,HHData%NMC,IMC1,IMC2)
   end if
 
-  call RunMonteCarlo(IMC1,IMC2,pid)
-
+  if (ControlOptions%TestLikeFlag<=4) then 
+    ! Estimate model
+    call RunMonteCarlo(IMC1,IMC2,pid)
+  elseif (ControlOptions%TestLikeFlag==5) then
+    ! analyse results
+    IMC1 = 1
+    call AnalyseResults(IMC1)
+  end if
   call DeallocateGlobalVariables
 
 #if USE_MPI==1

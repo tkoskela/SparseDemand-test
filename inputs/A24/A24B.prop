@@ -34,7 +34,7 @@ small : 1.0d-50     # small number to prevent log of zero
 # J     = number of products
 # K     = dimension of demand system
 NMC   : 1
-N     : 1000
+N     : 10000
 M     : 200
 J     : 24
 K     : 5
@@ -118,16 +118,16 @@ BC_hi : 0.95   # maximum value of BC
 # select subsets of parameter to be free
 FreeFlagD           : 0   # 1 to be free, 0 to be fixed
 FreeFlagBC          : 0   # 1 to be free, 0 to be fixed
-FreeFlagMUE         : 0   # 1 to be free, 0 to be fixed
+FreeFlagMUE         : 1   # 1 to be free, 0 to be fixed
 FreeFlagInvCDiag    : 1   # 1 to be free, 0 to be fixed
 FreeFlagInvCOffDiag : 1   # 1 to be free, 0 to be fixed
 
-FreeFlagBD_beta     : 0
-FreeFlagBD_CDiag    : 0
-FreeFlagBD_COffDiag : 0
-FreeFlagBC_beta     : 0
-FreeFlagBC_CDiag    : 0
-FreeFlagBC_COffDiag : 0
+FreeFlagBD_beta     : 1
+FreeFlagBD_CDiag    : 1
+FreeFlagBD_COffDiag : 1
+FreeFlagBC_beta     : 1
+FreeFlagBC_CDiag    : 1
+FreeFlagBC_COffDiag : 1
 
 # Parameter file names
 MUE_FILE : A/MUE.raw
