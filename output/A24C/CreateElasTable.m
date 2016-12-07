@@ -18,14 +18,10 @@ disp('\date{}');
 disp('');
 disp('\begin{document}');
 disp('\maketitle');
-disp('');
-disp('\begin{table}[h]');
-disp('\caption{Elasticities}');
-disp('\label{Table: elasticities}');
-disp('\begin{center}');
 
 
 for j1=1:6
+disp('');
 
 disp('\begin{table}[h]');
 disp(['\caption{Elasticities (',int2str(j1),')}']);
