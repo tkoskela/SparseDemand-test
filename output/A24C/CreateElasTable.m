@@ -21,8 +21,8 @@ disp('\maketitle');
 
 
 for j1=1:6
-disp('');
 
+disp('');
 disp('\begin{table}[h]');
 disp(['\caption{Elasticities (',int2str(j1),')}']);
 disp(['\label{Table: elasticities ',int2str(j1),'}']);
