@@ -16,7 +16,8 @@ module GlobalModule
     character(len=99) :: BD_beta,BD_CDiag,BD_COffDiag
   end type
   type(FilenameStructure) :: ParmFiles
-
+  character(len=99)       :: BasePriceFile
+ 
   type ResultStructure
     real(dp)     :: BIC
     real(dp)     :: MinEigHess
@@ -878,6 +879,10 @@ subroutine InitializeParameters(InputFile)
 
    ! Raw data file
    ErrFlag = GetVal(PropList,'RawData_FILE',HHData%RawDataFile)
+
+   ! file containing base price information to use in analysis
+   ErrFlag = GetVal(PropList,'BasePriceFile',BasePriceFile)
+   BasePriceFile = trim(InputDir) // '/' // trim(BasePriceFile)
 
    ! Parameter filenames
    ErrFlag = GetVal(PropList,'MUE_FILE',ParmFiles%MUE)
@@ -2086,5 +2091,24 @@ subroutine CopyParameters(parms_in,parms_out)
   end if ! if (parms_out%model==2) then
 
 end subroutine CopyParameters
+
+subroutine LoadBasePrice(p0)
+  implicit none
+  real(dp), intent(out) :: p0(:)
+  integer(i4b) :: i1
+  integer(i4b) :: BasePriceUnit
+ 
+  BasePriceUnit = 100
+ 
+  open(unit = BasePriceUnit, &
+       file = BasePriceFile, &
+       action = 'read')
+
+  do i1=1,parms%J
+    read(BasePriceUnit,'(d25.16)') p0(i1)
+  end do
+
+  close(BasePriceUnit)
+end subroutine LoadBasePrice
 
 end module GlobalModule
