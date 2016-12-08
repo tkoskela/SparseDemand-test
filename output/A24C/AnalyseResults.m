@@ -1,7 +1,7 @@
 [qdata,qhat,qaverage] = ImportDemandData('demand_data.csv', 1, 24);
 
 fig1=1;
-FontSize = 12;
+FontSize = 16;
 
 % Plot qdata vs qhat
 % Plot qhat vs qaverage
@@ -15,7 +15,7 @@ subplot(2,1,2)
 plot(qhat,qaverage,'.')
 xlabel('Actual prices','FontSize',FontSize);
 ylabel('Average prices','FontSize',FontSize);
-print(fig1,'fig0.eps','-depsc');
+print(fig1,'fig0_model_fit.eps','-depsc');
 
 
 % for each product, plot demand
@@ -55,6 +55,7 @@ for j1=1:J
   else
     str1 = ['demand',int2str(j1),'.csv'];
   end
+  str2 = sprintf('%c%c%c%c',FruitLabels{j1});
   [price(:,j1),      ...
    quantity(:,1,j1), ...
    quantity(:,2,j1), ...
@@ -64,17 +65,28 @@ for j1=1:J
    quantity(:,6,j1)] = ImportDemandData2(str1, 1, np);
    fig1=fig1+1;
    figure(fig1)
-   subplot(2,1,1)
-   plot(price(:,j1),quantity(:,1,j1))
-   title(['Demand for ',FruitLabels{j1}],'FontSize',FontSize);
-   xlabel('price','FontSize',FontSize)
-   ylabel('quantity','FontSize',FontSize)
-   subplot(2,1,2)
-   plot(price(:,j1),reshape(quantity(:,2:K+1,j1),[np K]));
-   legend('One item','Two items','Three items','Four items','Five items')
-   print(fig1,['fig',int2str(j1),'.eps'],'-depsc');
+   
+   NewPlotFlag=1;
+   if NewPlotFlag==0   
+     subplot(2,1,1)
+     plot(price(:,j1),quantity(:,1,j1))
+     title(['Demand for ',FruitLabels{j1}],'FontSize',FontSize);
+     xlabel('price','FontSize',FontSize)
+     ylabel('quantity','FontSize',FontSize)
+     subplot(2,1,2)
+     plot(price(:,j1),reshape(quantity(:,2:K+1,j1),[np K]));
+     legend('One item','Two items','Three items','Four items','Five items')
+     print(fig1,['fig',int2str(j1),'_',str2,'.eps'],'-depsc');
+   elseif NewPlotFlag==1
+     area(price(:,j1),quantity(:,2:K+1,j1))
+     title(['Demand for ',FruitLabels{j1}],'FontSize',FontSize);
+     xlabel('price','FontSize',FontSize)
+     ylabel('quantity','FontSize',FontSize)
+     legend('One item','Two items','Three items','Four items','Five items')
+     print(fig1,['fig',int2str(j1),'_',str2,'.eps'],'-depsc');
+   end
 end
 
 % Load elasticities
 elas = ImportElasticity('elas.csv', 1, J);
-CreateElasTable('elas.tex',elas,FruitLabels);
+CreateElasTable('elas1.tex',elas,FruitLabels);
