@@ -24,7 +24,7 @@ program SparseDemand
   integer(i4b)      :: IMC1,IMC2
 
   ! variables used to control command inputs
-  integer(i4b), parameter         :: MaxArgLength=30  ! maximum length of command line arguments
+  integer(i4b), parameter         :: MaxArgLength=200  ! maximum length of command line arguments
   character(len=MaxArgLength)     :: InputFile        ! name of input file
 
   ! MPI variables : USE_MPI==1 version

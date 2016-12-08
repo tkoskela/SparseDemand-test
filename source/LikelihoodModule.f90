@@ -1674,7 +1674,7 @@ subroutine ComputeElasticities
   use nrtype
   use GlobalModule, only : parms,HHData,ControlOptions,InputDir, &
                            DataStructure,AllocateLocalHHData,    &
-                           DeallocateLocalHHData
+                           DeallocateLocalHHData,LoadBasePrice
   use nag_library, only  : G05KFF,G05RZF,G05SAF
   use OutputModule, only : WriteElasticities,WriteDemandResults1,WriteDemandResults2
   implicit none
@@ -1684,10 +1684,10 @@ subroutine ComputeElasticities
 
   ! variables to compute demand
   real(dp)                  :: h
-  real(dp), allocatable     :: q0(:),q1(:),qdata(:),qhat(:)
+  real(dp), allocatable     :: q0(:),q1(:),qdata(:),qhat(:),ExcessQ(:)
   real(dp), allocatable     :: GradQ(:,:)
   real(dp), allocatable     :: elas(:,:)
-  real(dp), allocatable     :: newQ(:,:),p(:)
+  real(dp), allocatable     :: newQ(:,:),p(:),p0(:)
   integer(i4b)              :: np
 
   ! initialize random number generator
@@ -1759,6 +1759,8 @@ subroutine ComputeElasticities
   ! Aggregate demand from data
   ! baseline demand
   allocate(q0(Parms%J),q1(parms%J),qdata(parms%J),qhat(parms%j))
+  allocate(ExcessQ(parms%J))
+  allocate(p0(parms%J))
   q0 = 0.0d0
   q1 = 0.0d0
   qdata=0.0d0
@@ -1773,11 +1775,14 @@ subroutine ComputeElasticities
   call ComputeAggregateDemand(HHData0%q,HHData0%iNonZero,qhat,HHData0%nNonZero,0)
 
   ! set price = average price
-  HHData0%p = spread(sum(HHData%p,2)/real(HHData0%n,8),2,HHData0%N)
+  call LoadBasePrice(p0)
+  HHData0%p = spread(sum(HHData%p,2)/real(HHData%n,dp)+p0,2,HHData0%N)
   ! Compute baseline demand
   call ComputeDemand(HHData0)
   call ComputeAggregateDemand(HHData0%q,HHData0%iNonZero,q0,HHData0%nNonZero,0)
+  deallocate(p0)
 
+  ExcessQ = q0-qdata
   call WriteDemandResults1(qdata,qhat,q0)
 
   ! copy exogenous variables from HHData0 to HHData1
@@ -1830,7 +1835,7 @@ subroutine ComputeElasticities
   ! deallocate memory for HHData0
   call DeallocateLocalHHData(HHData0)
   call DeallocateLocalHHData(HHData1)
-  deallocate(q0,q1,GradQ)
+  deallocate(q0,q1,GradQ,ExcessQ)
   deallocate(qdata,qhat)
   deallocate(newq)
 

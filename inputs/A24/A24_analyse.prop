@@ -142,4 +142,5 @@ BC_COFFDIAG_FILE : C/BC_COffDiag.raw
 BD_BETA_FILE : C/BD_beta.raw
 BD_CDIAG_FILE : C/BD_CDiag.raw
 BD_COFFDIAG_FILE : C/BD_COffDiag.raw
+BasePriceFile : analyse2/BasePriceFile.raw
 

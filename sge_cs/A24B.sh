@@ -9,7 +9,7 @@
 # ,hostname=burns-*
 #$ -l hostname=burns*
 #$ -R y
-#$ -pe orte 128
+#$ -pe orte 300
 
 cd /home/uctpln0/FruitDemand/code/fortran/source
 source /home/uctpln0/GeneralCode/config/SetEnv.sh
