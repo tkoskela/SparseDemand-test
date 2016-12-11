@@ -53,7 +53,7 @@ InitialGuess1_FILE : InitialGuess1.txt
 InitialGuess2_FILE : InitialGuess2.txt
 
 #            : 01
-MaxAlgorithm : 3 # 1 = E04WDF gradient based, dense
+MaxAlgorithm : 1 # 1 = E04WDF gradient based, dense
                  # 2 = E04VHF gradient based,sparse
                  # 3 = E04JCF,non-gradient based
                  # 4 = E04JYF, 5 = E04CBF
@@ -127,3 +127,17 @@ FreeFlagBC_beta     : 1
 FreeFlagBC_CDiag    : 1
 FreeFlagBC_COffDiag : 0
 
+# Parameter file names
+MUE_FILE : A/MUE.raw
+INVCDIAG_FILE : A/INVCDiag.raw
+INVCOFFDIAG_FILE : A/INVCOffDiag.raw
+C_FILE : A/C.raw
+D_FILE : A/D.raw
+BC_BETA_FILE : A/BC_beta.raw
+BC_CDIAG_FILE : A/BC_CDiag.raw
+BC_COFFDIAG_FILE : A/BC_COffDiag.raw
+BD_BETA_FILE : A/BD_beta.raw
+BD_CDIAG_FILE : A/BD_CDiag.raw
+BD_COFFDIAG_FILE : A/BD_COffDiag.raw
+
+BasePriceFile : analyse2/BasePriceFile.raw
