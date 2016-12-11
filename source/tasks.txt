@@ -1,11 +1,35 @@
-1) complete move of (BL,BU) to .prop file
-2) test MPI
-3) gradient of likelihood function
-4) RunMonteCarlo:   some of this should only be executed by MasterProcess
-5) knitro
+1) check for convergence
+   a) restart from final point and check
+   b) plot likelihood function
+   c) estimate with monte carlo data
+   d) estimate with J=3, K=2
+   e) what else
+2) are elasticities sensible
+   a) estimate logit
+   b) estimate AIDS on 3-5 top goods
+   c) estimate model on 3-5 top goods
+   d) compute quantiles of B matrix
+   e) do big elasticities make sense
+3) add income effects
+4) bootstrap
+5) policy experiemnts
+   a) subsidy to fruit
+   b) impact of brexit tariff on price or brexit induced exchange rate on
+   c) 
+6) why are complementarities important
+   a) impossible cross-price elasticiites
+   b) 
+7) identification with parametric random B and nonparametric e
+8) dimension of eta = 3
+9) K = 4 or 6
+10) gradient of likelihood function
+11) knitro
 
 Completed
 1) check each subroutine
 2) plot Like1 as func of each x
 2b) constraints
+3) complete move of (BL,BU) to .prop file
+4) test MPI
+5) RunMonteCarlo:   some of this should only be executed by MasterProcess
 

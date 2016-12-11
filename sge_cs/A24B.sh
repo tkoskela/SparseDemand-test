@@ -6,10 +6,9 @@
 #$ -cwd
 #$ -l tmem=4G,h_vmem=4G
 #$ -l h_rt=24:0:0
-# ,hostname=burns-*
 #$ -l hostname=burns*
 #$ -R y
-#$ -pe orte 300
+#$ -pe orte 128
 
 cd /home/uctpln0/FruitDemand/code/fortran/source
 source /home/uctpln0/GeneralCode/config/SetEnv.sh
@@ -21,7 +20,8 @@ date
 #mpirun -np $NSLOTS SparseDemand_mpi.exe ../inputs/A24/A24A.prop
 #mpirun --mca btl_tcp_if_include 128.41.96.0/21 -np $NSLOTS SparseDemand_mpi.exe ../inputs/A24/A24B.prop
 which mpirun
-mpirun --mca btl_tcp_if_include 10.0.0.0/8 -np $NSLOTS SparseDemand_mpi.exe ../inputs/A24/A24B.prop
+mpirun --mca btl_tcp_if_include 10.0.0.0/8 --mca mpi_preconnect_mpi 1 -np $NSLOTS SparseDemand_mpi.exe ../inputs/A24/A24B.prop
+#mpirun --mca btl_tcp_if_include eth1 -np $NSLOTS SparseDemand_mpi.exe ../inputs/A24/A24B.prop
 date
 
 # --mca btl_base_verbose 30

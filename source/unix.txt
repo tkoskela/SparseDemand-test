@@ -1,0 +1,11 @@
+ifconfig    see netowrk connections
+tail out.txt -f    see end of file
+cat 
+awk
+
+
+
+
+mpi options
+--mca mpi_preconnect_all 1
+btl_tcp_if_include eth0,self
