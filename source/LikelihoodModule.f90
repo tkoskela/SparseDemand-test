@@ -3176,7 +3176,7 @@ subroutine PlotLike(LikeFunc,nx,x,xlabels,xlo,xhi,nstate,iuser,ruser)
   integer(i4b)          :: ix,i1,n,mode
   real(dp), allocatable :: x1(:),xplot(:,:),L(:,:),GradL(:)
   integer(i4b)          :: plot_unit
-  character(30)         :: plot_file
+  character(200)        :: plot_file
   ! 
   plot_unit = 50
   plot_file = trim(OutDir) // '/LikeData.txt' 

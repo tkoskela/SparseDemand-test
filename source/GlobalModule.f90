@@ -1243,7 +1243,7 @@ subroutine InitializeParameters(InputFile)
                           parms%GradBD_C_COffDiag,parms%GradBD_C_CDiag)
       parms%BD_C = transpose(temp2)
       deallocate(temp2)
-      print *,'Warning: Gradient of SphereToMatrix has not been updated to reflect transpose.'
+      !print *,'Warning: Gradient of SphereToMatrix has not been updated to reflect transpose.'
 
       ! Compute parms%BC_C
       ! size(BC_C) = (nBC x dim_eta)
@@ -1257,7 +1257,7 @@ subroutine InitializeParameters(InputFile)
                           parms%GradBC_C_COffDiag,parms%GradBC_C_CDiag)
       parms%BC_C = transpose(temp2)
       deallocate(temp2)
-      print *,'Warning: Gradient of SphereToMatrix has not been updated to reflect transpose.'
+      !print *,'Warning: Gradient of SphereToMatrix has not been updated to reflect transpose.'
 
       ! Compute parms%BD_z  (J x BD_z_dim) matrix
       !  default = identity matrix
@@ -1559,14 +1559,17 @@ end subroutine DefineIntegrationNodes
 #if USE_MPI==1
 subroutine BroadcastParameters(pid)
   use mpi
+  use IFPORT
   implicit none
   integer(i4b), intent(in)  :: pid
-  integer(i4b)              :: ierr(30),i1,i2,nerr
+  integer(i4b)              :: ierr(30),i1,i2,nerr,ierr_barrier
   integer(i4b), allocatable :: ierr_quad(:),ierr_B(:)
   integer(i4b)              :: n,d  ! size of matrix for RandomB and RandomD
 
   ! Broadcast OutDir and Control Flags
   ierr = 0
+  !call sleep(10)
+  call mpi_barrier(MPI_COMM_WORLD,ierr_barrier)
   call mpi_bcast(OutDir,len(OutDir),MPI_CHARACTER,MasterID,MPI_COMM_WORLD,ierr(1))
   call mpi_bcast(ControlOptions%OutputFlag,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr(2))
   call mpi_bcast(ControlOptions%TestLikeFlag,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr(3))
@@ -1600,7 +1603,7 @@ subroutine BroadcastParameters(pid)
   call mpi_bcast(HHData%M,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr(24))
 
   ! allocate memory for (b,CDiag,COffDiag,xData,iXData)
-  !  (this has already been done by pdi==MasterID)
+  !  (this has already been done by pid==MasterID)
   if (pid>MasterID) then
     call AllocateGlobalVariables
   end if
@@ -1609,9 +1612,8 @@ subroutine BroadcastParameters(pid)
 1568 format(a4,i4,24i3)
 
   ! broadcast the other parameters in parms
-  call mpi_barrier(MPI_COMM_WORLD,ierr(30))
+  call mpi_barrier(MPI_COMM_WORLD,ierr_barrier)
   call BroadcastParms(parms,pid)
-  call mpi_barrier(MPI_COMM_WORLD,ierr(30))
 
   ! broadcast information on integration rule
   call mpi_bcast(IntRule%flag,parms%K,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr(25))
@@ -1624,11 +1626,13 @@ subroutine BroadcastParameters(pid)
     ! rule(i1)%nodes
     ! rule(i1)%weights
     ! rule(i1)%nQuad
+    call mpi_barrier(MPI_COMM_WORLD,ierr_barrier)
     if (pid>MasterID) then
       allocate(IntRule%rule(i1)%nQuad(i1))
       allocate(IntRule%rule(i1)%nodes(IntRule%nAll(i1),i1))
       allocate(IntRule%rule(i1)%weights(IntRule%nAll(i1)))
     end if
+    call mpi_barrier(MPI_COMM_WORLD,ierr_barrier)
     call mpi_bcast(IntRule%rule(i1)%nQuad,i1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr_quad(i1))
     call mpi_bcast(IntRule%rule(i1)%weights,IntRule%nAll(i1),MPI_DOUBLE_PRECISION, &
                 MasterID,MPI_COMM_WORLD,ierr_quad(parms%K+i1))
@@ -1640,7 +1644,7 @@ subroutine BroadcastParameters(pid)
   print 1596,'ierr_quad',pid,ierr(25:26),ierr_quad
 1596 format(a10,i4,2i3,<nerr>i3)
   deallocate(ierr_quad)
-  call mpi_barrier(MPI_COMM_WORLD,ierr(30))
+  call mpi_barrier(MPI_COMM_WORLD,ierr_barrier)
 
   ! broadcast information on integration rule for RandomB
   call mpi_bcast(RandomB%nall,1,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr(27))
@@ -1657,7 +1661,8 @@ subroutine BroadcastParameters(pid)
     allocate(RandomB%weights(n))
     allocate(RandomB%nQuad(d))
   end if
-  
+ 
+  call mpi_barrier(MPI_COMM_WORLD,ierr_barrier) 
   call mpi_bcast(RandomB%weights,n,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr_B(1))
   call mpi_bcast(RandomB%nQuad,d,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr(2))
   do i1=1,d
@@ -1666,7 +1671,7 @@ subroutine BroadcastParameters(pid)
   print 1619,'ierr_B',pid,ierr_B
 1619 format(a7,i4,<d+2>i3)
   deallocate(ierr_B)
-  call mpi_barrier(MPI_COMM_WORLD,ierr(30))
+  call mpi_barrier(MPI_COMM_WORLD,ierr_barrier)
 end subroutine BroadcastParameters
 
 subroutine BroadcastParms(LocalParms,pid)
@@ -1674,15 +1679,17 @@ subroutine BroadcastParms(LocalParms,pid)
   implicit none
   type(ParmsStructure), intent(inout) :: LocalParms
   integer(i4b), intent(in)            :: pid
-  integer(i4b)                        :: i1,nerr
+  integer(i4b)                        :: i1,nerr,ierr_barrier
   integer(i4b), allocatable           :: ierr(:)
 
   allocate(ierr(5*LocalParms%J+3*LocalParms%K+11))
   ierr = 0
   ! broadcast b,CDiag,COffDiag
+  call mpi_barrier(MPI_COMM_WORLD,ierr_barrier)
   call mpi_bcast(LocalParms%D,LocalParms%J,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(1))
   call mpi_bcast(LocalParms%BC,LocalParms%nBC,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(2))
   do i1=1,LocalParms%J
+    call mpi_barrier(MPI_COMM_WORLD,ierr_barrier)
     call mpi_bcast(LocalParms%B(:,i1),LocalParms%K,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(2+i1))
   end do
 
@@ -1693,6 +1700,7 @@ subroutine BroadcastParms(LocalParms,pid)
   call mpi_bcast(LocalParms%InvCOffDiag,LocalParms%K*(LocalParms%K-1)/2,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(nerr+3))
   nerr = nerr+3
   do i1=1,LocalParms%k
+    call mpi_barrier(MPI_COMM_WORLD,ierr_barrier)
     call mpi_bcast(LocalParms%InvC(:,i1),LocalParms%K,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(nerr+i1))
     call mpi_bcast(LocalParms%CSig(:,i1),LocalParms%K,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(nerr+Localparms%K+i1))
     call mpi_bcast(LocalParms%Sig(:,i1),LocalParms%K,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(nerr+2*Localparms%K+i1))
@@ -1700,26 +1708,32 @@ subroutine BroadcastParms(LocalParms,pid)
   nerr = nerr+3*LocalParms%K
 
   if (LocalParms%model==2) then
+    call mpi_barrier(MPI_COMM_WORLD,ierr_barrier)
     call mpi_bcast(LocalParms%BD_beta,LocalParms%J,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(nerr+1))
     call mpi_bcast(LocalParms%BD_CDiag,LocalParms%J,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(nerr+2))
     call mpi_bcast(LocalParms%BD_COffDiag,LocalParms%nBD_COffDiag,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(nerr+3))
     nerr = nerr+3
     do i1=1,LocalParms%dim_eta
+      call mpi_barrier(MPI_COMM_WORLD,ierr_barrier)
       call mpi_bcast(LocalParms%BD_C(:,i1),LocalParms%J,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(nerr+i1))
     end do
     nerr = nerr+LocalParms%dim_eta
+      call mpi_barrier(MPI_COMM_WORLD,ierr_barrier)
     call mpi_bcast(LocalParms%BC_beta,LocalParms%nBC,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(nerr+1))
     call mpi_bcast(LocalParms%BC_CDiag,LocalParms%nBC,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(nerr+2))
     call mpi_bcast(LocalParms%BC_COffDiag,LocalParms%nBC_COffDiag,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(nerr+3))
     do i1=1,LocalParms%dim_eta
+      call mpi_barrier(MPI_COMM_WORLD,ierr_barrier)
       call mpi_bcast(LocalParms%BC_C(:,i1),LocalParms%dim_eta,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(nerr+3+i1))
     end do
     nerr = nerr + 3 + LocalParms%dim_eta
     do i1=1,LocalParms%BD_Z_dim
+      call mpi_barrier(MPI_COMM_WORLD,ierr_barrier)
       call mpi_bcast(LocalParms%BD_Z(:,i1),LocalParms%J,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(nerr+i1))
     end do
     nerr = nerr + LocalParms%BD_Z_dim
     do i1=1,LocalParms%BC_Z_dim
+      call mpi_barrier(MPI_COMM_WORLD,ierr_barrier)
       call mpi_bcast(LocalParms%BC_Z(:,i1),LocalParms%nBC,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(nerr+i1))
     end do
   end if
@@ -1735,6 +1749,7 @@ subroutine BroadcastIFree(pid)
   integer(i4b), intent(in) :: pid
   integer(i4b) :: ierr
 
+  call mpi_barrier(MPI_COMM_WORLD,ierr)
   call mpi_bcast(iFree%flagD,1,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
   call mpi_bcast(iFree%flagBC,1,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
   call mpi_bcast(iFree%flagMUE,1,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
@@ -1764,11 +1779,13 @@ subroutine BroadcastIFree(pid)
     
   call mpi_bcast(iFree%nAll,1,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
 
+  call mpi_barrier(MPI_COMM_WORLD,ierr)
   if (iFree%nD>0) then
     if (pid>MasterID .and. .not. allocated(iFree%d)) then
       allocate(iFree%D(iFree%nD))
       allocate(iFree%xD(iFree%nD))
     end if
+    call mpi_barrier(MPI_COMM_WORLD,ierr)
     call mpi_bcast(iFree%D,iFree%nD,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
     call mpi_bcast(iFree%xD,iFree%nD,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
   end if
@@ -1778,6 +1795,7 @@ subroutine BroadcastIFree(pid)
       allocate(iFree%BC(iFree%nBC))
       allocate(iFree%xBC(iFree%nBC))
     end if
+    call mpi_barrier(MPI_COMM_WORLD,ierr)
     call mpi_bcast(iFree%BC,iFree%nBC,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
     call mpi_bcast(iFree%xBC,iFree%nBC,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
   end if
@@ -1787,6 +1805,7 @@ subroutine BroadcastIFree(pid)
       allocate(iFree%MuE(iFree%nMuE))
       allocate(iFree%xMuE(iFree%nMuE))
     end if
+    call mpi_barrier(MPI_COMM_WORLD,ierr)
     call mpi_bcast(iFree%MuE,iFree%nMuE,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
     call mpi_bcast(iFree%xMuE,iFree%nMuE,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
   end if
@@ -1796,6 +1815,7 @@ subroutine BroadcastIFree(pid)
       allocate(iFree%InvCDiag(iFree%nInvCDiag))
       allocate(iFree%xInvCDiag(iFree%nInvCDiag))
     end if
+    call mpi_barrier(MPI_COMM_WORLD,ierr)
     call mpi_bcast(iFree%InvCDiag,iFree%nInvCDiag,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
     call mpi_bcast(iFree%xInvCDiag,iFree%nInvCDiag,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
   end if
@@ -1805,6 +1825,7 @@ subroutine BroadcastIFree(pid)
       allocate(iFree%InvCOffDiag(iFree%nInvCOffDiag))
       allocate(iFree%xInvCOffDiag(iFree%nInvCOffDiag))
     end if
+    call mpi_barrier(MPI_COMM_WORLD,ierr)
     call mpi_bcast(iFree%InvCOffDiag,iFree%nInvCOffDiag,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
     call mpi_bcast(iFree%xInvCOffDiag,iFree%nInvCOffDiag,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
   end if
@@ -1814,6 +1835,7 @@ subroutine BroadcastIFree(pid)
       allocate(iFree%BD_beta(iFree%nBD_beta))
       allocate(iFree%xBD_beta(iFree%nBD_beta))
     end if
+    call mpi_barrier(MPI_COMM_WORLD,ierr)
     call mpi_bcast(iFree%BD_beta,iFree%nBD_beta,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
     call mpi_bcast(iFree%xBD_beta,iFree%nBD_beta,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
   end if
@@ -1823,6 +1845,7 @@ subroutine BroadcastIFree(pid)
       allocate(iFree%BD_CDiag(iFree%nBD_CDiag))
       allocate(iFree%xBD_CDiag(iFree%nBD_CDiag))
     end if
+    call mpi_barrier(MPI_COMM_WORLD,ierr)
     call mpi_bcast(iFree%BD_CDiag,iFree%nBD_CDiag,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
     call mpi_bcast(iFree%xBD_CDiag,iFree%nBD_CDiag,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
   end if
@@ -1832,6 +1855,7 @@ subroutine BroadcastIFree(pid)
       allocate(iFree%BD_COffDiag(iFree%nBD_COffDiag))
       allocate(iFree%xBD_COffDiag(iFree%nBD_COffDiag))
     end if
+    call mpi_barrier(MPI_COMM_WORLD,ierr)
     call mpi_bcast(iFree%BD_COffDiag,iFree%nBD_COffDiag,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
     call mpi_bcast(iFree%xBD_COffDiag,iFree%nBD_COffDiag,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
   end if
@@ -1841,6 +1865,7 @@ subroutine BroadcastIFree(pid)
       allocate(iFree%BC_beta(iFree%nBC_beta))
       allocate(iFree%xBC_beta(iFree%nBC_beta))
     end if
+    call mpi_barrier(MPI_COMM_WORLD,ierr)
     call mpi_bcast(iFree%BC_beta,iFree%nBC_beta,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
     call mpi_bcast(iFree%xBC_beta,iFree%nBC_beta,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
   end if
@@ -1850,6 +1875,7 @@ subroutine BroadcastIFree(pid)
       allocate(iFree%BC_CDiag(iFree%nBC_CDiag))
       allocate(iFree%xBC_CDiag(iFree%nBC_CDiag))
     end if
+    call mpi_barrier(MPI_COMM_WORLD,ierr)
     call mpi_bcast(iFree%BC_CDiag,iFree%nBC_CDiag,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
     call mpi_bcast(iFree%xBC_CDiag,iFree%nBC_CDiag,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
   end if
@@ -1859,6 +1885,7 @@ subroutine BroadcastIFree(pid)
       allocate(iFree%BC_COffDiag(iFree%nBC_COffDiag))
       allocate(iFree%xBC_COffDiag(iFree%nBC_COffDiag))
     end if
+    call mpi_barrier(MPI_COMM_WORLD,ierr)
     call mpi_bcast(iFree%BC_COffDiag,iFree%nBC_COffDiag,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
     call mpi_bcast(iFree%xBC_COffDiag,iFree%nBC_COffDiag,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
   end if
@@ -1969,7 +1996,7 @@ subroutine ReadWriteParameters(LocalParms,LocalAction)
   case ('write')
 
     ! (model,K,J,nBC)
-    write(LocalParms%unit,*) 'model','K','J','nBC'
+    write(LocalParms%unit,*) 'model,K,J,nBC'
     write(LocalParms%unit,101) LocalParms%model,LocalParms%K,LocalParms%J,LocalParms%nBC
 
     ! B  (K x J)

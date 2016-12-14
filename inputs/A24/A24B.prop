@@ -20,9 +20,8 @@ OutDir : ../output/A24B
 #OutDir: /SAN/economics/Nesheim-IO/FruitDemand/output
 InputDir: /home/uctpln0/FruitDemand/code/fortran/inputs/A24
  
-#           0101    # HotStart(1):  0 for default value, 2 to load from file
-#                                   2 to load (beta,C) from data 
-HotStart  : 0 0     # HotStart(2):  0 for default, 1 to use beta from model 1
+#           01      # HotStart:     0 for default value, 1 to load from file
+HotStart  : 1 
 InitialModel : 2    # first model to estimate
 FinalModel   : 2    # last model to estimate
 small : 1.0d-50     # small number to prevent log of zero
