@@ -7,11 +7,11 @@
 #$ -R y
 #$ -cwd
 #$ -V
-#$ -t 1-200
+#$ -t 1-401
 #$ -l tmem=2.4G,h_vmem=2.4G
 #$ -l h_rt=48:0:0
-##£,hostname=burns-*
-##$ -pe orte 40
+##,hostname=burns-*
+##$ -pe orte 401
 ##  -terse  -R y -t 1-$np -V $res_list 
 
 cd /home/uctpln0/FruitDemand/code/fortran/source

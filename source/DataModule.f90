@@ -283,7 +283,12 @@ subroutine ComputeCurrentB(eta,parms)
                                   + dot_product(parms%BC_C(i1,:),eta),ifail)
   end do
   call SphereToMatrix(BC,D,parms%K,parms%J,parms%B,GradBC,GradBD)
-  
+  if (any(isnan(parms%B))) then
+    print *, "Some values of B are NAN."
+    print *,"BC = ",BC
+    print *,"D = ",D
+    print *,"B = ",parms%B
+  end if
   deallocate(GradBC,GradBD)
   deallocate(BC,D)
 end subroutine ComputeCurrentB

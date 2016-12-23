@@ -1583,7 +1583,9 @@ subroutine RunMonteCarlo(IMC1,IMC2,pid)
 
 #if USE_MPI==1
   call BroadcastParms(parms,pid)
+  print *,'pid = ',pid,'Broadcastparms complete.'
   call BroadcastIFree(pid)
+  print *,'pid = ',pid,'BroadcastIFree complete.'
 #endif
 
   ! copy true parameters from parms to parms0
@@ -2333,9 +2335,9 @@ subroutine MaximizeLikelihood1(x,LValue,Grad,Hess,ierr)
 #if USE_MPI==1
   use mpi
 #endif
-  use GlobalModule, only : ControlOptions,parms,InputDir,OutDir,MasterID,HHData,iFree
-  use nag_library, only : E04WCF,E04WDF,E04WDP,E04WEF,E04WFF, &
-                          X04AAF,X04ABF,X04ACF,X04ADF
+  use GlobalModule, only : ControlOptions,parms,InputDir,OutDir,MasterID,HHData,iFree,MaxOptions
+  use nag_library,  only : E04WCF,E04WDF,E04WDP,E04WEF,E04WFF, &
+                           X04AAF,X04ABF,X04ACF,X04ADF
 !  use LikelihoodModule2, only : LikeFunc,DummyConFunc
   ! E04WCF		! initialisation routine for E04WDF
   ! E04WDF  	! constrained optimisation
@@ -2397,11 +2399,6 @@ subroutine MaximizeLikelihood1(x,LValue,Grad,Hess,ierr)
   REAL(DP)                    :: RUSER(1)
   INTEGER(I4B)                :: iuser(2)
 
-  ! Control parameter for saving intermediate results
-  !   0 DO NOT SAVE intermediate results
-  !   1 SAVE intermediate results
-  integer(i4b), parameter     :: NAG_SAVE=0    
-
   ! used to test NAGConstraintWrapper
   integer(i4b)                :: mode_constraint
   integer(i4b), allocatable   :: needc(:)
@@ -2446,7 +2443,6 @@ subroutine MaximizeLikelihood1(x,LValue,Grad,Hess,ierr)
   ! linear constraints:   BL <= A*x <= BU
   !     NONE
   !  A is not referenced when nclin==0
-		 
   ! lower and upper bounds on xFree 
   BL = -5.0d0
   !-huge(1.0d0)
@@ -2466,13 +2462,33 @@ subroutine MaximizeLikelihood1(x,LValue,Grad,Hess,ierr)
   CALL X04ABF(1,eunit)
   ! set options for E04WDF
   E04Unit = 50
-  E04File = trim(InputDir) // '/E04WDF.opt'
+  E04File = MaxOptions%OptionsFile
   open(UNIT = E04Unit,  &
        FILE = E04File, &
        ACTION = 'read')
   ifail=-1
   call E04WEF(E04Unit,IW,RW,ifail)
   close(E04Unit)
+
+  ! open files for Backup Basis File and New Basis File
+  if (MaxOptions%SaveBasis==1) then
+      open(unit = 101, &
+           file = MaxOptions%BasisFile, &
+           action='WRITE')
+      open(unit==103, &
+           file=MaxOptions%BackupBasisFile, &
+           action='WRITE')
+      call E04WFF('New Basis File = 101',iw,rw,ifail)
+      call E04WFF('Backup Basis File = 103',iw,rw,ifail)
+      call E04WFF('Save Frequency = 2',iw,rw,ifail)
+  end if
+  ! open OldBasisFile to load information on basis
+  if (MaxOptions%LoadBasis==1) then
+    open(unit=105, &
+         file = MaxOptions%OldBasisFile, &
+         action='READ')
+    call E04WFF('Old Basis File = 105',iw,rw,ifail)
+  end if
 
   ifail=-1
   iuser(1) = parms%model
@@ -2546,9 +2562,12 @@ subroutine MaximizeLikelihood1(x,LValue,Grad,Hess,ierr)
   deallocate(A,BL,BU,CLAMBDA,ISTATE,CJAC)
   deallocate(CCON)
 
-  if (NAG_SAVE==1) then
+  if (MaxOptions%SaveBasis==1) then
     close(101)
     close(103)
+  end if
+  if (MaxOptions%LoadBasis==1) then
+    close(105)
   end if
 
 #if USE_MPI==1
@@ -2725,7 +2744,7 @@ subroutine MaximizePenalizedLikelihood(x,LValue,Grad,Hess,ierr)
     A(i1,Penalty%xP_index_xPlus(i1)) = -1.0d0
     A(i1,Penalty%xP_index_xMinus(i1)) = 1.0d0
   end do  
-		 
+
   ! lower and upper bounds on xP
   ! x1L  <= x1              <= x1H
   ! x2L  <= x2              <= x2H
@@ -2757,7 +2776,7 @@ subroutine MaximizePenalizedLikelihood(x,LValue,Grad,Hess,ierr)
       open(103,FILE = 'output/BackupBasis1.txt',ACTION='WRITE')
       call E04WFF('New Basis File = 101',iw,rw,ifail)   ! unit number to save intermediate results
       call E04WFF('Backup Basis File = 103',iw,rw,ifail)   ! unit number to save intermediate results
-    call E04WFF('Save Frequency = 100',iw,rw,ifail)
+      call E04WFF('Save Frequency = 100',iw,rw,ifail)
   end if
 
   ifail=-1

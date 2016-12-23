@@ -47,6 +47,9 @@ include /home/uctpln0/GeneralCode/config/config.cs.inc
 else ifeq ($(HOST_ID),zeppo-22-2.local)
 HOST_ID=$(CS_HPC)
 include /home/uctpln0/GeneralCode/config/config.cs.inc
+else ifeq ($(HOST_ID),zeppo-22-3.local)
+HOST_ID=$(CS_HPC)
+include /home/uctpln0/GeneralCode/config/config.cs.inc
 else ifeq ($(HOST_ID),zeppo-22-8.local)
 HOST_ID=$(CS_HPC)
 include /home/uctpln0/GeneralCode/config/config.cs.inc

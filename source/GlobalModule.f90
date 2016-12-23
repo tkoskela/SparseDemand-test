@@ -146,7 +146,6 @@ module GlobalModule
     real(dp), allocatable :: MUE_L(:),MUE_H(:)
     real(dp), allocatable :: InvCDiag_L(:),InvCDiag_H(:)
     real(dp), allocatable :: InvCOffDiag_L(:),InvCOffDiag_H(:)
-
     
   end type
 
@@ -233,10 +232,16 @@ module GlobalModule
   type MaxStructure
     ! MaxAlgorithm = 1   E04WDF  : Dense problem
     ! MaxAlgorithm = 2   E04VHF  : Sparse problem
-    integer(i4b)      :: Algorithm
-    real(dp)          :: AbsTol     ! absolute tolerance for D01ESF Bayesian computations
-    real(dp)          :: RelTol     ! relative tolerance for D01ESF Bayesian computations
-    real(dp)          :: MaxLevel   ! maximum level for D01ESF Bayesian computations
+    integer(i4b)       :: Algorithm
+    real(dp)           :: AbsTol     ! absolute tolerance for D01ESF Bayesian computations
+    real(dp)           :: RelTol     ! relative tolerance for D01ESF Bayesian computations
+    real(dp)           :: MaxLevel   ! maximum level for D01ESF Bayesian computations
+    character(len=200) :: OptionsFile   ! file with E04WDF options
+    character(len=200) :: BasisFile
+    character(len=200) :: BackupBasisFile
+    character(len=200) :: OldBasisFile
+    integer(i4b)       :: SaveBasis  ! 1 to save basis info in BasisFile
+    integer(i4b)       :: LoadBasis  ! 1 to load basis info from OldBasisFile
   end type
 
   type BayesType
@@ -953,6 +958,24 @@ subroutine InitializeParameters(InputFile)
   ErrFlag = GetVal(PropList,'MaxLevel',cTemp)
   read(cTemp,'(i2)') MaxOptions%MaxLevel
 
+  ErrFlag = GetVal(PropList,'E04OptionsFile',cTemp)
+  MaxOptions%OptionsFile = trim(InputDir) // '/' // trim(cTemp)
+
+  ErrFlag = GetVal(PropList,'SaveBasisFlag',cTemp)
+  read(cTemp,'(i2)') MaxOptions%SaveBasis
+
+  ErrFlag = GetVal(PropList,'LoadBasisFlag',cTemp)
+  read(cTemp,'(i2)') MaxOptions%LoadBasis
+
+  ErrFlag = GetVal(PropList,'BasisFile',cTemp)
+  MaxOptions%BasisFile = trim(OutDir) // '/' // trim(cTemp)
+  
+  ErrFlag = GetVal(PropList,'OldBasisFile',cTemp)
+  MaxOptions%OldBasisFile = trim(OutDir) // '/' // trim(cTemp)
+
+  ErrFlag = GetVal(PropList,'BackupBasisFile',cTemp)
+  MaxOptions%BackupBasisFile = trim(OutDir) // '/' // trim(cTemp)
+
   ! NMC : 0 no MC repetitions
   !     > 0 number of MC repetitions
   ErrFlag = GetVal(PropList,'NMC',cTemp)
@@ -1243,7 +1266,6 @@ subroutine InitializeParameters(InputFile)
                           parms%GradBD_C_COffDiag,parms%GradBD_C_CDiag)
       parms%BD_C = transpose(temp2)
       deallocate(temp2)
-      !print *,'Warning: Gradient of SphereToMatrix has not been updated to reflect transpose.'
 
       ! Compute parms%BC_C
       ! size(BC_C) = (nBC x dim_eta)
@@ -1257,7 +1279,6 @@ subroutine InitializeParameters(InputFile)
                           parms%GradBC_C_COffDiag,parms%GradBC_C_CDiag)
       parms%BC_C = transpose(temp2)
       deallocate(temp2)
-      !print *,'Warning: Gradient of SphereToMatrix has not been updated to reflect transpose.'
 
       ! Compute parms%BD_z  (J x BD_z_dim) matrix
       !  default = identity matrix
@@ -1709,7 +1730,7 @@ subroutine BroadcastParms(LocalParms,pid)
 
   if (LocalParms%model==2) then
     call mpi_barrier(MPI_COMM_WORLD,ierr_barrier)
-    call mpi_bcast(LocalParms%BD_beta,LocalParms%J,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(nerr+1))
+    call mpi_bcast(LocalParms%BD_beta,LocalParms%BD_z_dim,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(nerr+1))
     call mpi_bcast(LocalParms%BD_CDiag,LocalParms%J,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(nerr+2))
     call mpi_bcast(LocalParms%BD_COffDiag,LocalParms%nBD_COffDiag,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(nerr+3))
     nerr = nerr+3
@@ -1719,12 +1740,12 @@ subroutine BroadcastParms(LocalParms,pid)
     end do
     nerr = nerr+LocalParms%dim_eta
       call mpi_barrier(MPI_COMM_WORLD,ierr_barrier)
-    call mpi_bcast(LocalParms%BC_beta,LocalParms%nBC,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(nerr+1))
+    call mpi_bcast(LocalParms%BC_beta,LocalParms%BC_z_dim,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(nerr+1))
     call mpi_bcast(LocalParms%BC_CDiag,LocalParms%nBC,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(nerr+2))
     call mpi_bcast(LocalParms%BC_COffDiag,LocalParms%nBC_COffDiag,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(nerr+3))
     do i1=1,LocalParms%dim_eta
       call mpi_barrier(MPI_COMM_WORLD,ierr_barrier)
-      call mpi_bcast(LocalParms%BC_C(:,i1),LocalParms%dim_eta,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(nerr+3+i1))
+      call mpi_bcast(LocalParms%BC_C(:,i1),LocalParms%nBC,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(nerr+3+i1))
     end do
     nerr = nerr + 3 + LocalParms%dim_eta
     do i1=1,LocalParms%BD_Z_dim
@@ -1748,6 +1769,7 @@ subroutine BroadcastIFree(pid)
   implicit none
   integer(i4b), intent(in) :: pid
   integer(i4b) :: ierr
+  integer(i4b), allocatable :: temp1(:),temp2(:)
 
   call mpi_barrier(MPI_COMM_WORLD,ierr)
   call mpi_bcast(iFree%flagD,1,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
@@ -1778,116 +1800,218 @@ subroutine BroadcastIFree(pid)
   call mpi_bcast(iFree%nBC_COffDiag,1,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
     
   call mpi_bcast(iFree%nAll,1,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
-
+  print *,"pid = ",pid," broadcast of size iFree complete."
   call mpi_barrier(MPI_COMM_WORLD,ierr)
   if (iFree%nD>0) then
+    allocate(temp1(iFree%nD))
+    allocate(temp2(iFree%nD))
     if (pid>MasterID .and. .not. allocated(iFree%d)) then
       allocate(iFree%D(iFree%nD))
       allocate(iFree%xD(iFree%nD))
     end if
+    if (pid==MasterID) then
+      temp1 = iFree%D
+      temp2 = iFree%xD
+    end if
     call mpi_barrier(MPI_COMM_WORLD,ierr)
-    call mpi_bcast(iFree%D,iFree%nD,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
-    call mpi_bcast(iFree%xD,iFree%nD,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(temp1,iFree%nD,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(temp2,iFree%nD,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
+    iFree%D = temp1
+    iFree%xD = temp2
+    deallocate(temp1,temp2)
   end if
 
   if (iFree%nBC>0) then
+    allocate(temp1(iFree%nBC))
+    allocate(temp2(iFree%nBC))
     if (pid>MasterID .and. .not. allocated(iFree%BC)) then
       allocate(iFree%BC(iFree%nBC))
       allocate(iFree%xBC(iFree%nBC))
     end if
+    if (pid==MasterID) then
+      temp1 = iFree%BC
+      temp2 = iFree%xBC
+    end if
     call mpi_barrier(MPI_COMM_WORLD,ierr)
-    call mpi_bcast(iFree%BC,iFree%nBC,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
-    call mpi_bcast(iFree%xBC,iFree%nBC,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(temp1,iFree%nBC,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(temp2,iFree%nBC,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
+    iFree%BC = temp1
+    iFree%xBC = temp2
+    deallocate(temp1,temp2)
   end if
 
   if (iFree%nMuE>0) then
+    allocate(temp1(iFree%nMUE))
+    allocate(temp2(iFree%nMUE))
     if (pid>MasterID .and. .not. allocated(iFree%MUE)) then
       allocate(iFree%MuE(iFree%nMuE))
       allocate(iFree%xMuE(iFree%nMuE))
     end if
+    if (pid==MasterID) then
+      temp1 = iFree%MUE
+      temp2 = iFree%xMUE
+    end if
     call mpi_barrier(MPI_COMM_WORLD,ierr)
-    call mpi_bcast(iFree%MuE,iFree%nMuE,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
-    call mpi_bcast(iFree%xMuE,iFree%nMuE,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(temp1,iFree%nMuE,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(temp2,iFree%nMuE,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
+    iFree%MUE = temp1
+    iFree%xMUE = temp2
+    deallocate(temp1,temp2)
   end if
 
   if (iFree%nInvCDiag>0) then
+    allocate(temp1(iFree%nInvCDiag))
+    allocate(temp2(iFree%nInvCDiag))
     if (pid>MasterID .and. .not. allocated(iFree%InvCDiag)) then
       allocate(iFree%InvCDiag(iFree%nInvCDiag))
       allocate(iFree%xInvCDiag(iFree%nInvCDiag))
     end if
+    if (pid==MasterID) then
+      temp1 = iFree%InvCDiag
+      temp2 = iFree%xInvCDiag
+    end if
     call mpi_barrier(MPI_COMM_WORLD,ierr)
-    call mpi_bcast(iFree%InvCDiag,iFree%nInvCDiag,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
-    call mpi_bcast(iFree%xInvCDiag,iFree%nInvCDiag,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(temp1,iFree%nInvCDiag,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(temp2,iFree%nInvCDiag,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
+    iFree%InvCDiag = temp1
+    iFree%xInvCDiag = temp2
+    deallocate(temp1,temp2)
   end if
 
   if (iFree%nInvCOffDiag>0) then
+    allocate(temp1(iFree%nInvCOffDiag))
+    allocate(temp2(iFree%nInvCOffDiag))
+
     if (pid>MasterID .and. .not. allocated(iFree%InvCOffDiag)) then
       allocate(iFree%InvCOffDiag(iFree%nInvCOffDiag))
       allocate(iFree%xInvCOffDiag(iFree%nInvCOffDiag))
     end if
+    if (pid==MasterID) then
+      temp1 = iFree%InvCOffDiag
+      temp2 = iFree%xInvCOffDiag
+    end if
     call mpi_barrier(MPI_COMM_WORLD,ierr)
-    call mpi_bcast(iFree%InvCOffDiag,iFree%nInvCOffDiag,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
-    call mpi_bcast(iFree%xInvCOffDiag,iFree%nInvCOffDiag,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(temp1,iFree%nInvCOffDiag,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(temp2,iFree%nInvCOffDiag,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
+    iFree%InvCOffDiag = temp1
+    iFree%xInvCOffDiag = temp2
+    deallocate(temp1,temp2)
   end if
 
   if (iFree%nBD_Beta>0) then
+    allocate(temp1(iFree%nBD_beta))
+    allocate(temp2(iFree%nBD_beta))
+
     if (pid>MasterID .and. .not. allocated(iFree%BD_beta)) then
       allocate(iFree%BD_beta(iFree%nBD_beta))
       allocate(iFree%xBD_beta(iFree%nBD_beta))
     end if
+    if (pid==MasterID) then
+      temp1 = iFree%BD_beta
+      temp2 = iFree%xBD_beta
+    end if
     call mpi_barrier(MPI_COMM_WORLD,ierr)
-    call mpi_bcast(iFree%BD_beta,iFree%nBD_beta,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
-    call mpi_bcast(iFree%xBD_beta,iFree%nBD_beta,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(temp1,iFree%nBD_beta,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(temp2,iFree%nBD_beta,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
+    iFree%BD_beta = temp1
+    iFree%xBD_beta = temp2
+    deallocate(temp1,temp2)
   end if
 
   if (iFree%nBD_CDiag>0) then
+    allocate(temp1(iFree%nBD_CDiag))
+    allocate(temp2(iFree%nBD_CDiag))
+
     if (pid>MasterID .and. .not. allocated(iFree%BD_CDiag)) then
       allocate(iFree%BD_CDiag(iFree%nBD_CDiag))
       allocate(iFree%xBD_CDiag(iFree%nBD_CDiag))
     end if
+    if (pid==MasterID) then
+      temp1 = iFree%BD_CDiag
+      temp2 = iFree%xBD_CDiag
+    end if
     call mpi_barrier(MPI_COMM_WORLD,ierr)
-    call mpi_bcast(iFree%BD_CDiag,iFree%nBD_CDiag,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
-    call mpi_bcast(iFree%xBD_CDiag,iFree%nBD_CDiag,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(temp1,iFree%nBD_CDiag,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(temp2,iFree%nBD_CDiag,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
+    iFree%BD_CDiag = temp1
+    iFree%xBD_CDiag = temp2
+    deallocate(temp1,temp2)
   end if
 
   if (iFree%nBD_COffDiag>0) then
+    allocate(temp1(iFree%nBD_COffDiag))
+    allocate(temp2(iFree%nBD_COffDiag))
     if (pid>MasterID .and. .not. allocated(iFree%BD_COffDiag)) then
       allocate(iFree%BD_COffDiag(iFree%nBD_COffDiag))
       allocate(iFree%xBD_COffDiag(iFree%nBD_COffDiag))
     end if
+    if (pid==MasterID) then
+      temp1 = iFree%BD_COffDiag
+      temp2 = iFree%xBD_COffDiag
+    end if
     call mpi_barrier(MPI_COMM_WORLD,ierr)
-    call mpi_bcast(iFree%BD_COffDiag,iFree%nBD_COffDiag,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
-    call mpi_bcast(iFree%xBD_COffDiag,iFree%nBD_COffDiag,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(temp1,iFree%nBD_COffDiag,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(temp2,iFree%nBD_COffDiag,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
+    iFree%BD_COffDiag = temp1
+    iFree%xBD_COffDiag = temp2
+    deallocate(temp1,temp2)
   end if
 
   if (iFree%nBC_Beta>0) then
+    allocate(temp1(iFree%nBC_Beta))
+    allocate(temp2(iFree%nBC_Beta))
     if (pid>MasterID .and. .not. allocated(iFree%BC_beta)) then
       allocate(iFree%BC_beta(iFree%nBC_beta))
       allocate(iFree%xBC_beta(iFree%nBC_beta))
     end if
+    if (pid==MasterID) then
+      temp1 = iFree%BC_beta
+      temp2 = iFree%xBC_beta
+    end if
     call mpi_barrier(MPI_COMM_WORLD,ierr)
-    call mpi_bcast(iFree%BC_beta,iFree%nBC_beta,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
-    call mpi_bcast(iFree%xBC_beta,iFree%nBC_beta,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(temp1,iFree%nBC_beta,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(temp2,iFree%nBC_beta,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
+    iFree%BC_beta = temp1
+    iFree%xBC_beta = temp2
+    deallocate(temp1,temp2)
   end if
 
   if (iFree%nBC_CDiag>0) then
+    allocate(temp1(iFree%nBC_CDiag))
+    allocate(temp2(iFree%nBC_CDiag))
     if (pid>MasterID .and. .not. allocated(iFree%BC_CDIag)) then
       allocate(iFree%BC_CDiag(iFree%nBC_CDiag))
       allocate(iFree%xBC_CDiag(iFree%nBC_CDiag))
     end if
+    if (pid==MasterID) then
+      temp1 = iFree%BC_CDiag
+      temp2 = iFree%xBC_CDiag
+    end if
     call mpi_barrier(MPI_COMM_WORLD,ierr)
-    call mpi_bcast(iFree%BC_CDiag,iFree%nBC_CDiag,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
-    call mpi_bcast(iFree%xBC_CDiag,iFree%nBC_CDiag,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(temp1,iFree%nBC_CDiag,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(temp2,iFree%nBC_CDiag,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
+    iFree%BC_CDiag = temp1
+    iFree%xBC_CDiag = temp2
+    deallocate(temp1,temp2)
   end if
 
   if (iFree%nBC_COffDiag>0) then
+    allocate(temp1(iFree%nBC_COffDiag))
+    allocate(temp2(iFree%nBC_COffDiag))
     if (pid>MasterID .and. .not. allocated(iFree%BC_COffDiag)) then
       allocate(iFree%BC_COffDiag(iFree%nBC_COffDiag))
       allocate(iFree%xBC_COffDiag(iFree%nBC_COffDiag))
     end if
+    if (pid==MasterID) then
+      temp1 = iFree%BC_COffDiag
+      temp2 = iFree%xBC_COffDiag
+    end if
     call mpi_barrier(MPI_COMM_WORLD,ierr)
-    call mpi_bcast(iFree%BC_COffDiag,iFree%nBC_COffDiag,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
-    call mpi_bcast(iFree%xBC_COffDiag,iFree%nBC_COffDiag,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(temp1,iFree%nBC_COffDiag,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(temp2,iFree%nBC_COffDiag,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
+    iFree%BD_COffDiag = temp1
+    iFree%xBD_COffDiag = temp2
+    deallocate(temp1,temp2)
   end if
 
 end subroutine BroadcastIFree
@@ -1919,12 +2043,12 @@ subroutine ReadWriteParameters(LocalParms,LocalAction)
   case ('read')
 
     ! (model,K,J,nBC)
-    read(LocalParms%unit,*) TempString
+    read(LocalParms%unit,111) TempString
     print *,TempString
     read(LocalParms%unit,101) LocalParms%model,LocalParms%K,LocalParms%J,LocalParms%nBC
 
     ! B (K x J)
-    read(LocalParms%unit,*) TempString
+    read(LocalParms%unit,112) TempString
     print *,TempString
     do i1=1,LocalParms%K
       read(LocalParms%unit,102) LocalParms%B(i1,:)
@@ -1934,12 +2058,12 @@ subroutine ReadWriteParameters(LocalParms,LocalAction)
     call MatrixToSphere(LocalParms%B,LocalParms%D,LocalParms%BC)
 
     ! MUE   (K x 1)
-    read(LocalParms%unit,*) TempString
+    read(LocalParms%unit,113) TempString
     print *, TempString
     read(LocalParms%unit,103) LocalParms%MUE
 
     ! CSIG  (K x K)  Cholesky decomposition of sig
-    read(LocalParms%unit,*) TempString
+    read(LocalParms%unit,114) TempString
     print *,TempString
     do i1=1,LocalParms%K
       read(LocalParms%unit,104) LocalParms%CSIG(i1,:)
@@ -1953,42 +2077,44 @@ subroutine ReadWriteParameters(LocalParms,LocalAction)
     call MatrixToSphere(transpose(LocalParms%InvC),LocalParms%InvCDiag,LocalParms%InvCOffDiag)
 
     ! (dim_eta,BC_Z_DIM,BD_Z_DIM)
-    read(LocalParms%unit,*) TempString
+    read(LocalParms%unit,115) TempString
     print *,TempString
     read(LocalParms%unit,105) LocalParms%dim_eta,LocalParms%BC_Z_DIM,LocalParms%BD_Z_DIM
 
     ! (nBC_COffDiag,nBD_COffDiag)
-    read(LocalParms%unit,*) TempString
+    read(LocalParms%unit,116) TempString
     print *, TempString
     read(LocalParms%unit,106) LocalParms%nBC_COffDiag,LocalParms%nBD_COffDiag, &
                                 LocalParms%BC_lo,LocalParms%BC_hi
     ! BC_beta  (BC_Z_DIM)
-    read(LocalParms%unit,*) TempString
+    read(LocalParms%unit,117) TempString
     print *, TempString
     read(LocalParms%unit,107) LocalParms%BC_BETA
 
     ! BD_beta  (BD_Z_DIM)
-    read(LocalParms%unit,*) TempString
+    read(LocalParms%unit,118) TempString
     print *, TempString
     read(LocalParms%unit,108) LocalParms%BD_BETA
 
     ! BC_C  (nBC x dim_eta)
-    read(LocalParms%unit,*) TempString
+    read(LocalParms%unit,119) TempString
     print *,TempString
     do i1=1,LocalParms%nBC
       read(LocalParms%unit,109) LocalParms%BC_C(i1,:)
     end do
 
     ! BD_C  (J x dim_eta)
-    read(LocalParms%unit,*) TempString
+    read(LocalParms%unit,119) TempString
     print *,TempString
     do i1=1,LocalParms%J
       read(LocalParms%unit,109) LocalParms%BD_C(i1,:)
     end do
 
     ! compute spherical coordinate representation of (BC_C,BD_C)
-    call MatrixToSphere(LocalParms%BC_C,LocalParms%BC_CDiag,LocalParms%BC_COffDiag)
-    call MatrixToSphere(LocalParms%BD_C,LocalParms%BD_CDiag,LocalParms%BD_COffDiag)
+    ! BC_C = lower triangular. MatrixToSphere requires upper triangular
+    ! BC_D = lower triangular. MatrixToSphere requires upper triangular
+    call MatrixToSphere(transpose(LocalParms%BC_C),LocalParms%BC_CDiag,LocalParms%BC_COffDiag)
+    call MatrixToSphere(transpose(LocalParms%BD_C),LocalParms%BD_CDiag,LocalParms%BD_COffDiag)
 
   !-------------------------------------------------------------------------------------------
   ! Write parameters to file
@@ -1996,50 +2122,50 @@ subroutine ReadWriteParameters(LocalParms,LocalAction)
   case ('write')
 
     ! (model,K,J,nBC)
-    write(LocalParms%unit,*) 'model,K,J,nBC'
+    write(LocalParms%unit,111) 'model,K,J,nBC'
     write(LocalParms%unit,101) LocalParms%model,LocalParms%K,LocalParms%J,LocalParms%nBC
 
     ! B  (K x J)
-    write(LocalParms%unit,*) 'B (K x J)'
+    write(LocalParms%unit,112) 'B(K x J)'
     do i1=1,LocalParms%K
       write(LocalParms%unit,102) LocalParms%B(i1,:)
     end do
 
     ! MUE
-    write(LocalParms%unit,*) 'MUE (K x 1)'
+    write(LocalParms%unit,113) 'MUE(K x 1)'
     write(LocalParms%unit,103) LocalParms%MUE
 
     ! CSIG  (K x K)  Cholesky decomposition of sig
-    write(LocalParms%unit,*) 'CSIG (K x K)'
+    write(LocalParms%unit,114) 'CSIG(K x K)'
     do i1=1,LocalParms%K
       write(LocalParms%unit,104) LocalParms%CSIG(i1,:)
     end do
 
     ! (dim_eta,BC_Z_DIM,BD_Z_DIM)
-    write(LocalParms%unit,*) 'dim_eta,BC_Z_DIM,BD_Z_DIM'
+    write(LocalParms%unit,115) 'dim_eta,BC_Z_DIM,BD_Z_DIM'
     write(LocalParms%unit,105) LocalParms%dim_eta,LocalParms%BC_Z_DIM,LocalParms%BD_Z_DIM
 
     ! (nBC_COffDiag,nBD_COffDiag,BC_lo,BC_hi)
-    write(LocalParms%unit,*) 'nBC_COffDSiag,nBD_COffDiag,BC_lo,BC_hi'
+    write(LocalParms%unit,116) 'nBC_COffDiag,nBD_COffDiag,BC_lo,BC_hi'
     write(LocalParms%unit,106) LocalParms%nBC_COffDiag,LocalParms%nBD_COffDiag, &
                                     LocalParms%BC_lo,LocalParms%BC_hi
 
     ! BC_beta  (BC_Z_DIM)
-    write(LocalParms%unit,*) 'BC_BETA'
+    write(LocalParms%unit,117) 'BC_BETA(BC_Z_DIM x 1)'
     write(LocalParms%unit,107) LocalParms%BC_BETA
 
     ! BD_beta  (BD_Z_DIM)
-    write(LocalParms%unit,*) 'BD_BETA'
+    write(LocalParms%unit,118) 'BD_BETA(BD_Z_DIM x 1)'
     write(LocalParms%unit,108) LocalParms%BD_BETA
 
     ! BC_C  (nBC x dim_eta)
-    write(LocalParms%unit,*) 'BC_C'
+    write(LocalParms%unit,119) 'BC_C(nBC x dim_eta)'
     do i1=1,LocalParms%nBC
       write(LocalParms%unit,109) LocalParms%BC_C(i1,:)
     end do
 
     ! BD_C  (J x dim_eta)
-    write(LocalParms%unit,*) 'BD_C'
+    write(LocalParms%unit,119) 'BD_C(J x dim_eta)'
     do i1=1,LocalParms%J
       write(LocalParms%unit,109) LocalParms%BD_C(i1,:)
     end do
@@ -2048,7 +2174,18 @@ subroutine ReadWriteParameters(LocalParms,LocalAction)
 
   close(LocalParms%unit)
 
-  ! format for:   (model,K,J,nBC)
+  ! formats for strings in parms.csv
+  111 format(a13)   !'model,K,J,nBC'
+  112 format(a9)    ! B(K x J)
+  113 format(a11)   ! MUE(K x 1)
+  114 format(a12)   ! CSIG (K x K)
+  115 format(a25)   ! dim_eta,BC_Z_DIM,BD_Z_DIM
+  116 format(a37)   ! nBC_COffDiag,nBD_COffDiag,BC_lo,BC_hi
+  117 format(a21)   ! BC_Beta(BC_Z_Dim x 1)
+  118 format(a21)   ! BD_beta(BD_Z_DIM x 1)
+  119 format(a19)   ! BC_C(nBC x dim_eta)
+
+  ! formats for data in parms.csv
   101 format(3(i4,','),i4)                               ! (model,K,J,nBC)
   102 format(<LocalParms%J-1>(d25.16,','),d25.16)        ! B
   103 format(<LocalParms%K-1>(d25.16,','),d25.16)        ! MUE  (K x 1)
@@ -2058,7 +2195,6 @@ subroutine ReadWriteParameters(LocalParms,LocalAction)
   107 format(<LocalParms%BC_Z_DIM-1>(d25.16,','),d25.16) ! BC_BETA
   108 format(<LocalParms%BD_Z_DIM-1>(d25.16,','),d25.16) ! BD_BETA
   109 format(<LocalParms%dim_eta-1>(d25.16,','),d25.16)  ! BC_C
-
 
 end subroutine ReadWriteParameters
 

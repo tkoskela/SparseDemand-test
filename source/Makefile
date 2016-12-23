@@ -127,9 +127,9 @@ DEBUG_OBJS = $(patsubst %.o, %_d.o, $(OBJS))
 
 # Application Name -- what to build
 ifeq ($(USE_MPI),1)
-TGT = SparseDemand1_mpi
+TGT = SparseDemand_mpi
 else
-TGT = SparseDemand1
+TGT = SparseDemand
 endif
 
 # NOTE:  This order of single and double quotes is crucial

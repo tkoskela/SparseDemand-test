@@ -62,6 +62,12 @@ MaxAlgorithm : 1 # 1 = E04WDF gradient based, dense
 AbsoluteTolerance : 0.01  # absolute tolerance for D01ESF for Bayesian computation   
 RelativeTolerance : 0.01  # relative tolerance for D01ESF for Bayesian computation   
 MaxLevel          : 6     # maximum level for D01ESF for Bayesian computation   
+E04OptionsFile    : E04WDF.opt
+SaveBasis         : 1     # 1 to save basis info in BasisFile
+LoadBasis         : 1     # 1 to load basis info from OldBasisFile
+BasisFile         : basis1.txt
+BackupBasisFile   : basis1.bak
+OldBasisFile      : basis1.txt
 
 # Penalty parameters
 # method = 0  no penalty
