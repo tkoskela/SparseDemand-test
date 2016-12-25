@@ -2475,7 +2475,7 @@ subroutine MaximizeLikelihood1(x,LValue,Grad,Hess,ierr)
       open(unit = 101, &
            file = MaxOptions%BasisFile, &
            action='WRITE')
-      open(unit==103, &
+      open(unit=103, &
            file=MaxOptions%BackupBasisFile, &
            action='WRITE')
       call E04WFF('New Basis File = 101',iw,rw,ifail)
