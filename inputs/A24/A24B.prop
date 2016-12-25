@@ -10,6 +10,7 @@ TestLikeFlag : 4     # 0 = maximise likelihood
                      # 2 = plot likelihood
                      # 3 = test non-linear constraint
                      # 4 = no non-linear constraints
+                     # 5 = analyse results
 TestIntegrationFlag : 0 # 1 to test accuracy of integration
 SimulateDataFlag    : 0 # 1 simulate data, 0 = load data from file
 BICFlag             : 0 # 1 to minimize BIC

@@ -21,9 +21,8 @@ OutDir : ../output/A24C
 #OutDir: /SAN/economics/Nesheim-IO/FruitDemand/output
 InputDir: /home/uctpln0/FruitDemand/code/fortran/inputs/A24
  
-#           0101    # HotStart(1):  0 for default value, 2 to load from file
-#                                   2 to load (beta,C) from data 
-HotStart  : 0 0     # HotStart(2):  0 for default, 1 to use beta from model 1
+#           01      # HotStart:     0 for default value, 1 to load from file
+HotStart  : 1 
 InitialModel : 2    # first model to estimate
 FinalModel   : 2    # last model to estimate
 small : 1.0d-50     # small number to prevent log of zero
@@ -64,6 +63,12 @@ MaxAlgorithm : 1 # 1 = E04WDF gradient based, dense
 AbsoluteTolerance : 0.01  # absolute tolerance for D01ESF for Bayesian computation   
 RelativeTolerance : 0.01  # relative tolerance for D01ESF for Bayesian computation   
 MaxLevel          : 6     # maximum level for D01ESF for Bayesian computation   
+E04OptionsFile    : E04WDF.opt
+SaveBasis         : 1     # 1 to save basis info in BasisFile
+LoadBasis         : 1     # 1 to load basis info from OldBasisFile
+BasisFile         : basis1.txt
+BackupBasisFile   : basis1.bak
+OldBasisFile      : basis1.txt
 
 # Penalty parameters
 # method = 0  no penalty
@@ -143,4 +148,3 @@ BD_BETA_FILE : C/BD_beta.raw
 BD_CDIAG_FILE : C/BD_CDiag.raw
 BD_COFFDIAG_FILE : C/BD_COffDiag.raw
 BasePriceFile : analyse2/BasePriceFile.raw
-
