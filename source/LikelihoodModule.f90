@@ -1571,15 +1571,19 @@ subroutine RunMonteCarlo(IMC1,IMC2,pid)
   integer(i4b)             :: ifail
   integer(i4b)             :: DateTime(8)
 
+  NMC = IMC2-IMC1+1
+
+  if (pid==MasterID) then
+    call SelectFreeParameters(parms,iFree)
+    !if (MaxOptions%Algorithm==6) then
+    !  call SetupBayesPrior(parms,iFree)
+    !end if
+  end if
+
   if (pid==MasterID .and. ControlOptions%HotStart==1) then
     call ReadWriteParameters(parms,'read')
   end if
 
-  NMC = IMC2-IMC1+1
-  call SelectFreeParameters(parms,iFree)
-  !if (MaxOptions%Algorithm==6) then
-  !  call SetupBayesPrior(parms,iFree)
-  !end if
 
 #if USE_MPI==1
   call BroadcastParms(parms,pid)
@@ -1606,7 +1610,9 @@ subroutine RunMonteCarlo(IMC1,IMC2,pid)
   do iMC=IMC1,IMC2
 
     ! reset parms to be equal to parms0
-    call CopyParameters(parms0,parms)
+    if (iMC>IMC1) then
+      call CopyParameters(parms0,parms)
+    end if
 
     if (pid==MasterID) then
       if (ControlOptions%SimulateData==1) then
@@ -2090,8 +2096,10 @@ subroutine SelectFreeParameters(parms,iFree)
     iFree%D  = (/1:parms%J/)
     iFree%xD = iFree%D
     iFree%nD = parms%J
+  else
+    iFree%nD = 0
   end if
-  iFree%nall = size(iFree%xD)
+  iFree%nall = iFree%nD
 
   ! parms%BC  = (nBC x 1) spherical representation of normalized B
   ! iFree%xBC = elements of xFree corresponding to BC
@@ -2102,8 +2110,10 @@ subroutine SelectFreeParameters(parms,iFree)
     iFree%xBC = iFree%nall + (/1:parms%nBC/)
     iFree%BC = (/1:parms%nBC/)
     iFree%nBC = parms%nBC
+  else
+    iFree%nBC = 0
   end if
-  iFree%nall = iFree%nall + size(iFree%BC)
+  iFree%nall = iFree%nall + iFree%nBC
 
   ! parms%MuE  = (K x 1) mean of e
   ! iFree%xMuE = elements of xFree corresponding to MuE
@@ -2114,6 +2124,8 @@ subroutine SelectFreeParameters(parms,iFree)
     iFree%MuE = (/1:parms%K/)
     iFree%xMuE = iFree%nall + (/1:size(iFree%MuE)/)
     iFree%nMuE = size(iFree%MuE)
+  else
+    iFree%nMUE = 0
   end if
   iFree%nall = iFree%nall + iFree%nMUE
 
@@ -2126,6 +2138,8 @@ subroutine SelectFreeParameters(parms,iFree)
     iFree%InvCDiag = (/1:parms%K/)
     iFree%nInvCDiag = size(iFree%InvCDiag)
     iFree%xInvCDiag = iFree%nall + (/1:iFree%nInvCDiag/)
+  else
+    iFree%nInvCDiag = 0
   end if
   iFree%nall=iFree%nall+iFree%nInvCDiag
 
@@ -2139,6 +2153,8 @@ subroutine SelectFreeParameters(parms,iFree)
     allocate(iFree%xInvCOffDiag(iFree%nInvCOffDiag))
     iFree%InvCOffDiag  = (/1:iFree%nInvCOffDiag/)
     iFree%xInvCOffDiag = iFree%nall + (/1:iFree%nInvCOffDiag/)
+  else
+    iFree%nInvCOffDiag = 0
   end if
   iFree%nall = iFree%nall + iFree%nInvCOffDiag
 

@@ -1991,7 +1991,7 @@ subroutine BroadcastIFree(pid)
   if (iFree%nBC_CDiag>0) then
     allocate(temp1(iFree%nBC_CDiag))
     allocate(temp2(iFree%nBC_CDiag))
-    if (pid>MasterID .and. .not. allocated(iFree%BC_CDIag)) then
+    if (pid>MasterID .and. .not. allocated(iFree%BC_CDiag)) then
       allocate(iFree%BC_CDiag(iFree%nBC_CDiag))
       allocate(iFree%xBC_CDiag(iFree%nBC_CDiag))
     end if
@@ -2021,8 +2021,8 @@ subroutine BroadcastIFree(pid)
     call mpi_barrier(MPI_COMM_WORLD,ierr)
     call mpi_bcast(temp1,iFree%nBC_COffDiag,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
     call mpi_bcast(temp2,iFree%nBC_COffDiag,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
-    iFree%BD_COffDiag = temp1
-    iFree%xBD_COffDiag = temp2
+    iFree%BC_COffDiag = temp1
+    iFree%xBC_COffDiag = temp2
     deallocate(temp1,temp2)
   end if
 
