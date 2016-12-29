@@ -14,6 +14,7 @@ module GlobalModule
     character(len=99) :: InvCDiag,InvCOffDiag
     character(len=99) :: BC_beta,BC_CDiag,BC_COffDiag
     character(len=99) :: BD_beta,BD_CDiag,BD_COffDiag
+    character(len=99) :: sigp
   end type
   type(FilenameStructure) :: ParmFiles
   character(len=99)       :: BasePriceFile
@@ -68,6 +69,7 @@ module GlobalModule
     character(20),  allocatable :: ColumnLabels(:) ! (J x 1) labels for columns of B
     real(dp),       allocatable :: eta(:,:)
     character(200)              :: RawDataFile
+    integer(i4b)                :: RawDataFormat
     character(100), allocatable :: RawDataLabels(:)
     integer(i4b),   allocatable :: HHID(:)
     integer(i4b),   allocatable :: shopid(:)
@@ -242,6 +244,7 @@ module GlobalModule
     character(len=200) :: OldBasisFile
     integer(i4b)       :: SaveBasis  ! 1 to save basis info in BasisFile
     integer(i4b)       :: LoadBasis  ! 1 to load basis info from OldBasisFile
+    integer(i4b)       :: SaveBasisFreq  ! save basis every i1 iterations 
   end type
 
   type BayesType
@@ -884,6 +887,8 @@ subroutine InitializeParameters(InputFile)
 
    ! Raw data file
    ErrFlag = GetVal(PropList,'RawData_FILE',HHData%RawDataFile)
+   ErrFlag = GetVal(PropList,'RawDataFormat',cTemp)
+   read(cTemp,'(i2)') HHData%RawDataFormat
 
    ! file containing base price information to use in analysis
    ErrFlag = GetVal(PropList,'BasePriceFile',BasePriceFile)
@@ -901,6 +906,7 @@ subroutine InitializeParameters(InputFile)
    ErrFlag = GetVal(PropList,'BD_BETA_FILE',ParmFiles%BD_beta)
    ErrFlag = GetVal(PropList,'BD_CDIAG_FILE',ParmFiles%BD_CDiag)
    ErrFlag = GetVal(PropList,'BD_COFFDIAG_FILE',ParmFiles%BD_COffDiag)
+   ErrFlag = GetVal(PropList,'SIGP_FILE',ParmFiles%sigp)
    
    ! outputFlag: 0 do not save output
    !             1 save output
@@ -966,6 +972,9 @@ subroutine InitializeParameters(InputFile)
 
   ErrFlag = GetVal(PropList,'LoadBasisFlag',cTemp)
   read(cTemp,'(i2)') MaxOptions%LoadBasis
+
+  ErrFlag = GetVal(PropList,'SaveBasisFreq',cTemp)
+  read(cTemp,'(i3)') MaxOptions%SaveBasisFreq
 
   ErrFlag = GetVal(PropList,'BasisFile',cTemp)
   MaxOptions%BasisFile = trim(OutDir) // '/' // trim(cTemp)
@@ -1068,16 +1077,19 @@ subroutine InitializeParameters(InputFile)
   if (parms%model==2) then
     ErrFlag = GetVal(PropList,'FreeFlagBC_beta',cTemp)
     read(cTemp,'(i2)') iFree%flagBC_beta
+
     ErrFlag = GetVal(PropList,'FreeFlagBD_beta',cTemp)
     read(cTemp,'(i2)') iFree%flagBD_beta
 
     ErrFlag = GetVal(PropList,'FreeFlagBC_CDiag',cTemp)
     read(cTemp,'(i2)') iFree%flagBC_CDiag
+
     ErrFlag = GetVal(PropList,'FreeFlagBD_CDiag',cTemp)
     read(cTemp,'(i2)') iFree%flagBD_CDiag
   
     ErrFlag = GetVal(PropList,'FreeFlagBC_COffDiag',cTemp)
     read(cTemp,'(i2)') iFree%flagBC_COffDiag
+
     ErrFlag = GetVal(PropList,'FreeFlagBD_COffDiag',cTemp)
     read(cTemp,'(i2)') iFree%flagBD_COffDiag
   end if
@@ -1310,7 +1322,7 @@ subroutine InitializeParameters(InputFile)
     end if ! if (model==2) then
    
     unit_sigp = 471
-    file_sigp = trim(InputDir) // '/sigp.raw'
+    file_sigp = trim(InputDir) // '/' // trim(ParmFiles%sigp)
     open(UNIT = unit_sigp, &
          FILE = file_sigp, &
          ACTION = 'read')

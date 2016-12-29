@@ -2387,7 +2387,8 @@ subroutine MaximizeLikelihood1(x,LValue,Grad,Hess,ierr)
   integer(i4b)                :: E04Unit   ! unit number for E04WDF options file
   character(99)               :: E04File   ! file name for E04WDF options file
   character(99)               :: OutFile   ! file name for E04WDF options file
-  
+  character(20)               :: SaveFreqString
+ 
 ! Workspace for E04WCF and E04WDF (constrained optimisation subroutines from NAG)
   real(dp)                    :: RW(lenrw)
   integer(i4b)                :: IW(leniw)
@@ -2480,7 +2481,9 @@ subroutine MaximizeLikelihood1(x,LValue,Grad,Hess,ierr)
            action='WRITE')
       call E04WFF('New Basis File = 101',iw,rw,ifail)
       call E04WFF('Backup Basis File = 103',iw,rw,ifail)
-      call E04WFF('Save Frequency = 2',iw,rw,ifail)
+      write(SaveFreqString,2484) 'Save Frequency = ',MaxOptions%SaveBasisFreq
+2484 format(a17,i3)
+      call E04WFF(SaveFreqString,iw,rw,ifail)
   end if
   ! open OldBasisFile to load information on basis
   if (MaxOptions%LoadBasis==1) then

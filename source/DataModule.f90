@@ -453,7 +453,8 @@ subroutine LoadData
   implicit none
   integer(i4b)  :: DataUnit,iComma,i1
   character(400) :: AllLabels
-  real(dp),     allocatable :: qp(:,:),err(:,:)
+  real(dp),     allocatable :: qp(:,:),err(:,:),tiering(:,:),expenditure(:)
+  integer(i4b), allocatable :: fascia(:)
 
   DataUnit = 20
   open(unit = DataUnit, &
@@ -479,17 +480,33 @@ subroutine LoadData
   end do
 
   allocate(qp(HHData%N,2*parms%J))
+  allocate(tiering(HHData%N,parms%J))
+  allocate(expenditure(HHData%N))
+  allocate(fascia(HHData%N))
   allocate(err(HHData%N,parms%J))
-  do i1=1,HHData%N
-    read(DataUnit,389) HHData%HHID(i1),HHData%date(i1),HHData%shopid(i1),  &
-                       qp(i1,:),HHData%nNonZero(i1),HHData%day(i1),err(i1,:)
-    HHData%q(1:HHData%nNonZero(i1),i1) = pack(qp(i1,1:2*parms%J:2),qp(i1,1:2*parms%J:2)>0.0d0)
-    HHData%p(:,i1) = qp(i1,2:2*parms%J:2)
-    HHData%iNonZero(1:HHData%nNonZero(i1),i1) = pack((/1:parms%J/),qp(i1,1:2*parms%J:2)>0.0d0)
-    HHData%iZero(1:parms%J-HHData%nNonZero(i1),i1) = pack((/1:parms%J/),qp(i1,1:2*parms%J:2)==0.0d0)
-  end do
-389 format(i10,i10,i10,<2*parms%J>d25.16,2i10,<parms%J>d25.16)
 
+  if (HHData%RawDataFormat==1) then
+    do i1=1,HHData%N
+      read(DataUnit,389) HHData%HHID(i1),HHData%date(i1),HHData%shopid(i1),  &
+                         qp(i1,:),HHData%nNonZero(i1),HHData%day(i1),err(i1,:)
+      HHData%q(1:HHData%nNonZero(i1),i1) = pack(qp(i1,1:2*parms%J:2),qp(i1,1:2*parms%J:2)>0.0d0)
+      HHData%p(:,i1) = qp(i1,2:2*parms%J:2)
+      HHData%iNonZero(1:HHData%nNonZero(i1),i1) = pack((/1:parms%J/),qp(i1,1:2*parms%J:2)>0.0d0)
+      HHData%iZero(1:parms%J-HHData%nNonZero(i1),i1) = pack((/1:parms%J/),qp(i1,1:2*parms%J:2)==0.0d0)
+    end do
+389 format(3i10,<2*parms%J>d25.16,2i10,<parms%J>d25.16)
+  elseif (HHData%RawDataFormat==2) then
+    do i1=1,HHData%N
+      read(DataUnit,390) HHData%HHID(i1),HHData%date(i1),HHData%shopid(i1),  &
+                         qp(i1,:),HHData%nNonZero(i1),         &
+                         fascia(i1),expenditure(i1),HHData%day(i1),err(i1,:)
+      HHData%q(1:HHData%nNonZero(i1),i1) = pack(qp(i1,1:2*parms%J:2),qp(i1,1:2*parms%J:2)>0.0d0)
+      HHData%p(:,i1) = qp(i1,2:2*parms%J:2)
+      HHData%iNonZero(1:HHData%nNonZero(i1),i1) = pack((/1:parms%J/),qp(i1,1:2*parms%J:2)>0.0d0)
+      HHData%iZero(1:parms%J-HHData%nNonZero(i1),i1) = pack((/1:parms%J/),qp(i1,1:2*parms%J:2)==0.0d0)
+    end do
+390 format(3i10,<2*parms%J>d25.16,2i10,d25.16,i10,<parms%J>d25.16)
+  end if 
   deallocate(qp,err)
   close(DataUnit)
 

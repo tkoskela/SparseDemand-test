@@ -13,6 +13,7 @@ TestLikeFlag : 4     # 0 = maximise likelihood
                      # 5 = analyse results
 TestIntegrationFlag : 0 # 1 to test accuracy of integration
 SimulateDataFlag    : 0 # 1 simulate data, 0 = load data from file
+RawDataFormat       : 1 # 1 original data format, 2 = 20161225 data format
 BICFlag             : 0 # 1 to minimize BIC
 MPIFlag             : 1 # 1 = each processor, subset of data
                         # 2 = each processor, subset of MC replications
