@@ -2354,12 +2354,6 @@ subroutine MaximizeLikelihood1(x,LValue,Grad,Hess,ierr)
   use GlobalModule, only : ControlOptions,parms,InputDir,OutDir,MasterID,HHData,iFree,MaxOptions
   use nag_library,  only : E04WCF,E04WDF,E04WDP,E04WEF,E04WFF, &
                            X04AAF,X04ABF,X04ACF,X04ADF
-!  use LikelihoodModule2, only : LikeFunc,DummyConFunc
-  ! E04WCF		! initialisation routine for E04WDF
-  ! E04WDF  	! constrained optimisation
-  ! E04WFF		! set options for E04WDF
-  ! X04AAF		! suppress and/or redirect NAG error messages
-  ! X04ABF    ! redirect NAG advisory messages
 
   implicit none
   real(dp),     intent(inout) :: x(:)
@@ -2425,6 +2419,21 @@ subroutine MaximizeLikelihood1(x,LValue,Grad,Hess,ierr)
   allocate(x0(nx))
   x0 = x
 
+  iuser(1) = parms%model
+  iuser(2) = HHData%N
+  ruser    = 0.0d0
+
+#if USE_MPI==1
+  ! broadcast (nx,iuser,ruser) 
+  call mpi_bcast(nx,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr)
+  ! broadcast length of iuser
+  call mpi_bcast(2,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr)
+  call mpi_bcast(iuser,2,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr)
+  ! broadcast length of ruser
+  call mpi_bcast(1,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr)
+  call mpi_bcast(ruser,1,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr)
+#endif
+
   nc_lin=0                 ! number of linear constraints
   if (ControlOptions%TestLikeFlag<4) then
     ! normal non-linear constraints
@@ -2449,14 +2458,6 @@ subroutine MaximizeLikelihood1(x,LValue,Grad,Hess,ierr)
   end if
   allocate(CCON(max(1,nc_nonlin)))
 
-  ! Initialize E04WDF by calling E04WCF
-  ifail=-1
-  call e04wcf(IW,LENIW,RW,LENRW,ifail)
-
-  ! Suppress NAG error messages
-  eunit = -1
-  call x04aaf(eflag,eunit)
-
   ! linear constraints:   BL <= A*x <= BU
   !     NONE
   !  A is not referenced when nclin==0
@@ -2474,120 +2475,115 @@ subroutine MaximizeLikelihood1(x,LValue,Grad,Hess,ierr)
   if (nc_nonlin>0) then
     BU(nx+nc_lin+(/1:nc_nonlin/)) = 0.0d0
   end if
-  ! set standard output for advisory message
-  eunit = 6
-  CALL X04ABF(1,eunit)
-  ! set options for E04WDF
-  E04Unit = 50
-  E04File = MaxOptions%OptionsFile
-  open(UNIT = E04Unit,  &
-       FILE = E04File, &
-       ACTION = 'read')
-  ifail=-1
-  call E04WEF(E04Unit,IW,RW,ifail)
-  close(E04Unit)
-
-  ! open files for Backup Basis File and New Basis File
-  if (MaxOptions%SaveBasis==1) then
-      open(unit = 101, &
-           file = MaxOptions%BasisFile, &
-           action='WRITE')
-      open(unit=103, &
-           file=MaxOptions%BackupBasisFile, &
-           action='WRITE')
-      call E04WFF('New Basis File = 101',iw,rw,ifail)
-      call E04WFF('Backup Basis File = 103',iw,rw,ifail)
-      write(SaveFreqString,2484) 'Save Frequency = ',MaxOptions%SaveBasisFreq
-2484 format(a17,i3)
-      call E04WFF(SaveFreqString,iw,rw,ifail)
-  end if
-  ! open OldBasisFile to load information on basis
-  if (MaxOptions%LoadBasis==1) then
-    open(unit=105, &
-         file = MaxOptions%OldBasisFile, &
-         action='READ')
-    call E04WFF('Old Basis File = 105',iw,rw,ifail)
-  end if
-
-  ifail=-1
-  iuser(1) = parms%model
-  iuser(2) = HHData%N
-  ruser    = 0.0d0
-
-#if USE_MPI==1
-  ! broadcast (nx,iuser,ruser) 
-  call mpi_bcast(nx,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr)
-  ! broadcast length of iuser
-  call mpi_bcast(2,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr)
-  call mpi_bcast(iuser,2,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr)
-  ! broadcast length of ruser
-  call mpi_bcast(1,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr)
-  call mpi_bcast(ruser,1,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr)
-#endif
-
-  LValue = 0.0D0
-  Grad   = 0.0d0
-  Hess   = 0.0d0
-  do iter=1,nx
-    Hess(iter,iter)=1.0d0
-  end do
 
   nstate = 1
-  if (ControlOptions%TestLikeFlag==0) then
-     ! Maximise likelihood 
-     print *,'Begin maximization.'
-     call ComputeHess(x0,LValue0,GRAD,Hess,iuser,ruser)
-     print *,'LValue0',LValue0
-     call E04WDF(nx,nc_lin,nc_nonlin,LDA,LDCJ,LDH,A,BL,BU,                     &
-                 NAGConstraintWrapper,LikeFunc,iter,ISTATE,CCON,CJAC,CLAMBDA,  &
-                 LValue,GRAD,HESS,x,IW,LENIW,RW,LENRW,iuser,RUSER,ifail)
-     call ComputeHess(x0,LValue0,GRAD,Hess,iuser,ruser)
-     call ComputeHess(x,LValue,GRAD,Hess,iuser,ruser)
-  else if (ControlOptions%TestLikeFlag==1) then
+  if (ControlOptions%TestLikeFlag==1) then
     ! test gradient of likelihood
     call TestGrad(LikeFunc,nx,x,nstate,iuser,ruser)
   else if (ControlOptions%TestLikeFlag==2) then
     ! plot likelihood function 
     call PlotLike(LikeFunc,nx,x,iFree%xlabels,BL(1:nx),BU(1:nx),nstate,iuser,ruser)
-  else if (ControlOptions%TestLikeFlag==3) then
-    ! test non-linear contraint
-    mode_constraint=0
-    allocate(needc(nc_nonlin))
-    needc = (/1:nc_nonlin/)
-    call NAGConstraintWrapper(mode_constraint,nc_nonlin,nx,LDCJ,NEEDC,X,CCON,CJAC,nstate,iuser,ruser)
-    deallocate(needc)
-  else if (ControlOptions%TestLikeFlag==4) then
-    ! maximise likelihood with no non-linear constraints
-     print *,'Begin maximization with no non-linear constraints.'
-     call ComputeHess(x0,LValue0,GRAD,Hess,iuser,ruser)
-     print *,'LValue0',LValue0
-     call E04WDF(nx,nc_lin,nc_nonlin,LDA,LDCJ,LDH,A,BL,BU,                     &
-                 E04WDP,LikeFunc,iter,ISTATE,CCON,CJAC,CLAMBDA,                &
-                 LValue,GRAD,HESS,x,IW,LENIW,RW,LENRW,iuser,RUSER,ifail)
-     call ComputeHess(x0,LValue0,GRAD,Hess,iuser,ruser)
-     call ComputeHess(x,LValue,GRAD,Hess,iuser,ruser)
-  end if
+  else if (ControlOptions%TestLikeFlag==0 .or. ControlOptions%TestLikeFlag>2) then 
+    ! Initialize E04WDF by calling E04WCF
+    ifail=-1
+    call e04wcf(IW,LENIW,RW,LENRW,ifail)
 
-  OutFile = trim(OutDir) // '/results.txt'
-  open(unit = 130,file = OutFile,action = 'write')
-  write(130,'(a20,3a25)') 'Var. Name','x0','x','Gradient'
-  do i1=1,nx
-    write(130,'(a20,3d25.12)') trim(iFree%xlabels(i1)), x0(i1),x(i1), Grad(i1)
-  end do
-  write(130,'(a25,d25.12)') 'LValue0',LValue0
-  write(130,'(a25,d25.12)') 'LValue',LValue
-  close(130)
+    ! Suppress NAG error messages
+    eunit = -1
+    call x04aaf(eflag,eunit)
+    ! set standard output for advisory message
+    eunit = 6
+    CALL X04ABF(1,eunit)
+    ! set options for E04WDF
+    E04Unit = 50
+    E04File = MaxOptions%OptionsFile
+    open(UNIT = E04Unit,  &
+         FILE = E04File, &
+         ACTION = 'read')
+    ifail=-1
+    call E04WEF(E04Unit,IW,RW,ifail)
+    close(E04Unit)
+
+    ! open files for Backup Basis File and New Basis File
+    if (MaxOptions%SaveBasis==1) then
+        open(unit = 101, &
+             file = MaxOptions%BasisFile, &
+             action='WRITE')
+        open(unit=103, &
+             file=MaxOptions%BackupBasisFile, &
+             action='WRITE')
+        call E04WFF('New Basis File = 101',iw,rw,ifail)
+        call E04WFF('Backup Basis File = 103',iw,rw,ifail)
+        write(SaveFreqString,2484) 'Save Frequency = ',MaxOptions%SaveBasisFreq
+2484 format(a17,i3)
+        call E04WFF(SaveFreqString,iw,rw,ifail)
+    end if
+    ! open OldBasisFile to load information on basis
+    if (MaxOptions%LoadBasis==1) then
+      open(unit=105, &
+           file = MaxOptions%OldBasisFile, &
+           action='READ')
+      call E04WFF('Old Basis File = 105',iw,rw,ifail)
+    end if
+
+    LValue = 0.0D0
+    Grad   = 0.0d0
+    Hess   = 0.0d0
+    do iter=1,nx
+      Hess(iter,iter)=1.0d0
+    end do
+
+    if (ControlOptions%TestLikeFlag==0) then
+       ! Maximise likelihood 
+       print *,'Begin maximization.'
+       call ComputeHess(x0,LValue0,GRAD,Hess,iuser,ruser)
+       print *,'LValue0',LValue0
+       ifail = -1
+       call E04WDF(nx,nc_lin,nc_nonlin,LDA,LDCJ,LDH,A,BL,BU,                     &
+                   NAGConstraintWrapper,LikeFunc,iter,ISTATE,CCON,CJAC,CLAMBDA,  &
+                   LValue,GRAD,HESS,x,IW,LENIW,RW,LENRW,iuser,RUSER,ifail)
+       call ComputeHess(x0,LValue0,GRAD,Hess,iuser,ruser)
+       call ComputeHess(x,LValue,GRAD,Hess,iuser,ruser)
+    else if (ControlOptions%TestLikeFlag==3) then
+      ! test non-linear contraint
+      mode_constraint=0
+      allocate(needc(nc_nonlin))
+      needc = (/1:nc_nonlin/)
+      call NAGConstraintWrapper(mode_constraint,nc_nonlin,nx,LDCJ,NEEDC,X,CCON,CJAC,nstate,iuser,ruser)
+      deallocate(needc)
+    else if (ControlOptions%TestLikeFlag==4) then
+       ! maximise likelihood with no non-linear constraints
+       print *,'Begin maximization with no non-linear constraints.'
+       call ComputeHess(x0,LValue0,GRAD,Hess,iuser,ruser)
+       print *,'LValue0',LValue0
+       call E04WDF(nx,nc_lin,nc_nonlin,LDA,LDCJ,LDH,A,BL,BU,                     &
+                   E04WDP,LikeFunc,iter,ISTATE,CCON,CJAC,CLAMBDA,                &
+                   LValue,GRAD,HESS,x,IW,LENIW,RW,LENRW,iuser,RUSER,ifail)
+       call ComputeHess(x0,LValue0,GRAD,Hess,iuser,ruser)
+       call ComputeHess(x,LValue,GRAD,Hess,iuser,ruser)
+    end if
+
+    OutFile = trim(OutDir) // '/results.txt'
+    open(unit = 130,file = OutFile,action = 'write')
+    write(130,'(a20,3a25)') 'Var. Name','x0','x','Gradient'
+    do i1=1,nx
+      write(130,'(a20,3d25.12)') trim(iFree%xlabels(i1)), x0(i1),x(i1), Grad(i1)
+    end do
+    write(130,'(a25,d25.12)') 'LValue0',LValue0
+    write(130,'(a25,d25.12)') 'LValue',LValue
+    close(130)
+  
+    if (MaxOptions%SaveBasis==1) then
+      close(101)
+      close(103)
+    end if
+    if (MaxOptions%LoadBasis==1) then
+      close(105)
+    end if
+ end if  ! if (ControlOptions%TestLikeFlag==1) then
 
   deallocate(A,BL,BU,CLAMBDA,ISTATE,CJAC)
   deallocate(CCON)
-
-  if (MaxOptions%SaveBasis==1) then
-    close(101)
-    close(103)
-  end if
-  if (MaxOptions%LoadBasis==1) then
-    close(105)
-  end if
 
 #if USE_MPI==1
   ! broadcast signal indicating that all mpi tasks are complete
