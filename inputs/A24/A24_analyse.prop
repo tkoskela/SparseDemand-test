@@ -13,6 +13,7 @@ TestLikeFlag : 5     # 0 = maximise likelihood
                      # 5 = analyse results
 TestIntegrationFlag : 0 # 1 to test accuracy of integration
 SimulateDataFlag    : 0 # 1 simulate data, 0 = load data from file
+RawDataFormat       : 1 # 1 original data format, 2 = 20161225 data format
 BICFlag             : 0 # 1 to minimize BIC
 MPIFlag             : 1 # 1 = each processor, subset of data
                         # 2 = each processor, subset of MC replications
@@ -64,8 +65,9 @@ AbsoluteTolerance : 0.01  # absolute tolerance for D01ESF for Bayesian computati
 RelativeTolerance : 0.01  # relative tolerance for D01ESF for Bayesian computation   
 MaxLevel          : 6     # maximum level for D01ESF for Bayesian computation   
 E04OptionsFile    : E04WDF.opt
-SaveBasis         : 1     # 1 to save basis info in BasisFile
-LoadBasis         : 1     # 1 to load basis info from OldBasisFile
+SaveBasisFlag     : 1     # 1 to save basis info in BasisFile
+LoadBasisFlag     : 0     # 1 to load basis info from OldBasisFile
+SaveBasisFreq     : 10    # save basis file after i1 iterations
 BasisFile         : basis1.txt
 BackupBasisFile   : basis1.bak
 OldBasisFile      : basis1.txt
@@ -147,4 +149,6 @@ BC_COFFDIAG_FILE : C/BC_COffDiag.raw
 BD_BETA_FILE : C/BD_beta.raw
 BD_CDIAG_FILE : C/BD_CDiag.raw
 BD_COFFDIAG_FILE : C/BD_COffDiag.raw
+SIGP_FILE        : C/sigp.raw
+
 BasePriceFile : analyse2/BasePriceFile.raw

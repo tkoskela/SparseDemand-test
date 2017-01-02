@@ -19,7 +19,6 @@ MPIFlag             : 1 # 1 = each processor, subset of data
                         # 2 = each processor, subset of MC replications
 #  Name of output directory
 OutDir : ../output/A24A
-#OutDir: /SAN/economics/Nesheim-IO/FruitDemand/output
 InputDir: /home/uctpln0/FruitDemand/code/fortran/inputs/A24
  
 #           01      # HotStart:     0 for default value, 1 to load from file
@@ -35,14 +34,13 @@ small : 1.0d-50     # small number to prevent log of zero
 # J     = number of products
 # K     = dimension of demand system
 NMC   : 1
-N     : 100
+N     : 10000
 M     : 200
 J     : 24
 K     : 5
 nRawVars : 77  # number of variables in raw data file
 
 RawData_FILE :  /home/uctpln0/data/fruit/FruitDemand.csv
-#RawData_FILE :  /SAN/economics/Nesheim-IO/data/TNS/fruit/FruitDemand.csv
 NewData_FILE :  temp/Temp.txt
 Summary_FILE : SumStats.tex
 Results1_FILE : Results1.txt
@@ -65,8 +63,9 @@ AbsoluteTolerance : 0.01  # absolute tolerance for D01ESF for Bayesian computati
 RelativeTolerance : 0.01  # relative tolerance for D01ESF for Bayesian computation   
 MaxLevel          : 6     # maximum level for D01ESF for Bayesian computation   
 E04OptionsFile    : E04WDF.opt
-SaveBasis         : 1     # 1 to save basis info in BasisFile
-LoadBasis         : 1     # 1 to load basis info from OldBasisFile
+SaveBasisFlag     : 1     # 1 to save basis info in BasisFile
+LoadBasisFlag     : 0     # 1 to load basis info from OldBasisFile
+SaveBasisFreq     : 10    # save basis file after i1 iterations
 BasisFile         : basis1.txt
 BackupBasisFile   : basis1.bak
 OldBasisFile      : basis1.txt
@@ -126,15 +125,15 @@ BC_hi : 0.95   # maximum value of BC
 FreeFlagD           : 0   # 1 to be free, 0 to be fixed
 FreeFlagBC          : 0   # 1 to be free, 0 to be fixed
 FreeFlagMUE         : 1   # 1 to be free, 0 to be fixed
-FreeFlagInvCDiag    : 0   # 1 to be free, 0 to be fixed
-FreeFlagInvCOffDiag : 0   # 1 to be free, 0 to be fixed
+FreeFlagInvCDiag    : 1   # 1 to be free, 0 to be fixed
+FreeFlagInvCOffDiag : 1   # 1 to be free, 0 to be fixed
 
-FreeFlagBD_beta     : 0
-FreeFlagBD_CDiag    : 0
-FreeFlagBD_COffDiag : 0
-FreeFlagBC_beta     : 0
-FreeFlagBC_CDiag    : 0
-FreeFlagBC_COffDiag : 0
+FreeFlagBD_beta     : 1
+FreeFlagBD_CDiag    : 1
+FreeFlagBD_COffDiag : 1
+FreeFlagBC_beta     : 1
+FreeFlagBC_CDiag    : 1
+FreeFlagBC_COffDiag : 1
 
 # Parameter file names
 MUE_FILE : A/MUE.raw
@@ -148,5 +147,6 @@ BC_COFFDIAG_FILE : A/BC_COffDiag.raw
 BD_BETA_FILE : A/BD_beta.raw
 BD_CDIAG_FILE : A/BD_CDiag.raw
 BD_COFFDIAG_FILE : A/BD_COffDiag.raw
+SIGP_FILE        : A/sigp.raw
 
 BasePriceFile : analyse2/BasePriceFile.raw
