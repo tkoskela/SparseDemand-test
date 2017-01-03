@@ -1,4 +1,6 @@
-[qdata,qhat,qaverage] = ImportDemandData('demand_data.csv', 1, 24);
+WorkDir = '/home/uctpln0/FruitDemand/code/fortran/output/A24B';
+[qdata,qhat,qaverage] = ...
+    ImportDemandData(fullfile(WorkDir,'demand_data.csv'), 1, 24);
 
 fig1=1;
 FontSize = 16;
@@ -55,6 +57,7 @@ for j1=1:J
   else
     str1 = ['demand',int2str(j1),'.csv'];
   end
+  str1 = fullfile(WorkDir,str1);
   str2 = sprintf('%c%c%c%c',FruitLabels{j1});
   [price(:,j1),      ...
    quantity(:,1,j1), ...
@@ -76,17 +79,23 @@ for j1=1:J
      subplot(2,1,2)
      plot(price(:,j1),reshape(quantity(:,2:K+1,j1),[np K]));
      legend('One item','Two items','Three items','Four items','Five items')
-     print(fig1,['fig',int2str(j1),'_',str2,'.eps'],'-depsc');
+     print(fig1, ...
+         fullfile(WorkDir,['fig',int2str(j1),'_',str2,'.eps']), ...
+         '-depsc');
    elseif NewPlotFlag==1
      area(price(:,j1),quantity(:,2:K+1,j1))
      title(['Demand for ',FruitLabels{j1}],'FontSize',FontSize);
      xlabel('price','FontSize',FontSize)
      ylabel('quantity','FontSize',FontSize)
      legend('One item','Two items','Three items','Four items','Five items')
-     print(fig1,['fig',int2str(j1),'_',str2,'.eps'],'-depsc');
+     print(fig1, ...
+         fullfile(WorkDir,['fig',int2str(j1),'_',str2,'.eps']), ...
+         '-depsc');
    end
 end
 
 % Load elasticities
-elas = ImportElasticity('elas.csv', 1, J);
-CreateElasTable('elas1.tex',elas,FruitLabels);
+elas = ImportElasticity(fullfile(WorkDir,'elas.csv'), 1, J);
+elas = ImportElasticity2(fullfile(WorkDir,'elas.csv'), 1, J);
+
+CreateElasTable(fullfile(WorkDir,'elas1.tex'),elas,FruitLabels);
