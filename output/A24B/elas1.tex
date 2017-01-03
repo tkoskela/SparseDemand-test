@@ -1,0 +1,211 @@
+\documentclass[11pt]{article}
+\usepackage{geometry}
+\geometry{a4paper}
+\usepackage{graphicx}
+\usepackage{amssymb}
+\usepackage{epstopdf}
+\DeclareGraphicsRule{.tif}{png}{.png}{`convert #1 `dirname #1`/`basename #1 .tif`.png}
+\title{Elasticities}
+\author{Lars Nesheim}
+\date{}
+\begin{document}
+\maketitle
+\begin{table}[h]
+\caption{Elasticities (1)}
+\label{Table: elasticities 1}
+\begin{center}
+\begin{tabular}{ccccc}
+Price & Apricots & Avocados & Bananas & Berries \\ \hline
+p$_{Apricots}$ & NaN & NaN & 0 & 0 \\ 
+p$_{Avocados}$ & NaN & NaN & 0 & 0 \\ 
+p$_{Bananas}$ & NaN & NaN & -1.7 & 0.18 \\ 
+p$_{Berries}$ & NaN & NaN & 0.028 & -3.6 \\ 
+p$_{Cherries}$ & NaN & NaN & 0.0018 & 0.44 \\ 
+p$_{Dates}$ & NaN & NaN & 0.16 & 0.0012 \\ 
+p$_{Apples}$ & NaN & NaN & -0.51 & 0.077 \\ 
+p$_{Easy Peelers}$ & NaN & NaN & 0.06 & -0.14 \\ 
+p$_{Grapes}$ & NaN & NaN & -0.032 & -0.012 \\ 
+p$_{Grapefruits}$ & NaN & NaN & -0.037 & 0.12 \\ 
+p$_{Kiwis}$ & NaN & NaN & -0.11 & -0.068 \\ 
+p$_{Lemons and limes}$ & NaN & NaN & 0.00086 & 0 \\ 
+p$_{Lychees}$ & NaN & NaN & 0 & 0 \\ 
+p$_{Mangos}$ & NaN & NaN & 0 & 0 \\ 
+p$_{Melons}$ & NaN & NaN & 0.0025 & -0.0089 \\ 
+p$_{Oranges}$ & NaN & NaN & 0.3 & -0.046 \\ 
+p$_{Passion fruits}$ & NaN & NaN & 0 & 0 \\ 
+p$_{Paw-paws}$ & NaN & NaN & 0.012 & 0 \\ 
+p$_{Pears}$ & NaN & NaN & 0.049 & 0.012 \\ 
+p$_{Pineapples}$ & NaN & NaN & 0 & 0 \\ 
+p$_{Peaches, plums, and nectarines}$ & NaN & NaN & -0.0098 & 0 \\ 
+p$_{Pomegranates}$ & NaN & NaN & 0 & 0 \\ 
+p$_{Rhubarb}$ & NaN & NaN & -0.0047 & 0 \\ 
+p$_{Sharon fruits}$ & NaN & NaN & 0.00028 & 0 \\ 
+\end{tabular}
+\end{center}
+\end{table}
+\begin{table}[h]
+\caption{Elasticities (2)}
+\label{Table: elasticities 2}
+\begin{center}
+\begin{tabular}{ccccc}
+Price & Cherries & Dates & Apples & Easy Peelers \\ \hline
+p$_{Apricots}$ & 0 & 0 & 0 & 0 \\ 
+p$_{Avocados}$ & 0 & 0 & 0 & 0 \\ 
+p$_{Bananas}$ & 0.0023 & 0.027 & -0.18 & 0.0085 \\ 
+p$_{Berries}$ & 0.083 & 3.1e-05 & 0.0041 & -0.0029 \\ 
+p$_{Cherries}$ & -6 & 0.14 & -0.0026 & 0.086 \\ 
+p$_{Dates}$ & 1 & -2.5 & 0.27 & 0.00016 \\ 
+p$_{Apples}$ & -0.0091 & 0.13 & -2 & 0.64 \\ 
+p$_{Easy Peelers}$ & 0.76 & 0.0002 & 1.6 & -1.3 \\ 
+p$_{Grapes}$ & 0.25 & -0.016 & 0.082 & 0.00031 \\ 
+p$_{Grapefruits}$ & -0.018 & -0.0041 & -0.0096 & 0.015 \\ 
+p$_{Kiwis}$ & -0.13 & 0.0065 & 0.11 & 0.024 \\ 
+p$_{Lemons and limes}$ & 0 & 0.0044 & -0.00046 & 0 \\ 
+p$_{Lychees}$ & 0 & 0 & 0 & 0 \\ 
+p$_{Mangos}$ & 0 & 0 & 0 & 0 \\ 
+p$_{Melons}$ & -0.0069 & 0.0043 & 0.00021 & 0.017 \\ 
+p$_{Oranges}$ & -0.0073 & 0.43 & 0.1 & 0.074 \\ 
+p$_{Passion fruits}$ & 0 & 0 & 0 & 0 \\ 
+p$_{Paw-paws}$ & 0 & 0.067 & 0.00039 & 0.0023 \\ 
+p$_{Pears}$ & 0.0097 & 0.0021 & -0.023 & -0.015 \\ 
+p$_{Pineapples}$ & -0.0021 & 0 & -0.00091 & 0.00056 \\ 
+p$_{Peaches, plums, and nectarines}$ & 0.026 & -0.0026 & 0.047 & 0.093 \\ 
+p$_{Pomegranates}$ & 0.041 & 0.013 & -0.00014 & 0.0039 \\ 
+p$_{Rhubarb}$ & 0.033 & 0.067 & -1.6e-05 & 0 \\ 
+p$_{Sharon fruits}$ & 0 & 0 & 0 & 0 \\ 
+\end{tabular}
+\end{center}
+\end{table}
+\begin{table}[h]
+\caption{Elasticities (3)}
+\label{Table: elasticities 3}
+\begin{center}
+\begin{tabular}{ccccc}
+Price & Grapes & Grapefruits & Kiwis & Lemons and limes \\ \hline
+p$_{Apricots}$ & 0 & 0 & 0 & 0 \\ 
+p$_{Avocados}$ & 0 & 0 & 0 & 0 \\ 
+p$_{Bananas}$ & -0.047 & -0.11 & -0.17 & 0.079 \\ 
+p$_{Berries}$ & -0.0027 & 0.052 & -0.016 & 0 \\ 
+p$_{Cherries}$ & 0.3 & -0.043 & -0.16 & 0 \\ 
+p$_{Dates}$ & -0.14 & -0.073 & 0.059 & 2.4 \\ 
+p$_{Apples}$ & 0.34 & -0.082 & 0.47 & -0.12 \\ 
+p$_{Easy Peelers}$ & -0.00064 & 0.31 & 0.27 & 0 \\ 
+p$_{Grapes}$ & -5.6 & 0.22 & 0.59 & 2.1 \\ 
+p$_{Grapefruits}$ & 0.1 & -3.2 & 0.12 & 0 \\ 
+p$_{Kiwis}$ & 0.56 & 0.22 & -2.6 & 3 \\ 
+p$_{Lemons and limes}$ & 0.033 & 0 & 0.051 & -7.7 \\ 
+p$_{Lychees}$ & 0 & 0 & 0 & 0 \\ 
+p$_{Mangos}$ & 0 & 0 & 0 & 0 \\ 
+p$_{Melons}$ & 0.32 & 0.45 & 0.056 & 0 \\ 
+p$_{Oranges}$ & -0.15 & -0.019 & -0.16 & -0.035 \\ 
+p$_{Passion fruits}$ & 0 & 0 & 0 & 0 \\ 
+p$_{Paw-paws}$ & -0.094 & 0 & 0.00081 & 0.38 \\ 
+p$_{Pears}$ & 0.097 & -0.1 & -0.05 & 0 \\ 
+p$_{Pineapples}$ & 0 & 0.043 & 0.00094 & 0 \\ 
+p$_{Peaches, plums, and nectarines}$ & 2.6 & 1.3 & 0.86 & 0.037 \\ 
+p$_{Pomegranates}$ & 0 & 0.071 & 0.00022 & 0 \\ 
+p$_{Rhubarb}$ & 0.19 & 0 & -0.032 & -0.017 \\ 
+p$_{Sharon fruits}$ & 0 & 0 & 0 & 0 \\ 
+\end{tabular}
+\end{center}
+\end{table}
+\begin{table}[h]
+\caption{Elasticities (4)}
+\label{Table: elasticities 4}
+\begin{center}
+\begin{tabular}{ccccc}
+Price & Lychees & Mangos & Melons & Oranges \\ \hline
+p$_{Apricots}$ & NaN & NaN & 0 & 0 \\ 
+p$_{Avocados}$ & NaN & NaN & 0 & 0 \\ 
+p$_{Bananas}$ & NaN & NaN & 0.026 & 0.05 \\ 
+p$_{Berries}$ & NaN & NaN & -0.015 & -0.0012 \\ 
+p$_{Cherries}$ & NaN & NaN & -0.06 & -0.00098 \\ 
+p$_{Dates}$ & NaN & NaN & 0.27 & 0.42 \\ 
+p$_{Apples}$ & NaN & NaN & 0.0064 & 0.047 \\ 
+p$_{Easy Peelers}$ & NaN & NaN & 1.3 & 0.087 \\ 
+p$_{Grapes}$ & NaN & NaN & 2.3 & -0.017 \\ 
+p$_{Grapefruits}$ & NaN & NaN & 1.6 & -0.0011 \\ 
+p$_{Kiwis}$ & NaN & NaN & 0.38 & -0.017 \\ 
+p$_{Lemons and limes}$ & NaN & NaN & 0 & -6.4e-05 \\ 
+p$_{Lychees}$ & NaN & NaN & 0 & 0 \\ 
+p$_{Mangos}$ & NaN & NaN & 0 & 0 \\ 
+p$_{Melons}$ & NaN & NaN & -7.9 & -0.0038 \\ 
+p$_{Oranges}$ & NaN & NaN & -0.25 & -0.72 \\ 
+p$_{Passion fruits}$ & NaN & NaN & 0 & 0 \\ 
+p$_{Paw-paws}$ & NaN & NaN & 0 & 0.00048 \\ 
+p$_{Pears}$ & NaN & NaN & -0.16 & 0.12 \\ 
+p$_{Pineapples}$ & NaN & NaN & 0 & -0.00016 \\ 
+p$_{Peaches, plums, and nectarines}$ & NaN & NaN & 1.3 & -0.05 \\ 
+p$_{Pomegranates}$ & NaN & NaN & 0.056 & 6.9e-05 \\ 
+p$_{Rhubarb}$ & NaN & NaN & 0 & 0 \\ 
+p$_{Sharon fruits}$ & NaN & NaN & 0 & 0 \\ 
+\end{tabular}
+\end{center}
+\end{table}
+\begin{table}[h]
+\caption{Elasticities (5)}
+\label{Table: elasticities 5}
+\begin{center}
+\begin{tabular}{ccccc}
+Price & Passion fruits & Paw-paws & Pears & Pineapples \\ \hline
+p$_{Apricots}$ & NaN & 0 & 0 & 0 \\ 
+p$_{Avocados}$ & NaN & 0 & 0 & 0 \\ 
+p$_{Bananas}$ & NaN & 0.36 & 0.033 & 0 \\ 
+p$_{Berries}$ & NaN & 0 & 0.0012 & 0 \\ 
+p$_{Cherries}$ & NaN & 0 & 0.0053 & -0.078 \\ 
+p$_{Dates}$ & NaN & 11 & 0.0085 & 0 \\ 
+p$_{Apples}$ & NaN & 0.032 & -0.044 & -0.12 \\ 
+p$_{Easy Peelers}$ & NaN & 0.48 & -0.072 & 0.18 \\ 
+p$_{Grapes}$ & NaN & -1.8 & 0.045 & 0 \\ 
+p$_{Grapefruits}$ & NaN & 0 & -0.023 & 0.66 \\ 
+p$_{Kiwis}$ & NaN & 0.015 & -0.022 & 0.028 \\ 
+p$_{Lemons and limes}$ & NaN & 0.12 & 0 & 0 \\ 
+p$_{Lychees}$ & NaN & 0 & 0 & 0 \\ 
+p$_{Mangos}$ & NaN & 0 & 0 & 0 \\ 
+p$_{Melons}$ & NaN & 0 & -0.01 & 0 \\ 
+p$_{Oranges}$ & NaN & 0.084 & 0.5 & -0.046 \\ 
+p$_{Passion fruits}$ & NaN & 0 & 0 & 0 \\ 
+p$_{Paw-paws}$ & NaN & -21 & 0 & 0 \\ 
+p$_{Pears}$ & NaN & 0 & -1.3 & 0.046 \\ 
+p$_{Pineapples}$ & NaN & 0 & 0.00067 & -5 \\ 
+p$_{Peaches, plums, and nectarines}$ & NaN & 3.5 & -0.09 & 2.4 \\ 
+p$_{Pomegranates}$ & NaN & 0 & 0.00025 & 0.011 \\ 
+p$_{Rhubarb}$ & NaN & 3.2 & 0 & 0 \\ 
+p$_{Sharon fruits}$ & NaN & 0 & 0 & 0 \\ 
+\end{tabular}
+\end{center}
+\end{table}
+\begin{table}[h]
+\caption{Elasticities (6)}
+\label{Table: elasticities 6}
+\begin{center}
+\begin{tabular}{ccccc}
+Price & Peaches, plums, and nectarines & Pomegranates & Rhubarb & Sharon fruits \\ \hline
+p$_{Apricots}$ & 0 & 0 & 0 & 0 \\ 
+p$_{Avocados}$ & 0 & 0 & 0 & 0 \\ 
+p$_{Bananas}$ & -0.017 & 0 & -0.044 & 0.19 \\ 
+p$_{Berries}$ & 0 & 0 & 0 & 0 \\ 
+p$_{Cherries}$ & 0.036 & 0.92 & 0.25 & 0 \\ 
+p$_{Dates}$ & -0.027 & 2.2 & 3.7 & 0 \\ 
+p$_{Apples}$ & 0.23 & -0.011 & -0.00043 & 0 \\ 
+p$_{Easy Peelers}$ & 1.2 & 0.78 & 0 & 0 \\ 
+p$_{Grapes}$ & 3 & 0 & 1.2 & 0 \\ 
+p$_{Grapefruits}$ & 0.73 & 0.65 & 0 & 0 \\ 
+p$_{Kiwis}$ & 1.1 & 0.0039 & -0.19 & 0 \\ 
+p$_{Lemons and limes}$ & 0.0007 & 0 & -0.0017 & 0 \\ 
+p$_{Lychees}$ & 0 & 0 & 0 & 0 \\ 
+p$_{Mangos}$ & 0 & 0 & 0 & 0 \\ 
+p$_{Melons}$ & 0.21 & 0.14 & 0 & 0 \\ 
+p$_{Oranges}$ & -0.54 & 0.012 & 0 & 0 \\ 
+p$_{Passion fruits}$ & 0 & 0 & 0 & 0 \\ 
+p$_{Paw-paws}$ & 0.21 & 0 & 1.1 & 0 \\ 
+p$_{Pears}$ & -0.23 & 0.01 & 0 & 0 \\ 
+p$_{Pineapples}$ & 0.09 & 0.0068 & 0 & 0 \\ 
+p$_{Peaches, plums, and nectarines}$ & -5.8 & 0.17 & -0.56 & 0 \\ 
+p$_{Pomegranates}$ & 0.01 & -9.9 & 0 & 0 \\ 
+p$_{Rhubarb}$ & -0.1 & 0 & -10 & 0 \\ 
+p$_{Sharon fruits}$ & 0 & 0 & 0 & -8.1 \\ 
+\end{tabular}
+\end{center}
+\end{table}
+\end{document}
