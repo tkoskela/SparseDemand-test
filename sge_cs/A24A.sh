@@ -1,6 +1,6 @@
 #$ -S /bin/bash
 #$ -wd /home/uctpln0/FuirtDemand/code/fortran/source
-#$ -o /home/uctpln0/FruitDemand/code/fortran/output/A24A_mpi.TC.out
+#$ -o /home/uctpln0/FruitDemand/code/fortran/output/A24A.out
 #$ -N A24A_MPI
 #$ -j y
 #$ -cwd
@@ -9,7 +9,7 @@
 # ,hostname=burns-*
 #$ -l hostname=burns*
 #$ -R y
-#$ -pe orte 128
+#$ -pe orte 401
 
 cd /home/uctpln0/FruitDemand/code/fortran/source
 source /home/uctpln0/GeneralCode/config/SetEnv.sh

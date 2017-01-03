@@ -1657,11 +1657,15 @@ end subroutine RunMonteCarlo
 !!   BEGIN ANALYSIS of DEMAND
 subroutine AnalyseResults(IMC)
   use nrtype
-  use GlobalModule, only : ControlOptions
+  use GlobalModule, only : ControlOptions,parms,ReadWriteParameters
   use DataModule, only   : CreateData,LoadData
   implicit none
   integer(i4b), intent(in) :: IMC
   integer(i4b)             :: DateTime(8)
+
+  if (ControlOptions%HotStart==1) then
+    call ReadWriteParameters(parms,'read')
+  end if
 
   if (ControlOptions%SimulateData==1) then
     call CreateData(iMC)
@@ -1829,7 +1833,7 @@ subroutine ComputeElasticities
     do i2=1,np
       HHData1%p(i1,:) = p(i2)
       call ComputeDemand(HHData1)
-      do i3=0,5
+      do i3=0,parms%K
         ! Compute q(i1) conditional on nNonZero==n
         !    if n==0, then compute total demand
         !    save results in matrix newq

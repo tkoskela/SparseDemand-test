@@ -22,7 +22,7 @@ OutDir : ../output/A24A
 InputDir: /home/uctpln0/FruitDemand/code/fortran/inputs/A24
  
 #           01      # HotStart:     0 for default value, 1 to load from file
-HotStart  : 1 
+HotStart  : 0 
 InitialModel : 2    # first model to estimate
 FinalModel   : 2    # last model to estimate
 small : 1.0d-50     # small number to prevent log of zero
@@ -34,7 +34,7 @@ small : 1.0d-50     # small number to prevent log of zero
 # J     = number of products
 # K     = dimension of demand system
 NMC   : 1
-N     : 10000
+N     : 20000
 M     : 200
 J     : 24
 K     : 5
@@ -130,10 +130,10 @@ FreeFlagInvCOffDiag : 1   # 1 to be free, 0 to be fixed
 
 FreeFlagBD_beta     : 1
 FreeFlagBD_CDiag    : 1
-FreeFlagBD_COffDiag : 1
+FreeFlagBD_COffDiag : 0
 FreeFlagBC_beta     : 1
 FreeFlagBC_CDiag    : 1
-FreeFlagBC_COffDiag : 1
+FreeFlagBC_COffDiag : 0
 
 # Parameter file names
 MUE_FILE : A/MUE.raw
@@ -149,4 +149,4 @@ BD_CDIAG_FILE : A/BD_CDiag.raw
 BD_COFFDIAG_FILE : A/BD_COffDiag.raw
 SIGP_FILE        : A/sigp.raw
 
-BasePriceFile : analyse2/BasePriceFile.raw
+BasePriceFile : A/BasePriceFile.raw
