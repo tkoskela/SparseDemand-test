@@ -154,8 +154,11 @@ nuke:	cleantools cleannr clean
 #-----------------------------
 # Rule to build libraries
 
-# The stuff with $(patsubst ...) below is 'syntactic sugar' to
-# prefix each source file with the path to where it is stored
+# The codes $(patsubst ...) adds a prefix to 
+# each source file defining the path where it is stored
+# This section also builds the libraries (libnr,libtools) if they have not yet already been built.
+#-----------------------------
+
 $(NR_DIR)/libnr.a : $(patsubst %, $(NR_DIR)/%, $(NR_SRC) )
 	cd $(NR_DIR) ; make libnr.a
 
