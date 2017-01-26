@@ -4,7 +4,7 @@ Begin
   Function Precision = 1.7e-6
   Derivative Level = 0
   Hessian Full Memory
-  Iterations Limit = 10000
+  Iterations Limit = 100000
   Major Iterations Limit = 2000
   Major Print Level = 1
   Major Step Limit = 2.0
