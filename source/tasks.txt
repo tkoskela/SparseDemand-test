@@ -1,8 +1,5 @@
 1) check for convergence
-   a) restart from final point and check
    b) plot likelihood function
-   c) estimate with monte carlo data
-   d) estimate with J=3, K=2
    e) what else
 2) are elasticities sensible
    a) estimate logit
@@ -32,4 +29,10 @@ Completed
 3) complete move of (BL,BU) to .prop file
 4) test MPI
 5) RunMonteCarlo:   some of this should only be executed by MasterProcess
+1) check for convergence
+   a) restart from final point and check
+   b) plot likelihood function
+   d) estimate with J=3, K=2
+   e) what else
+
 

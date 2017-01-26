@@ -1,4 +1,4 @@
-ifconfig    see netowrk connections
+ifconfig    see network connections
 tail out.txt -f    see end of file
 cat 
 awk

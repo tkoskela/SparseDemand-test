@@ -50,6 +50,7 @@ IntRule%rule(:)%weights
 RandomB%nQuad
 RandomB%nodes
 RandomB%weights
+-------
 
 
 ----------------------------------------------------------------------

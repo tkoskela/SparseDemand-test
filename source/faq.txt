@@ -11,3 +11,5 @@
 
 # to extract parameters from output file
 awk '{print $2}' results.txt >BD_beta.txt
+
+#
