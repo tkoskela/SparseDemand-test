@@ -18,8 +18,7 @@ BICFlag             : 0 # 1 to minimize BIC
 MPIFlag             : 1 # 1 = each processor, subset of data
                         # 2 = each processor, subset of MC replications
 #  Name of output directory
-OutDir : ../output/A24_analyse2
-#OutDir: /SAN/economics/Nesheim-IO/FruitDemand/output
+OutDir : ../output/A24A
 InputDir: /home/uctpln0/FruitDemand/code/fortran/inputs/A24
  
 #           01      # HotStart:     0 for default value, 1 to load from file
@@ -42,7 +41,6 @@ K     : 5
 nRawVars : 77  # number of variables in raw data file
 
 RawData_FILE :  /home/uctpln0/data/fruit/FruitDemand.csv
-#RawData_FILE :  /SAN/economics/Nesheim-IO/data/TNS/fruit/FruitDemand.csv
 NewData_FILE :  temp/Temp.txt
 Summary_FILE : SumStats.tex
 Results1_FILE : Results1.txt
@@ -67,7 +65,7 @@ MaxLevel          : 6     # maximum level for D01ESF for Bayesian computation
 E04OptionsFile    : E04WDF.opt
 SaveBasisFlag     : 1     # 1 to save basis info in BasisFile
 LoadBasisFlag     : 0     # 1 to load basis info from OldBasisFile
-SaveBasisFreq     : 10    # save basis file after i1 iterations
+SaveBasisFreq     : 40    # save basis file after i1 iterations
 BasisFile         : basis1.txt
 BackupBasisFile   : basis1.bak
 OldBasisFile      : basis1.txt
@@ -95,7 +93,7 @@ IntegrationFlag : 6 6 6 6 6 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7
 # Number of quadrature nodes in each dimension
 #          1  2  3  4  5  6  7  8  9  10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30
 #          012012012012012012012012012012012012012012012012012012012012012012012012012012012012012012
-nQuad    : 10 10 10 10 10  5  5  5  2  2  2  2  2  2  2  2  2  2  2  2  2  2  2  2  2  2  2  2  2  2 
+nQuad    : 19 19 19 19 19  5  5  5  2  2  2  2  2  2  2  2  2  2  2  2  2  2  2  2  2  2  2  2  2  2 
 # nQuadAll : total number of quadrature nodes for use when flag ==2,3,or 7
 #
 #          1   2   3   4   5   6   7   8   9   10  11  12  13  14  15  16  17  18  19  20  21  22  23  24  25  26  27  28  29  30
@@ -120,35 +118,37 @@ RandomB_nQuad :  15 15 5  5  5  5  5  5  5  5  3  3  3  2  2  2  2  2  2  2  2  
 # BD_z_dim = size(BD_z)
 BC_z_dim : 23 # default BC_z_dim = J-1
 BD_z_dim : 24 # default BD_z_dim = J
-BC_lo : 0.05   # minimum value of BC  (ensures B matrix had rank K for all eta)
+BC_lo : 0.10   # minimum value of BC  (ensures B matrix had rank K for all eta)
 BC_hi : 0.95   # maximum value of BC
+InvCDiag_LO : 0.3d0  # BL = InvCDiag_LO
+InvCDiag_HI : 2.0d0  # BU = x + InvCDiag_HI
 
 # select subsets of parameter to be free
 FreeFlagD           : 0   # 1 to be free, 0 to be fixed
 FreeFlagBC          : 0   # 1 to be free, 0 to be fixed
-FreeFlagMUE         : 0   # 1 to be free, 0 to be fixed
+FreeFlagMUE         : 1   # 1 to be free, 0 to be fixed
 FreeFlagInvCDiag    : 1   # 1 to be free, 0 to be fixed
 FreeFlagInvCOffDiag : 1   # 1 to be free, 0 to be fixed
 
-FreeFlagBD_beta     : 0
-FreeFlagBD_CDiag    : 0
-FreeFlagBD_COffDiag : 0
-FreeFlagBC_beta     : 0
-FreeFlagBC_CDiag    : 0
-FreeFlagBC_COffDiag : 0
+FreeFlagBD_beta     : 1
+FreeFlagBD_CDiag    : 1
+FreeFlagBD_COffDiag : 1
+FreeFlagBC_beta     : 1
+FreeFlagBC_CDiag    : 1
+FreeFlagBC_COffDiag : 1
 
 # Parameter file names
-MUE_FILE : analyse2/MUE.raw
-INVCDIAG_FILE : analyse2/INVCDiag.raw
-INVCOFFDIAG_FILE : analyse2/INVCOffDiag.raw
-C_FILE : analyse2/C.raw
-D_FILE : analyse2/D.raw
-BC_BETA_FILE : analyse2/BC_beta.raw
-BC_CDIAG_FILE : analyse2/BC_CDiag.raw
-BC_COFFDIAG_FILE : analyse2/BC_COffDiag.raw
-BD_BETA_FILE : analyse2/BD_beta.raw
-BD_CDIAG_FILE : analyse2/BD_CDiag.raw
-BD_COFFDIAG_FILE : analyse2/BD_COffDiag.raw
-SIGP_FILE        : analyse2/sigp.raw
+MUE_FILE : A/MUE.raw
+INVCDIAG_FILE : A/INVCDiag.raw
+INVCOFFDIAG_FILE : A/INVCOffDiag.raw
+C_FILE : A/C.raw
+D_FILE : A/D.raw
+BC_BETA_FILE : A/BC_beta.raw
+BC_CDIAG_FILE : A/BC_CDiag.raw
+BC_COFFDIAG_FILE : A/BC_COffDiag.raw
+BD_BETA_FILE : A/BD_beta.raw
+BD_CDIAG_FILE : A/BD_CDiag.raw
+BD_COFFDIAG_FILE : A/BD_COffDiag.raw
+SIGP_FILE        : A/sigp.raw
 
-BasePriceFile : analyse2/BasePriceFile.raw
+BasePriceFile : A/BasePriceFile.raw
