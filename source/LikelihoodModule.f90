@@ -228,7 +228,7 @@ subroutine Like1_wrapper(i1,d1,d2,d3,parms,mode,L1,GradL1)
 
   implicit none
   integer(i4b),         intent(in)    :: i1,d1,d2,d3
-  type(ParmsStructure), intent(in)    :: parms
+  type(ParmsStructure), intent(inout) :: parms
   integer(i4b),         intent(inout) :: mode
   real(dp),             intent(out)   :: L1,GradL1(:)
 
@@ -512,7 +512,7 @@ end subroutine Like1B
 !--------------------------------------
 subroutine Like1A(i1,parms,mode,L,GradL)
   use nrtype
-  use GlobalModule, only : ParmsStructure,HHData,inf
+  use GlobalModule, only : ParmsStructure,HHData,inf,ReadWriteParameters
   use nag_library, only : F04BAF,F07AAF,F07ADF,F03BAF
   ! F04BAF = matrix inversion using LU decomp
   ! F07ADF = LU decomposition
@@ -520,7 +520,7 @@ subroutine Like1A(i1,parms,mode,L,GradL)
 
   implicit none
   integer(i4b),         intent(in)    :: i1
-  type(ParmsStructure), intent(in)    :: parms
+  type(ParmsStructure), intent(inout) :: parms
   integer(i4b),         intent(inout) :: mode
   real(dp),             intent(out)   :: L
   real(dp),             intent(inout) :: GradL(:)
@@ -563,8 +563,9 @@ subroutine Like1A(i1,parms,mode,L,GradL)
   call F07AAF(parms%K,1,B1T,parms%K,iPivot,e,parms%K,ifail)
   if (ifail .ne. 0 .and. ifail .ne. parms%K+1) then
     print *,'ifail = ',ifail,'. B1 is singular'
+    call ReadWriteParameters(parms,'write')
     do i2=1,parms%K
-      print *,B1(i1,:)
+      print *,B1(i2,:)
     end do
     stop
   end if
@@ -2558,8 +2559,9 @@ subroutine MaximizeLikelihood1(x,LValue,Grad,Hess,ierr)
     else if (ControlOptions%TestLikeFlag==4) then
        ! maximise likelihood with no non-linear constraints
        print *,'Begin maximization with no non-linear constraints.'
-       call ComputeHess(x0,LValue0,GRAD,Hess,iuser,ruser)
+       !call ComputeHess(x0,LValue0,GRAD,Hess,iuser,ruser)
        print *,'LValue0',LValue0
+       ifail = -1
        call E04WDF(nx,nc_lin,nc_nonlin,LDA,LDCJ,LDH,A,BL,BU,                     &
                    E04WDP,LikeFunc,iter,ISTATE,CCON,CJAC,CLAMBDA,                &
                    LValue,GRAD,HESS,x,IW,LENIW,RW,LENRW,iuser,RUSER,ifail)
@@ -3091,7 +3093,7 @@ end subroutine ComputeHess
 
 subroutine SetBounds(x,BL,BU)
   use nrtype
-  use GlobalModule, only : iFree,MaxOptions,bayes
+  use GlobalModule, only : iFree,MaxOptions,bayes,parms
   implicit none
   real(dp), intent(in)  :: x(:)
   real(dp), intent(out) :: BL(:)
@@ -3116,8 +3118,8 @@ subroutine SetBounds(x,BL,BU)
   end if
 
   if (iFree%nInvCDiag>0) then
-    BL(iFree%xInvCDiag) = 0.1d0
-    BU(iFree%xInvCDiag) = x(iFree%xInvCDiag)+5.0d0
+    BL(iFree%xInvCDiag) = parms%InvCDiag_LO
+    BU(iFree%xInvCDiag) = x(iFree%xInvCDiag)+parms%InvCDiag_HI
   end if
 
   if (iFree%nInvCOffDiag>0) then

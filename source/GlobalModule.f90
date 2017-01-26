@@ -122,6 +122,8 @@ module GlobalModule
     integer(i4b)          :: nBD_COffDiag   ! size of BD_COffDiag
     real(dp)              :: BC_lo,BC_hi  ! BC(i1) = bc_lo + (bc_hi-bc_lo) * pi 
                                           !                 * normcdf(y)
+    real(dp)              :: InvCDiag_LO  ! BL(InvCDiag) = InvCDiag_LO
+    real(dp)              :: InvCDiag_HI  ! BU(InvCDiag) = x + InvCDiag_HI
     
     real(dp), allocatable :: BC_beta(:)   ! slope of y(c) w.r.t. etaZ
     real(dp), allocatable :: BD_beta(:)   ! log(D) = BD_beta* BD_z + BD_C* eta
@@ -1039,6 +1041,12 @@ subroutine InitializeParameters(InputFile)
     ErrFlag = GetVal(PropList,'BC_hi',cTemp)
     read(cTemp,'(d12.4)') parms%BC_hi
 
+    ErrFlag = GetVal(PropList,'InvCDiag_LO',cTemp)
+    read(cTemp,'(d12.4)') parms%InvCDiag_LO
+    
+    ErrFlag = GetVal(PropList,'InvCDiag_HI',cTemp)
+    read(cTemp,'(d12.4)') parms%InvCDiag_HI
+
     ! RandomB parameters: dimension of random elements of C and D
     ErrFlag = GetVal(PropList,'dim_eta',cTemp)
     read(cTemp,'(i3)') parms%dim_eta
@@ -1646,6 +1654,8 @@ subroutine BroadcastParameters(pid)
 
   ! broadcast the other parameters in parms
   call mpi_barrier(MPI_COMM_WORLD,ierr_barrier)
+  call mpi_bcast(parms%file,len(parms%file),MPI_CHARACTER,MASTERID,MPI_COMM_WORLD,ierr(24))
+  call mpi_bcast(parms%unit,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr(24))
   call BroadcastParms(parms,pid)
 
   ! broadcast information on integration rule
