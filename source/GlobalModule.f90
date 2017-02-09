@@ -85,6 +85,7 @@ module GlobalModule
     integer(i4b)          :: K,J      ! dimensions of utility matrix
     integer(i4b)          :: nBC       ! size(BC)
 
+
     real(dp), allocatable :: B(:,:)   ! K x J matrix
     real(dp), allocatable :: D(:)     ! J x 1 vector, sqrt of diagonal of B for columns <=K
     real(dp), allocatable :: BC(:)     ! off-diagonal elements of B
@@ -120,11 +121,7 @@ module GlobalModule
     integer(i4b)          :: BD_z_dim,BC_z_dim  ! dimension of product characteristics
     integer(i4b)          :: nBC_COffDiag   ! size of BC_COffDiag
     integer(i4b)          :: nBD_COffDiag   ! size of BD_COffDiag
-    real(dp)              :: BC_lo,BC_hi  ! BC(i1) = bc_lo + (bc_hi-bc_lo) * pi 
-                                          !                 * normcdf(y)
-    real(dp)              :: InvCDiag_LO  ! BL(InvCDiag) = InvCDiag_LO
-    real(dp)              :: InvCDiag_HI  ! BU(InvCDiag) = x + InvCDiag_HI
-    
+
     real(dp), allocatable :: BC_beta(:)   ! slope of y(c) w.r.t. etaZ
     real(dp), allocatable :: BD_beta(:)   ! log(D) = BD_beta* BD_z + BD_C* eta
     real(dp), allocatable :: BC_C(:,:)    ! matrix of factor loadings in BC: (nBC x dim_eta)
@@ -151,6 +148,16 @@ module GlobalModule
     real(dp), allocatable :: InvCDiag_L(:),InvCDiag_H(:)
     real(dp), allocatable :: InvCOffDiag_L(:),InvCOffDiag_H(:)
     
+    real(dp)              :: BC_lo,BC_hi  ! BC(i1) = bc_lo + (bc_hi-bc_lo) * pi 
+                                          !                 * normcdf(y)
+    real(dp)              :: InvCDiag_LO  ! BL(InvCDiag) = InvCDiag_LO
+    real(dp)              :: InvCDiag_HI  ! BU(InvCDiag) = x + InvCDiag_HI
+    real(dp)              :: InvCOffDiag_LO !BL(InvCOffDiag) = pi * InvCOffDiag_LO 
+    real(dp)              :: InvCOffDiag_HI !BL(InvCOffDiag) = pi * InvCOffDiag_HI 
+    real(dp)              :: BC_beta_lo   ! lower bound
+    real(dp)              :: BC_beta_hi   ! upper bound
+    real(dp)              :: BD_beta_lo   ! lower bound
+    real(dp)              :: BD_beta_hi   ! upper bound
   end type
 
   !  structure containing indexes
@@ -1046,6 +1053,24 @@ subroutine InitializeParameters(InputFile)
     
     ErrFlag = GetVal(PropList,'InvCDiag_HI',cTemp)
     read(cTemp,'(d12.4)') parms%InvCDiag_HI
+    
+    ErrFlag = GetVal(PropList,'InvCOffDiag_LO',cTemp)
+    read(cTemp,'(d12.4)') parms%InvCOffDiag_LO
+    
+    ErrFlag = GetVal(PropList,'InvCOffDiag_HI',cTemp)
+    read(cTemp,'(d12.4)') parms%InvCOffDiag_HI
+    
+    ErrFlag = GetVal(PropList,'BC_beta_lo',cTemp)
+    read(cTemp,'(d12.4)') parms%BC_beta_lo
+    
+    ErrFlag = GetVal(PropList,'BC_beta_hi',cTemp)
+    read(cTemp,'(d12.4)') parms%BC_beta_hi
+
+    ErrFlag = GetVal(PropList,'BD_beta_lo',cTemp)
+    read(cTemp,'(d12.4)') parms%BD_beta_lo
+    
+    ErrFlag = GetVal(PropList,'BD_beta_hi',cTemp)
+    read(cTemp,'(d12.4)') parms%BD_beta_hi
 
     ! RandomB parameters: dimension of random elements of C and D
     ErrFlag = GetVal(PropList,'dim_eta',cTemp)
@@ -2237,8 +2262,6 @@ subroutine CopyParameters(parms_in,parms_out)
   parms_out%BC_z_dim     = parms_in%BC_z_dim
   parms_out%nBC_COffDiag = parms_in%nBC_COffDiag
   parms_out%nBD_COffDiag = parms_in%nBD_COffDiag
-  parms_out%BC_lo        = parms_in%BC_lo
-  parms_out%BC_hi        = parms_in%BC_hi
 
   ! Allocate memory for parms_out
   call DeallocateParms(parms_out)
@@ -2274,6 +2297,17 @@ subroutine CopyParameters(parms_in,parms_out)
     parms_out%sigp = parms_in%sigp
 
   end if ! if (parms_out%model==2) then
+
+  parms_out%BC_lo        = parms_in%BC_lo
+  parms_out%BC_hi        = parms_in%BC_hi
+  parms_out%InvCDiag_lo  = parms_in%InvCDiag_lo
+  parms_out%InvCDiag_hi  = parms_in%InvCDiag_hi
+  parms_out%InvCOffDiag_lo  = parms_in%InvCOffDiag_lo
+  parms_out%InvCOffDiag_hi  = parms_in%InvCOffDiag_hi
+  parms_out%BC_beta_lo  = parms_in%BC_beta_lo
+  parms_out%BC_beta_hi  = parms_in%BC_beta_hi
+  parms_out%BD_beta_lo  = parms_in%BD_beta_lo
+  parms_out%BD_beta_hi  = parms_in%BD_beta_hi
 
 end subroutine CopyParameters
 

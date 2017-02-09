@@ -151,4 +151,4 @@ BD_CDIAG_FILE : A/BD_CDiag.raw
 BD_COFFDIAG_FILE : A/BD_COffDiag.raw
 SIGP_FILE        : A/sigp.raw
 
-BasePriceFile : A/BasePriceFile.raw
+BasePriceFile : A/BasePrice.raw

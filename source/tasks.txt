@@ -1,3 +1,24 @@
+1) check on loading and writing of parameters
+                              Hot  Hot 
+   Cmopute Step:      LoadRaw Load Save  iFree
+   a ) MUE            OK      OK   OK    OK 
+   b1) CSIG           NA      OK   OK 
+   b)  CDIAG          OK           NA
+   c)  COffDiag       OK           NA
+   d)  BD_beta        OK      OK   OK 
+   e1) BD_C           NA      OK   OK
+   e)  BD_CDiag       OK           NA
+   f)  BD_COffDiag    OK           NA
+   g)  BC_beta        OK      OK   OK
+   h1) BC_C           NA      OK   OK
+   h)  BC_CDiag       OK           NA 
+   i)  BC_COffDiag    OK           NA
+2) check on Sphere to matrix and inverse
+   a) InvCOffDiag
+   b) BC_CoffDiag
+   c) BD_COffDiag
+3) check on bounds ons InvCOffDiag, BD_COffDiag, BC_COffDiag
+
 1) check for convergence
    b) plot likelihood function
    e) what else

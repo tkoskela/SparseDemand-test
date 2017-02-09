@@ -1582,6 +1582,8 @@ subroutine RunMonteCarlo(IMC1,IMC2,pid)
   end if
 
   if (pid==MasterID .and. ControlOptions%HotStart==1) then
+    ! copy true parameters from parms to parms0
+    call CopyParameters(parms,parms0)
     call ReadWriteParameters(parms,'read')
   end if
 
@@ -3108,8 +3110,8 @@ subroutine SetBounds(x,BL,BU)
   end if
 
   if (iFree%nBC>0) then
-    BL(iFree%xBC) = 0.10d0*pi_d
-    BU(iFree%xBC) = 0.99d0*pi_d
+    BL(iFree%xBC) = 0.1d0 * pi_d
+    BU(iFree%xBC) = 0.9d0 * pi_d
   end if
 
   if (iFree%nMUE>0) then
@@ -3123,18 +3125,18 @@ subroutine SetBounds(x,BL,BU)
   end if
 
   if (iFree%nInvCOffDiag>0) then
-    BL(iFree%xInvCOffDiag) = 0.01d0 * pi
-    BU(iFree%xInvCOffDiag) = 0.99d0 * pi
+    BL(iFree%xInvCOffDiag) = parms%InvCOffDiag_LO * pi_d
+    BU(iFree%xInvCOffDiag) = parms%InvCOffDiag_HI * pi_d
   end if
   
   if (iFree%nBD_beta>0) then
-    BL(iFree%xBD_beta) = x(iFree%xBD_beta)-2.0d0
-    BU(iFree%xBD_beta) = min(x(iFree%xBD_beta)+1.0d0,3.0d0)
+    BL(iFree%xBD_beta) = max(x(iFree%xBD_beta)-2.0d0,parms%BD_beta_lo)
+    BU(iFree%xBD_beta) = min(x(iFree%xBD_beta)+1.0d0,parms%BD_beta_hi)
   end if
 
   if (iFree%nBC_beta>0) then
-    BL(iFree%xBC_beta) = max(x(iFree%xBC_beta)-2.0d0,-3.0d0)
-    BU(iFree%xBC_beta) = min(x(iFree%xBC_beta)+3.0d0,3.0d0)
+    BL(iFree%xBC_beta) = max(x(iFree%xBC_beta)-2.0d0,parms%BC_beta_lo)
+    BU(iFree%xBC_beta) = min(x(iFree%xBC_beta)+3.0d0,parms%BC_beta_hi)
   end if
  
   if (iFree%nBC_CDiag>0) then
