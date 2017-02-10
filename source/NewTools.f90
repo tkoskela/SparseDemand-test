@@ -32,7 +32,7 @@ function MatrixInverse(M,n)
   ! F07MJF :  invert matrix after factoring
   implicit none
   integer(i4b), intent(in) :: n
-  real(dp),     intent(in) :: M(n,n)
+  real(dp),     intent(in) :: M(:,:)
   real(dp)                 :: MatrixInverse(n,n)
 
   !variables used by F01ABF to compute inverse 
@@ -138,6 +138,139 @@ function MatrixInverse(M,n)
 
   deallocate(A,A1,B,Z)
 end function MatrixInverse
+
+!------------------------------------------------------------------------------
+!
+! subroutine MatrixInverse1(M,InvM)
+!    Compute InvM = inv(M)
+!------------------------------------------------------------------------------
+subroutine MatrixInverse1(M,InvM)
+  use nrtype
+  use nag_library, only: X02AJF,F01ABF,F01BLF,F07AAF,F07MDF,F07MJF
+  ! X02AJF :  compute machine epsilon
+  ! F01ABF :  inverse of symmetric positive definite matrix, iterative
+  ! F01BLF :  pseudo inverse of matrix
+  ! F07AAF :  inverse of matrix
+  ! F07MDF :  compute Bunch-Kaufman  factorization of real symmetric indefinite matrix
+  ! F07MJF :  invert matrix after factoring
+  implicit none
+  real(dp),     intent(in)  :: M(:,:)
+  real(dp),     intent(out) :: InvM(:,:)
+
+  !variables used by F01ABF to compute inverse 
+  !   F01ABF:  invert pos.def. symmetric matrix
+  real(dp), allocatable :: A(:,:),A1(:,:),B(:,:),Z(:)
+  integer(i4b)          :: n,IA,IB,ifail
+
+  ! variables used by F07MDf and F07MJF to compute inverse
+  !  F07MDF  invert symmetric indefinite matrix
+  character(LEN=1)          :: UPLO
+  integer(i4b)              :: LWORK,info
+  integer(i4b), allocatable :: IPIV(:)
+  real(dp),     allocatable :: WORK(:)
+
+  ! variables used by F01BLF
+  !   pseudo-inverse of matrix
+  integer(i4b)               :: IRANK
+  integer(i4b), allocatable  :: INC(:)
+  real(dp)                   :: tol
+  real(dp),     allocatable  :: AIJMAX(:),D(:),U(:,:),DU(:)
+
+  ! variables used by F07AAF :matrix inversion
+  integer(i4b), allocatable  :: pivot(:)
+
+  integer(i4b)  :: i1,i2
+
+  ! First:   Try to use F01ABF.
+  n = size(M,1)
+  IA = n+1
+  IB = n
+  allocate(A(N,N),A1(IA,N),B(N,N),Z(N))
+  A = 0.0d0
+  A1 = 0.0d0
+  B = 0.0d0
+  Z = 0.0d0
+  A1(1:n,:) = M
+  IFAIL=1
+  call F01ABF(A1,IA,n,B,IB,Z,IFAIL)
+
+  if (IFAIL==0) then
+    InvM = B
+  elseif (IFAIL==2) then
+    A=M
+    B=M
+    tol=0.0d0
+    do i1=1,n
+    do i2=1,n
+      tol=tol+B(i1,i2)*B(i1,i2)
+    end do
+    end do
+    tol = dsqrt(tol)*X02AJF()
+
+    ! Compute pseudo-inverse
+    allocate(INC(N))
+    allocate(AIJMAX(N))
+    allocate(D(N))
+    allocate(U(N,N))
+    allocate(DU(N))
+    call F01BLF(N,N,tol,B,N,AIJMAX,IRANK,INC,D,U,N,DU,IFAIL)
+    deallocate(INC,AIJMAX,D,U,DU)
+    B = transpose(B)
+    
+    A = matmul(B,A)
+    ! Compute solution x to (B*A)*x = B
+    allocate(pivot(n))
+    call F07AAF(n,n,A,n,pivot,B,n,ifail)
+    deallocate(pivot)
+    if (ifail .ne. 0) then
+      print *,'Both F01ABF and F07AAF failed to converge. Matrix is ill conditioned.'
+      InvM = 0.0d0
+      do i1=1,n
+        InvM(i1,i1) =  1.0d0
+      end do
+    end if
+  elseif (IFAIL==1) then
+    ! M is not Positive definite, use F07 routines to invert
+    B=M
+    UPLO = 'L'
+    if (n>10000) then
+      LWORK=n
+    elseif (n<=10000) then
+      LWORK = min(10000,n*64)
+    end if
+    allocate(IPIV(n))
+    allocate(WORK(LWORK))
+    info=0 
+    
+    ! compute Bunch-Kaufman factorization of M 
+    call F07MDF(UPLO,n,B,n,IPIV,WORK,LWORK,info)
+
+    if (info<0) then
+      print *, 'Invalid parameter values in F07MDF. info =',info
+      ifail = info
+      InvM = 0.0d0
+      do i1=1,n
+        InvM(i1,i1) = 1.0d0
+      end do
+    elseif (info>0) then
+      print *, 'error in F07MDF. block diagonal matrix D is singular.'
+      ifail = info
+      InvM = 0.0d0
+      do i1=1,n
+        InvM(i1,i1) = 1.0d0
+      end do
+    elseif (info==0) then
+      ! compute inverse of B
+      call F07MJF(UPLO,n,B,N,IPIV,WORK,INFO)
+      InvM = B
+    end if
+
+    deallocate(IPIV) 
+    deallocate(WORK)
+  end if  ! if ifail==0
+
+  deallocate(A,A1,B,Z)
+end subroutine MatrixInverse1
 
 ! subroutine SphereToMatrix(phi,r,K,J,B,GradB_phi,GradB_r) 
 ! 
