@@ -5,7 +5,7 @@
 module NewTools
 ! Line No. | Procedure name
 !----------|-------------------------------
-! 18       | function MatrixInverse(M,n)
+! 29       | subroutine MatrixInverse(M,InvM,MatrixType)
 ! 138      | subroutine SphereToMatrix(phi,r,K,J,B,GradB_phi,GradB_r) 
 ! 215      | subroutine MapToCartesian(r,phi,x,dx)
 ! 271      | subroutine FindColumn(i1,K,j1)
@@ -16,147 +16,64 @@ module NewTools
 
 contains
 
-!------------------------------------------------------------------------------
-!
-! function MatrixInverse(M,n)
-!
-!------------------------------------------------------------------------------
-function MatrixInverse(M,n)
+subroutine ComputeMatrixType(M,MatrixType)
   use nrtype
-  use nag_library, only: X02AJF,F01ABF,F01BLF,F07AAF,F07MDF,F07MJF
-  ! X02AJF :  compute machine epsilon
-  ! F01ABF :  inverse of symmetric positive definite matrix, iterative
-  ! F01BLF :  pseudo inverse of matrix
-  ! F07AAF :  inverse of matrix
-  ! F07MDF :  compute Bunch-Kaufman  factorization of real symmetric indefinite matrix
-  ! F07MJF :  invert matrix after factoring
   implicit none
-  integer(i4b), intent(in) :: n
-  real(dp),     intent(in) :: M(:,:)
-  real(dp)                 :: MatrixInverse(n,n)
+  real(dp),         intent(in)  :: M(:,:)
+  character(len=*), intent(out) :: MatrixType
 
-  !variables used by F01ABF to compute inverse 
-  !   F01ABF:  invert pos.def. symmetric matrix
-  real(dp), allocatable :: A(:,:),A1(:,:),B(:,:),Z(:)
-  integer(i4b)          :: IA,IB,ifail
+  integer(i4b)                  :: N,i1
+  logical                       :: upper,lower
+  ! Matrix type
+  !  1) Lower triangular
+  !  2) Upper triangular
+  !  3) Other not symmetric
+  !  4) Symmetric
+  n = size(M,1)
 
-  ! variables used by F07MDf and F07MJF to compute inverse
-  !  F07MDF  invert symmetric indefinite matrix
-  character(LEN=1)    :: UPLO
-  integer(i4b)        :: LWORK,info
-  integer(i4b), allocatable :: IPIV(:)
-  real(dp),     allocatable :: WORK(:)
-
-  ! variables used by F01BLF
-  !   pseudo-inverse of matrix
-  integer(i4b)  :: IRANK,INC(N)
-  real(dp)      :: tol,AIJMAX(N),D(N),U(N,N),DU(N)
-
-  ! variables used by F07AAF :matrix inversion
-  integer(i4b)  :: pivot(n)
-
-  integer(i4b)  :: i1,i2
-
-  ! First:   Try to use F01ABF.
-  IA = n+1
-  IB = n
-  allocate(A(N,N),A1(IA,N),B(N,N),Z(N))
-  A = 0.0d0
-  A1 = 0.0d0
-  B = 0.0d0
-  Z = 0.0d0
-  A1(1:n,:) = M
-  IFAIL=1
-  call F01ABF(A1,IA,n,B,IB,Z,IFAIL)
-
-  if (IFAIL==0) then
-    MatrixInverse = B
-  elseif (IFAIL==2) then
-    A=M
-    B=M
-    tol=0.0d0
-    do i1=1,n
-    do i2=1,n
-      tol=tol+B(i1,i2)*B(i1,i2)
+  if (all(M - transpose(M))==0.0d0) then
+    MatrixType = 'Symmetric'
+  else
+    upper = .true.
+    lower = .true.
+    do i1=1,N
+      upper = merge(upper,.false.,all(M(i1,i1+1:N)==0.0d0))
+      lower = merge(lower,.false.,all(M(i1+1:N,i1)==0.0d0))
     end do
-    end do
-    tol = dsqrt(tol)*X02AJF()
-
-    ! Compute pseudo-inverse
-    call F01BLF(N,N,tol,B,N,AIJMAX,IRANK,INC,D,U,N,DU,IFAIL)
-    B = transpose(B)
-    
-    A = matmul(B,A)
-    ! Compute solution x to (B*A)*x = B
-    call F07AAF(n,n,A,n,pivot,B,n,ifail)
-    if (ifail .ne. 0) then
-      print *,'Both F01ABF and F07AAF failed to converge. Matrix is ill conditioned.'
-      MatrixInverse = 0.0d0
-      do i1=1,n
-        MatrixInverse(i1,i1) =  1.0d0
-      end do
+    if (upper) then
+      MatrixType = 'Upper triangular'
+    elseif (lower) then
+      MatrixType = 'Lower triangular'
+    else
+      MatrixType = 'Other not symmetric'
     end if
-  elseif (IFAIL==1) then
-    ! M is not Positive definite, use F07 routines to invert
-    B=M
-    UPLO = 'L'
-    if (n>10000) then
-      LWORK=n
-    elseif (n<=10000) then
-      LWORK = min(10000,n*64)
-    end if
-    allocate(IPIV(n))
-    allocate(WORK(LWORK))
-    info=0 
-    
-    ! compute Bunch-Kaufman factorization of M 
-    call F07MDF(UPLO,n,B,n,IPIV,WORK,LWORK,info)
-
-    if (info<0) then
-      print *, 'Invalid parameter values in F07MDF. info =',info
-      ifail = info
-      MatrixInverse = 0.0d0
-      do i1=1,n
-        MatrixInverse(i1,i1) = 1.0d0
-      end do
-    elseif (info>0) then
-      print *, 'error in F07MDF. block diagonal matrix D is singular.'
-      ifail = info
-      MatrixInverse = 0.0d0
-      do i1=1,n
-        MatrixInverse(i1,i1) = 1.0d0
-      end do
-    elseif (info==0) then
-      ! compute inverse of B
-      call F07MJF(UPLO,n,B,N,IPIV,WORK,INFO)
-      MatrixInverse = B
-    end if
-
-    deallocate(IPIV) 
-    deallocate(WORK)
-  end if  ! if ifail==0
-
-  deallocate(A,A1,B,Z)
-end function MatrixInverse
-
+end subroutine ComputeMatrixType
 !------------------------------------------------------------------------------
 !
-! subroutine MatrixInverse1(M,InvM)
+! subroutine MatrixInverse(M,InvM,MatrixType)
 !    Compute InvM = inv(M)
+!    MatrixType is one of 4 types:
+!      'Lower triangular'
+!      'Upper triangular'
+!      'Other not symmetric'
+!      'Symmetric'
 !------------------------------------------------------------------------------
-subroutine MatrixInverse1(M,InvM)
+subroutine MatrixInverse(M,InvM,MatrixType)
   use nrtype
-  use nag_library, only: X02AJF,F01ABF,F01BLF,F07AAF,F07MDF,F07MJF
+  use nag_library, only: X02AJF,F01ABF,F01BLF,F04AEF,F07AAF,F07MDF,F07MJF,F07TJF
   ! X02AJF :  compute machine epsilon
   ! F01ABF :  inverse of symmetric positive definite matrix, iterative
   ! F01BLF :  pseudo inverse of matrix
+  ! F04AEF :  solve A*X = B
   ! F07AAF :  inverse of matrix
   ! F07MDF :  compute Bunch-Kaufman  factorization of real symmetric indefinite matrix
   ! F07MJF :  invert matrix after factoring
+  ! F07TJF :  invert triangular matrix
   implicit none
-  real(dp),     intent(in)  :: M(:,:)
-  real(dp),     intent(out) :: InvM(:,:)
-
+  real(dp),                   intent(in)  :: M(:,:)
+  real(dp),                   intent(out) :: InvM(:,:)
+  character(len=*), optional, intent(in)  :: RawMatrixType
+  character(len=50)                       :: MatrixType
   !variables used by F01ABF to compute inverse 
   !   F01ABF:  invert pos.def. symmetric matrix
   real(dp), allocatable :: A(:,:),A1(:,:),B(:,:),Z(:)
@@ -181,96 +98,126 @@ subroutine MatrixInverse1(M,InvM)
 
   integer(i4b)  :: i1,i2
 
-  ! First:   Try to use F01ABF.
+  if (present(RawMatrixType))
+    MatrixType = RawMatrixType
+  else
+    call ComputeMatrixType(M,MatrixType)
+  end if
+  ! Matrix Types:
+  !     Lower triangular
+  !     Upper triangular
+  !     Other not symmetric
+  !     Symmetric positive definite
+
   n = size(M,1)
-  IA = n+1
-  IB = n
-  allocate(A(N,N),A1(IA,N),B(N,N),Z(N))
-  A = 0.0d0
-  A1 = 0.0d0
-  B = 0.0d0
-  Z = 0.0d0
-  A1(1:n,:) = M
-  IFAIL=1
-  call F01ABF(A1,IA,n,B,IB,Z,IFAIL)
 
-  if (IFAIL==0) then
-    InvM = B
-  elseif (IFAIL==2) then
-    A=M
-    B=M
-    tol=0.0d0
-    do i1=1,n
-    do i2=1,n
-      tol=tol+B(i1,i2)*B(i1,i2)
+  select case (MatrixType)
+
+  case('Lower triangular')
+    M = InvM
+    call F07TJF('L','N',N,InvM,N,INFO)
+  case('Upper triangular')
+    M = InvM
+    call F07TJF('U','N',N,InvM,N,INFO)
+  case('Other not symmetric')
+    allocate(B(N,N),Z(N),U(N,N),A1(N,N))
+    B = 0.0d0
+    do i1=1,N
+      B(i1,i1) = 1.0d0
     end do
-    end do
-    tol = dsqrt(tol)*X02AJF()
+    ! B = identity
+    ! z = workspace
+    ! U = LU decomp of M
+    ! A1 = B - A*InvM
+    ! Computes InvM = inv(M)*B
+    !
+    call F04AEF(M,N,B,N,N,N,InvM,N,Z,U,N,A1,N,ifail)
+    deallocate(B,Z,U,A1)
+  case('Symmetric')
+    ! Try to use F01ABF.
+    IA = n+1
+    IB = n
+    allocate(A(N,N),A1(IA,N),B(N,N),Z(N))
+    A = 0.0d0
+    A1 = 0.0d0
+    B = 0.0d0
+    Z = 0.0d0
+    A1(1:n,:) = M
+    IFAIL=1
+    call F01ABF(A1,IA,n,B,IB,Z,IFAIL)
 
-    ! Compute pseudo-inverse
-    allocate(INC(N))
-    allocate(AIJMAX(N))
-    allocate(D(N))
-    allocate(U(N,N))
-    allocate(DU(N))
-    call F01BLF(N,N,tol,B,N,AIJMAX,IRANK,INC,D,U,N,DU,IFAIL)
-    deallocate(INC,AIJMAX,D,U,DU)
-    B = transpose(B)
-    
-    A = matmul(B,A)
-    ! Compute solution x to (B*A)*x = B
-    allocate(pivot(n))
-    call F07AAF(n,n,A,n,pivot,B,n,ifail)
-    deallocate(pivot)
-    if (ifail .ne. 0) then
-      print *,'Both F01ABF and F07AAF failed to converge. Matrix is ill conditioned.'
-      InvM = 0.0d0
-      do i1=1,n
-        InvM(i1,i1) =  1.0d0
-      end do
-    end if
-  elseif (IFAIL==1) then
-    ! M is not Positive definite, use F07 routines to invert
-    B=M
-    UPLO = 'L'
-    if (n>10000) then
-      LWORK=n
-    elseif (n<=10000) then
-      LWORK = min(10000,n*64)
-    end if
-    allocate(IPIV(n))
-    allocate(WORK(LWORK))
-    info=0 
-    
-    ! compute Bunch-Kaufman factorization of M 
-    call F07MDF(UPLO,n,B,n,IPIV,WORK,LWORK,info)
-
-    if (info<0) then
-      print *, 'Invalid parameter values in F07MDF. info =',info
-      ifail = info
-      InvM = 0.0d0
-      do i1=1,n
-        InvM(i1,i1) = 1.0d0
-      end do
-    elseif (info>0) then
-      print *, 'error in F07MDF. block diagonal matrix D is singular.'
-      ifail = info
-      InvM = 0.0d0
-      do i1=1,n
-        InvM(i1,i1) = 1.0d0
-      end do
-    elseif (info==0) then
-      ! compute inverse of B
-      call F07MJF(UPLO,n,B,N,IPIV,WORK,INFO)
+    if (IFAIL==0) then
       InvM = B
-    end if
+    elseif (IFAIL==2) then
+      A=M
+      B=M
+      tol=0.0d0
+      do i1=1,n
+      do i2=1,n
+        tol=tol+B(i1,i2)*B(i1,i2)
+      end do
+      end do
+      tol = dsqrt(tol)*X02AJF()
 
-    deallocate(IPIV) 
-    deallocate(WORK)
-  end if  ! if ifail==0
+      ! Compute pseudo-inverse
+      allocate(INC(N),AIJMAX(N),D(N),U(N,N),DU(N))
+      call F01BLF(N,N,tol,B,N,AIJMAX,IRANK,INC,D,U,N,DU,IFAIL)
+      deallocate(INC,AIJMAX,D,U,DU)
+      B = transpose(B)
+    
+      A = matmul(B,A)
+      ! Compute solution x to (B*A)*x = B
+      allocate(pivot(n))
+      call F07AAF(n,n,A,n,pivot,B,n,ifail)
+      deallocate(pivot)
+      if (ifail .ne. 0) then
+        print *,'Both F01ABF and F07AAF failed to converge. Matrix is ill conditioned.'
+        InvM = 0.0d0
+        do i1=1,n
+          InvM(i1,i1) =  1.0d0
+        end do
+      end if
+    elseif (IFAIL==1) then
+      ! M is not Positive definite, use F07 routines to invert
+      B=M
+      UPLO = 'L'
+      if (n>10000) then
+        LWORK=n
+      elseif (n<=10000) then
+        LWORK = min(10000,n*64)
+      end if
+      allocate(IPIV(n))
+      allocate(WORK(LWORK))
+      info=0
 
-  deallocate(A,A1,B,Z)
-end subroutine MatrixInverse1
+      ! compute Bunch-Kaufman factorization of M
+      call F07MDF(UPLO,n,B,n,IPIV,WORK,LWORK,info)
+
+      if (info<0) then
+        print *, 'Invalid parameter values in F07MDF. info =',info
+        ifail = info
+        InvM = 0.0d0
+        do i1=1,n
+          InvM(i1,i1) = 1.0d0
+        end do
+      elseif (info>0) then
+        print *, 'error in F07MDF. block diagonal matrix D is singular.'
+        ifail = info
+        InvM = 0.0d0
+        do i1=1,n
+          InvM(i1,i1) = 1.0d0
+        end do
+      elseif (info==0) then
+        ! compute inverse of B
+        call F07MJF(UPLO,n,B,N,IPIV,WORK,INFO)
+        InvM = B
+      end if
+      deallocate(IPIV)
+      deallocate(WORK)
+    end if  ! if ifail==0
+    deallocate(A,A1,B,Z)
+  end select
+end subroutine MatrixInverse
 
 ! subroutine SphereToMatrix(phi,r,K,J,B,GradB_phi,GradB_r) 
 ! 

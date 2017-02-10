@@ -1135,7 +1135,7 @@ subroutine InitializeParameters(InputFile)
 ! and for                    (betaD,CDDiag,CDOffDiag)
 !                            (betaC,CCDiag,CCOffDiag)
   subroutine ReadParameters
-    use NewTools, only : SphereToMatrix,MatrixInverse,MatrixInverse1
+    use NewTools, only : SphereToMatrix,MatrixInverse
     implicit none
     integer(i4b)       :: unit_D,unit_C,unit_MUE,unit_invCDiag,unit_INVCOffDiag
     character(len=200) :: file_D,file_C,file_MUE,file_INVCDiag,file_INVCOffDiag
@@ -1223,9 +1223,9 @@ subroutine InitializeParameters(InputFile)
     parms%InvC = transpose(parms%InvC)
     allocate(M(parms%K,parms%K))
     M = parms%InvC
-    parms%CSig = MatrixInverse(M,parms%K)
     ! compute CSig = inv(InvC)
-    call MatrixInverse1(M,parms%CSig)
+    call MatrixInverse(parms%InvC,parms%CSig,'Lower triangular')
+    call MatrixInverse(M,parms%CSig,'Lower triangular')
     deallocate(M)
     parms%sig  = matmul(parms%CSig,transpose(parms%CSig))
 
@@ -2073,7 +2073,7 @@ end subroutine BroadcastIFree
 
 ! Written :  2015AUG14 LN
 subroutine ReadWriteParameters(LocalParms,LocalAction)
-  use NewTools, only : MatrixToSphere,MatrixInverse,MatrixInverse1
+  use NewTools, only : MatrixToSphere,MatrixInverse
   implicit none
   type(ParmsStructure), intent(inout) :: LocalParms
   character(LEN=*),     intent(in)    :: LocalAction
@@ -2128,8 +2128,8 @@ subroutine ReadWriteParameters(LocalParms,LocalAction)
     LocalParms%SIG = matmul(LocalParms%CSIG,transpose(LocalParms%CSIG))
     allocate(M(LocalParms%K,LocalParms%K))
     M = LocalParms%CSIG
-    LocalParms%InvC = MatrixInverse(M,LocalParms%K)
-    call MatrixInverse1(M,LocalParms%InvC)
+    call MatrixInverse(LocalParms%CSIG,LocalParms%InvC,'Lower triangular')
+    call MatrixInverse(M,LocalParms%InvC,'Lower triangular')
     deallocate(M)
     call MatrixToSphere(transpose(LocalParms%InvC),LocalParms%InvCDiag,LocalParms%InvCOffDiag)
 
