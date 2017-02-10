@@ -373,7 +373,7 @@ subroutine MapToCartesian(r,phi,x,dx)
   real(dp), intent(in) :: r
   real(dp), intent(in) :: phi(:)
   real(dp), intent(out) :: x(:)
-  real(dp), intent(out) :: dx(:,:)
+  real(dp), optional,intent(out) :: dx(:,:)
   
   integer(i4b) :: i1,i2
   integer(i4b) :: n
@@ -387,30 +387,67 @@ subroutine MapToCartesian(r,phi,x,dx)
   c1=(/dcos(phi),1.0d0/)
 
   x  = 0.0d0
-  dx = 0.0d0
-  
+  if (present(dx)) then
+    dx = 0.0d0
+  end if
+
   do i1=1,n
     x(i1)=r*c1(i1)*product(s1(1:i1))
 
-    if (i1<n) then
-      dx(i1,i1) = -r*product(s1(1:i1+1))
-      do i2=1,i1-1
-        s1A(1:i1-1) = pack(s1,(/1:i1/) .ne. (i2+1))
-        dx(i2,i1) = r*c1(i1)*product(s1A(1:i1-1))*c1(i2)
-      end do
-    elseif (i1==n) then
-      do i2=1,i1-1
-        s1A(1:i1-1) = pack(s1,(/1:i1/) .ne. (i2+1))
-        dx(i2,i1) = r*c1(i1)*product(s1A(1:i1-1))*c1(i2)
-      end do
-      dx(i1,:) = x/r
-    end if
+    if (present(dx)) then
+      if (i1<n) then
+        dx(i1,i1) = -r*product(s1(1:i1+1))
+        do i2=1,i1-1
+          s1A(1:i1-1) = pack(s1,(/1:i1/) .ne. (i2+1))
+          dx(i2,i1) = r*c1(i1)*product(s1A(1:i1-1))*c1(i2)
+        end do
+      elseif (i1==n) then
+        do i2=1,i1-1
+          s1A(1:i1-1) = pack(s1,(/1:i1/) .ne. (i2+1))
+          dx(i2,i1) = r*c1(i1)*product(s1A(1:i1-1))*c1(i2)
+        end do
+        dx(i1,:) = x/r
+      end if
+    end if ! if (present(dx)) then
   end do
   deallocate(s1,c1,s1A)
 
 end subroutine MapToCartesian
 
+
 subroutine MapToSpherical(x,R,PHI)
+  use nrtype
+  implicit none
+  real(dp), intent(in)  :: x(:)
+  real(dp), intent(out) :: R,PHI(:)
+  integer(i4b)          :: n,i1
+  real(dp), allocatable :: x2(:)
+  real(dp)              :: RTemp
+
+  n = size(x,1)
+
+  allocate(x2(n))
+
+  x2 = x*x
+  R = sqrt(sum(x2))
+  PHI = 0.0d0
+  do i1=1,n-2
+    RTemp = sum(x2(i1:n))
+    if (RTemp==0) then
+      PHI(i1) = merge(0.0d0,pi_d,x(i1)>0)
+    else
+      ! DACOS = double precision arccos(theta)
+      PHI(i1) = dacos(x(i1)/sqrt(RTemp))
+    end if
+  end do
+  phi(n-1) = dacos(x(n-1)/sqrt(sum(x2(n-1:n)))
+  if (x(n)<0.0d0) then
+    phi(n-1) = 2.0d0*pi_d - phi(n-1)
+  end if
+  deallocate(x2)
+end subroutine MapToSpherical
+
+subroutine MapToSpherical_old(x,R,PHI)
   use nrtype
   implicit none
   real(dp), intent(in)  :: x(:)
@@ -430,7 +467,7 @@ subroutine MapToSpherical(x,R,PHI)
   phi(n-1) = atan2(x(n),x(n-1))
 
   deallocate(x2)
-end subroutine MapToSpherical
+end subroutine MapToSpherical_old
 
 subroutine FindColumn(i1,K,j1)
   use nrtype

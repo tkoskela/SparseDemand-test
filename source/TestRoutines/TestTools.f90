@@ -7,10 +7,10 @@ implicit none
 
 ! Test SphereToMatrix and MatrixToSphere
 
-integer(i4b) :: K,J,i1,nargs
+integer(i4b) :: K,J,i1,i2,nargs,nx
 real(dp), allocatable :: B(:,:),D(:),PHI(:)
 real(dp), allocatable :: B1(:,:),D1(:),PHI1(:)
-character(len=5) :: ctemp
+character(len=5)      :: ctemp
 
 print *,"Test MatrixToSphereSphere:"
 print *,"Routine to convert upper-triangular matrix to spherical coordinates."
@@ -64,25 +64,32 @@ call MatrixToSphere(B,D,PHI)
 call SphereToMatrix(PHI,D,K,J,B1)
 call MatrixToSphere(B1,D1,PHI1)
 
-print *, 'B = '
+print *, 'B         = Initial (K,J) matrix.'
+print *, "(D,PHI)   = MatrixToSphere(B)."
+print *, "B1        = SphereToMatrix(PHI,D)."
+print *, "(D1,PHI1) = MatrixToSphere(B1)."
 do i1=1,K
   print *,B(i1,:)
 end do
 
+print *, "Test B1-B = 0."
 print *, 'B1-B = '
 do i1=1,K
   print *,B1(i1,:)-B(i1,:)
 end do
 
+print *, "Test D = D1."
 print *,'D = '
 print *,D
 print *,'D1 = '
 print *,D1
 
+print *, "Test PHI = PHI1."
 print *,'PHI = '
 print *,PHI
 print *,'PHI1 = '
 print *,PHI1
+
 
 deallocate(B)
 deallocate(D)
