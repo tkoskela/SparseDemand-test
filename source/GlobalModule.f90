@@ -1150,7 +1150,6 @@ subroutine InitializeParameters(InputFile)
     integer(i4b)              :: row,col
     real(dp),     allocatable :: temp2(:,:)
     integer(i4b)              :: i1,n
-    real(dp),     allocatable :: M(:,:)
 
     if (parms%model==1) then
       ! D: norm of columns of B
@@ -1220,13 +1219,9 @@ subroutine InitializeParameters(InputFile)
     end do
     close(unit_InvCOffDiag)
     call SphereToMatrix(parms%InvCOffDiag,parms%InvCDiag,parms%K,parms%K,parms%InvC)
-    parms%InvC = transpose(parms%InvC)
-    allocate(M(parms%K,parms%K))
-    M = parms%InvC
     ! compute CSig = inv(InvC)
+    parms%InvC = transpose(parms%InvC)
     call MatrixInverse(parms%InvC,parms%CSig,'Lower triangular')
-    call MatrixInverse(M,parms%CSig,'Lower triangular')
-    deallocate(M)
     parms%sig  = matmul(parms%CSig,transpose(parms%CSig))
 
     if (parms%model==2) then
@@ -2080,7 +2075,6 @@ subroutine ReadWriteParameters(LocalParms,LocalAction)
 
   integer(i4b)                        :: i1
   character(len=30)                   :: TempString
-  real(dp),  allocatable              :: M(:,:)
 
   ! open file for reading or writing
   open(unit=LocalParms%unit,  &
@@ -2126,11 +2120,7 @@ subroutine ReadWriteParameters(LocalParms,LocalAction)
     ! InvC = inv(CSIG)
     ! (InvCDiag,InvCOffDiag) = spherical representation of tranpose(InvC)
     LocalParms%SIG = matmul(LocalParms%CSIG,transpose(LocalParms%CSIG))
-    allocate(M(LocalParms%K,LocalParms%K))
-    M = LocalParms%CSIG
     call MatrixInverse(LocalParms%CSIG,LocalParms%InvC,'Lower triangular')
-    call MatrixInverse(M,LocalParms%InvC,'Lower triangular')
-    deallocate(M)
     call MatrixToSphere(transpose(LocalParms%InvC),LocalParms%InvCDiag,LocalParms%InvCOffDiag)
 
     ! (dim_eta,BC_Z_DIM,BD_Z_DIM)

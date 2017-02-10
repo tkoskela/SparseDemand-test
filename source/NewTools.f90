@@ -31,7 +31,7 @@ subroutine ComputeMatrixType(M,MatrixType)
   !  4) Symmetric
   n = size(M,1)
 
-  if (all(M - transpose(M))==0.0d0) then
+  if (all((M - transpose(M))==0.0d0)) then
     MatrixType = 'Symmetric'
   else
     upper = .true.
@@ -47,6 +47,7 @@ subroutine ComputeMatrixType(M,MatrixType)
     else
       MatrixType = 'Other not symmetric'
     end if
+  end if
 end subroutine ComputeMatrixType
 !------------------------------------------------------------------------------
 !
@@ -58,7 +59,7 @@ end subroutine ComputeMatrixType
 !      'Other not symmetric'
 !      'Symmetric'
 !------------------------------------------------------------------------------
-subroutine MatrixInverse(M,InvM,MatrixType)
+subroutine MatrixInverse(M,InvM,RawMatrixType)
   use nrtype
   use nag_library, only: X02AJF,F01ABF,F01BLF,F04AEF,F07AAF,F07MDF,F07MJF,F07TJF
   ! X02AJF :  compute machine epsilon
@@ -98,7 +99,7 @@ subroutine MatrixInverse(M,InvM,MatrixType)
 
   integer(i4b)  :: i1,i2
 
-  if (present(RawMatrixType))
+  if (present(RawMatrixType)) then
     MatrixType = RawMatrixType
   else
     call ComputeMatrixType(M,MatrixType)
@@ -114,10 +115,10 @@ subroutine MatrixInverse(M,InvM,MatrixType)
   select case (MatrixType)
 
   case('Lower triangular')
-    M = InvM
+    InvM = M
     call F07TJF('L','N',N,InvM,N,INFO)
   case('Upper triangular')
-    M = InvM
+    InvM = M
     call F07TJF('U','N',N,InvM,N,INFO)
   case('Other not symmetric')
     allocate(B(N,N),Z(N),U(N,N),A1(N,N))
