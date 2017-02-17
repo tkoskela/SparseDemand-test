@@ -440,7 +440,7 @@ subroutine MapToSpherical(x,R,PHI)
       PHI(i1) = dacos(x(i1)/sqrt(RTemp))
     end if
   end do
-  phi(n-1) = dacos(x(n-1)/sqrt(sum(x2(n-1:n)))
+  phi(n-1) = dacos(x(n-1)/sqrt(sum(x2(n-1:n))))
   if (x(n)<0.0d0) then
     phi(n-1) = 2.0d0*pi_d - phi(n-1)
   end if

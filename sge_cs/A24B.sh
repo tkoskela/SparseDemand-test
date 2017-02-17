@@ -4,11 +4,11 @@
 #$ -N A24B
 #$ -j y
 #$ -cwd
-#$ -l tmem=3.9G,h_vmem=3.9G
+#$ -l tmem=2.4G,h_vmem=2.4G
 #$ -l h_rt=240:0:0
 ## ,hostname=burns-*
 ##$ -l hostname=burns*\|zeppo*\|fry*\|larry*\|cheech*
-#$ -l hostname=burns*\|fry*\
+##$ -l hostname=burns*\|fry*\
 #$ -R y
 #$ -pe orte 201
 

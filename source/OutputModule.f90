@@ -119,7 +119,7 @@ subroutine SaveOutputs(model,xFree,LValue,Grad,Hess,Stats)
   !  Write Model 1 output
   !---------------------------------------------------------------------------- 
   if (model==1) then
-    InvHess = MatrixInverse(Hess,n)
+    call MatrixInverse(Hess,InvHess,'Symmetric')
     do i1=1,n
       StandardErrors(i1) = dsqrt(InvHess(i1,i1))
     end do
@@ -244,7 +244,7 @@ subroutine SavePenaltyOutputs(iter,model,xFree,LValue,Grad,Hess,Stats)
   !  Write Model 1 output
   !---------------------------------------------------------------------------- 
   if (model==1) then
-    InvHess = MatrixInverse(Hess,n)
+    call MatrixInverse(Hess,InvHess,'Symmetric')
     do i1=1,n
       StandardErrors(i1) = dsqrt(InvHess(i1,i1))
     end do

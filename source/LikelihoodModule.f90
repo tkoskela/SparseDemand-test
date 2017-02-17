@@ -3142,24 +3142,24 @@ subroutine SetBounds(x,BL,BU)
   if (iFree%nBC_CDiag>0) then
     ! BC   = norminv( BC_beta * z + BC_C * eta
     !        want diag of BC_C to be between [0,0.8]
-    BL(iFree%xBC_CDiag) = max(x(iFree%xBC_CDiag)-1.0d0,0.0d0)
-    BU(iFree%xBC_CDiag) = min(x(iFree%xBC_CDiag)+1.0d0,0.8d0)
+    BL(iFree%xBC_CDiag) = max(x(iFree%xBC_CDiag)-1.0d0,-1.0d0)
+    BU(iFree%xBC_CDiag) = min(x(iFree%xBC_CDiag)+1.0d0,1.0d0)
   end if 
   if (iFree%nBD_CDiag>0) then
     ! log(BD) = BD_Beta * z + BD_C * eta
     !           want diag of BD_C between 0.0  and  1.0
-    BL(iFree%xBD_CDiag) = max(x(iFree%xBD_CDiag)-1.0d0,0.0d0)
+    BL(iFree%xBD_CDiag) = max(x(iFree%xBD_CDiag)-1.0d0,-1.0d0)
     BU(iFree%xBD_CDiag) = min(x(iFree%xBD_CDiag)+1.0d0,1.0d0)
   end if 
 
   if (iFree%nBC_COffDiag>0) then
-    BL(iFree%xBC_COffDiag) = -0.90d0*pi
-    BU(iFree%xBC_COffDiag) = 0.90d0*pi
+    BL(iFree%xBC_COffDiag) = 0.10d0*pi_d
+    BU(iFree%xBC_COffDiag) = 0.90d0*pi_d
   end if
   
   if (iFree%nBD_COffDiag>0) then
-    BL(iFree%xBD_COffDiag) = -0.90d0*pi
-    BU(iFree%xBD_COffDiag) = 0.90d0*pi
+    BL(iFree%xBD_COffDiag) = 0.10d0*pi_d
+    BU(iFree%xBD_COffDiag) = 0.90d0*pi_d
   end if
 
   if (MaxOptions%Algorithm==6) then
@@ -3167,20 +3167,20 @@ subroutine SetBounds(x,BL,BU)
     bayes%BD_beta_hi = 3.0d0
     bayes%BD_CDiag_lo = -1.0d0
     bayes%BD_CDiag_hi = 1.0d0
-    bayes%BD_COffDiag_lo = -0.90d0*pi
+    bayes%BD_COffDiag_lo = 0.10d0*pi
     bayes%BD_COffDiag_hi = 0.90d0 * pi
 
     bayes%BC_beta_lo = -2.0d0
     bayes%BC_beta_hi = 3.0d0
     bayes%BC_CDiag_lo = -1.0d0
     bayes%BC_CDiag_hi = 1.0d0
-    bayes%BC_CDiag_lo = -.90d0 * pi
-    bayes%BC_CDiag_hi = 0.90d0 * pi
+    bayes%BC_COffDiag_lo = -.90d0 * pi
+    bayes%BC_COffDiag_hi = 0.90d0 * pi
     bayes%MUE_lo      = 10.0d0
     bayes%MUE_hi      = 30.0d0
     bayes%InvCDiag_lo = 0.1d0
     bayes%InvCDiag_hi = 1.0d0 / 0.1d0
-    bayes%InvCOffDiag_lo = -0.90d0 * pi
+    bayes%InvCOffDiag_lo = 0.10d0 * pi
     bayes%InvCOffDiag_hi = 0.90d0 * pi
 
     bayes%nall = 100
