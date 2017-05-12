@@ -3,8 +3,8 @@
 #$ -o /home/uctpln0/FruitDemand/code/fortran/output/A24_20170510.out
 #$ -N A24
 #$ -j y
-#$ -cwd
-#$ -l tmem=2.4G,h_vmem=2.4G
+#$ -cwds
+#$ -l tmem=4G,h_vmem=4G
 #$ -l h_rt=240:0:0
 ## ,hostname=burns-*
 ##$ -l hostname=burns*\|zeppo*\|fry*\|larry*\|cheech*
