@@ -18,11 +18,11 @@ BICFlag             : 0 # 1 to minimize BIC
 MPIFlag             : 1 # 1 = each processor, subset of data
                         # 2 = each processor, subset of MC replications
 #  Name of output directory
-OutDir : ../output/A24B
+OutDir : ../output/A24_20170510
 InputDir: /home/uctpln0/FruitDemand/code/fortran/inputs/A24
  
 #           01      # HotStart:     0 for default value, 1 to load from file
-HotStart  : 1 
+HotStart  : 0 
 InitialModel : 2    # first model to estimate
 FinalModel   : 2    # last model to estimate
 small : 1.0d-50     # small number to prevent log of zero
@@ -132,16 +132,16 @@ InvCOffDiag_HI : 0.90d0  # BU = pi * InvCOffDiag_HI
 # select subsets of parameter to be free
 FreeFlagD           : 0   # 1 to be free, 0 to be fixed
 FreeFlagBC          : 0   # 1 to be free, 0 to be fixed
-FreeFlagMUE         : 0   # 1 to be free, 0 to be fixed
-FreeFlagInvCDiag    : 0   # 1 to be free, 0 to be fixed
-FreeFlagInvCOffDiag : 0   # 1 to be free, 0 to be fixed
+FreeFlagMUE         : 1   # 1 to be free, 0 to be fixed
+FreeFlagInvCDiag    : 1   # 1 to be free, 0 to be fixed
+FreeFlagInvCOffDiag : 1   # 1 to be free, 0 to be fixed
 
-FreeFlagBD_beta     : 0
-FreeFlagBD_CDiag    : 0
-FreeFlagBD_COffDiag : 0
-FreeFlagBC_beta     : 0
+FreeFlagBD_beta     : 1
+FreeFlagBD_CDiag    : 1
+FreeFlagBD_COffDiag : 1
+FreeFlagBC_beta     : 1
 FreeFlagBC_CDiag    : 1
-FreeFlagBC_COffDiag : 0
+FreeFlagBC_COffDiag : 1
 
 # Parameter file names
 MUE_FILE : A/MUE.raw
