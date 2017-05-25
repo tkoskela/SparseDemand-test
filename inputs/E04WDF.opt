@@ -1,9 +1,9 @@
 Begin
 # Central Difference Interval = 1.0e-4
 #  Difference Interval = 1.0e-4
-  Function Precision = 1.7e-6
+  Function Precision = 1.7e-4
   Derivative Level = 0
-  Hessian Full Memory
+# Hessian Full Memory
   Iterations Limit = 100000
   Major Iterations Limit = 2000
   Major Print Level = 1
