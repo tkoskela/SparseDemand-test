@@ -2,7 +2,7 @@
 #$ -S /bin/bash
 #$ -wd /home/uctpln0/FruitDemand/code/fortran/source
 #$ -o /home/uctpln0/FruitDemand/code/fortran/output/sleep1.out
-#$ -N A24B
+#$ -N A24DS
 #$ -j y
 #$ -R y
 #$ -cwd

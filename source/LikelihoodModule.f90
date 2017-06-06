@@ -2561,7 +2561,7 @@ subroutine MaximizeLikelihood1(x,LValue,Grad,Hess,ierr)
     else if (ControlOptions%TestLikeFlag==4) then
        ! maximise likelihood with no non-linear constraints
        print *,'Begin maximization with no non-linear constraints.'
-       !call ComputeHess(x0,LValue0,GRAD,Hess,iuser,ruser)
+       call ComputeHess(x0,LValue0,GRAD,Hess,iuser,ruser)
        print *,'LValue0',LValue0
        ifail = -1
        call E04WDF(nx,nc_lin,nc_nonlin,LDA,LDCJ,LDH,A,BL,BU,                     &

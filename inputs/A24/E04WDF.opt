@@ -1,10 +1,7 @@
 Begin
   Derivative Level = 0
-  Function Precision = 1.7e-4
-# Linesearch Tolerance = 0.9
-  Major Optimality Tolerance = 1.0e-04
-#  Nonderivative Linesearch
-#  Hessian Full Memory
+*  Function Precision = 1.7e-5
+*  Major Optimality Tolerance = 1.0e-02
   Iterations Limit = 200000
   Major Iterations Limit = 20000
   Major Print Level = 1
@@ -15,4 +12,8 @@ Begin
   Print File = 6
   Print Frequency = 1
   Verify Level = -1
+*  Hessian Limited Memory
+* Linesearch Tolerance = 0.9
+  Nonderivative Linesearch
+  Hessian Full Memory
 End

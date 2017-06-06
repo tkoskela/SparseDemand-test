@@ -1662,6 +1662,14 @@ subroutine BroadcastParameters(pid)
     call mpi_bcast(parms%dim_eta,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr(19))
     call mpi_bcast(parms%BC_lo,1,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(20))
     call mpi_bcast(parms%BC_hi,1,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(21))
+    call mpi_bcast(parms%BC_beta_lo,1,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(20))
+    call mpi_bcast(parms%BC_beta_hi,1,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(21))
+    call mpi_bcast(parms%BD_beta_lo,1,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(20))
+    call mpi_bcast(parms%BD_beta_hi,1,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(21))
+    call mpi_bcast(parms%InvCDiag_LO,1,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(21))
+    call mpi_bcast(parms%InvCDiag_HI,1,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(21))
+    call mpi_bcast(parms%InvCOffDiag_LO,1,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(21))
+    call mpi_bcast(parms%InvCOffDiag_HI,1,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(21))
   end if
 
   ! data information
