@@ -1,5 +1,7 @@
 # LoadLocalDefs.inc - loads correct platform-specific definitions
 #
+#    SPARSE DEMAND
+#
 # modification history
 # --------------------
 # 11JUN2016 LN  update to new paths on UCL and CS clusters
