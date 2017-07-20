@@ -1,7 +1,7 @@
 #$ -S /bin/bash
 #$ -wd /home/uctpln0/FuirtDemand/code/fortran/source
-#$ -o /home/uctpln0/FruitDemand/code/fortran/output/A24_20170516D1.out
-#$ -N fruit
+#$ -o /home/uctpln0/FruitDemand/code/fortran/output/A24_20170629A.out
+#$ -N fruit24D
 #$ -j y
 #$ -cwd
 #$ -l tmem=4G,h_vmem=4G

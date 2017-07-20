@@ -548,11 +548,11 @@ subroutine WriteDemandResults1(qdata,qhat,qaverage)
   implicit none
   real(dp), intent(in) :: qdata(:),qhat(:),qaverage(:)
 
-  character(len=200)       :: ShortFileName
+!  character(len=200)       :: ShortFileName
   integer(i4b)             :: J,i1
 
-  write(ShortFileName,*) 'demand_data.csv'
-  DemandFile = MakeFullFileName(trim(ShortFileName))
+!  write(ShortFileName,*) 'demand_data.csv'
+  DemandFile = MakeFullFileName(trim('demand_data.csv'))
 
   open(unit = Demand_UNIT, &
        File = DemandFile,  &
