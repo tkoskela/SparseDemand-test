@@ -22,7 +22,9 @@ HotStart         : 1 # 1 to do HotStart, from previous saved output
 OutputFlag   : 1     #  0 don't print output and 1 to print output
 SaveDataFlag : 1     # 1 to save data, 0 otherwise
 TestIntegrationFlag : 0 # 1 to test accuracy of integration
+SimulateDataFlag    : 0 # 1 simulate data, 0 = load data from file
 RawDataFormat       : 1 # 1 original data format, 2 = 20161225 data format
+BICFlag             : 0 # 1 to minimize BIC
 MPIFlag             : 1 # 1 = each processor, subset of data
                         # 2 = each processor, subset of MC replications
  
@@ -114,7 +116,7 @@ dim_eta : 2        # dimension of random coefficients in (BC,BD)
 #  RandomB_nQuad = number of points in each dimension
 #                1  2  3  4  5  6  7  8  9  10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 
 #                123123123123123123123123123123123123123123123123123123123123123123123123123123123123123123 
-RandomB_nQuad :  10 10 5  5  5  5  5  5  5  5  3  3  3  2  2  2  2  2  2  2  2  2  2  2  2  2  2  2  2  2     
+RandomB_nQuad :  20 20 5  5  5  5  5  5  5  5  3  3  3  2  2  2  2  2  2  2  2  2  2  2  2  2  2  2  2  2     
 
 # parameter for RC model
 # BC_z_dim = size(BC_z)
@@ -135,13 +137,13 @@ InvCOffDiag_HI : 0.95d0  # BU = pi * InvCOffDiag_HI
 # select subsets of parameter to be free
 FreeFlagD           : 0   # 1 to be free, 0 to be fixed
 FreeFlagBC          : 0   # 1 to be free, 0 to be fixed
-FreeFlagMUE         : 1   # 1 to be free, 0 to be fixed
-FreeFlagInvCDiag    : 1   # 1 to be free, 0 to be fixed
-FreeFlagInvCOffDiag : 1   # 1 to be free, 0 to be fixed
+FreeFlagMUE         : 0   # 1 to be free, 0 to be fixed
+FreeFlagInvCDiag    : 0   # 1 to be free, 0 to be fixed
+FreeFlagInvCOffDiag : 0   # 1 to be free, 0 to be fixed
 
-FreeFlagBD_beta     : 1
-FreeFlagBD_CDiag    : 1
-FreeFlagBD_COffDiag : 1
+FreeFlagBD_beta     : 0
+FreeFlagBD_CDiag    : 0
+FreeFlagBD_COffDiag : 0
 FreeFlagBC_beta     : 1
 FreeFlagBC_CDiag    : 1
 FreeFlagBC_COffDiag : 1
