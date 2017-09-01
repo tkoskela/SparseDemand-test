@@ -489,7 +489,7 @@ end subroutine AllocateLocalHHData
       read(cTemp,'(i4)') nx1
     
       ErrFlag = GetVal(PropList,'lambda',cTemp)
-      read(cTemp,'(g11.0)') lambda
+      read(cTemp,'(f11.0)') lambda
     
       ! number of values of lambda to try
       ErrFlag = GetVal(PropList,'nLambda',cTemp)
@@ -497,11 +497,11 @@ end subroutine AllocateLocalHHData
     
       ! minimum value of lambda
       ErrFlag = GetVal(PropList,'MinLambda',cTemp)
-      read(cTemp,'(g11.0)') Penalty%MinLambda
+      read(cTemp,'(f11.0)') Penalty%MinLambda
     
       ! max value of lambda
       ErrFlag = GetVal(PropList,'MaxLambda',cTemp)
-      read(cTemp,'(g11.0)') Penalty%MaxLambda
+      read(cTemp,'(f11.0)') Penalty%MaxLambda
     endif
 
 ! broadcast information from MasterID to all processors
@@ -866,7 +866,7 @@ subroutine InitializeParameters(InputFile)
     inf = huge(1.0d0)
 !    small = 1.0d-50
     ErrFlag = GetVal(PropList,'small',cTemp)
-    read(cTemp,'(d12.0)') small
+    read(cTemp,'(f12.0)') small
 
     ! name of output directory
     ErrFlag = GetVal(PropList,'OutDir',OutDir)
@@ -964,11 +964,11 @@ subroutine InitializeParameters(InputFile)
   
   ! Absolute tolerance for D01ESF Bayesian estimator
   ErrFlag = GetVal(PropList,'AbsoluteTolerance',cTemp)
-  read(cTemp,'(d12.0)') MaxOptions%AbsTol
+  read(cTemp,'(f12.0)') MaxOptions%AbsTol
   
   ! Relative tolerance for D01ESF Bayesian estimator
   ErrFlag = GetVal(PropList,'RelativeTolerance',cTemp)
-  read(cTemp,'(d12.0)') MaxOptions%RelTol
+  read(cTemp,'(f12.0)') MaxOptions%RelTol
 
   ! Maximum level for D01ESF Bayesian estimator
   ErrFlag = GetVal(PropList,'MaxLevel',cTemp)
@@ -1047,34 +1047,34 @@ subroutine InitializeParameters(InputFile)
     read(cTemp,'(i5)') parms%BD_z_dim
 
     ErrFlag = GetVal(PropList,'BC_lo',cTemp)
-    read(cTemp,'(d12.0)') parms%BC_lo
+    read(cTemp,'(f12.0)') parms%BC_lo
     
     ErrFlag = GetVal(PropList,'BC_hi',cTemp)
-    read(cTemp,'(d12.0)') parms%BC_hi
+    read(cTemp,'(f12.0)') parms%BC_hi
 
     ErrFlag = GetVal(PropList,'InvCDiag_LO',cTemp)
-    read(cTemp,'(d12.0)') parms%InvCDiag_LO
+    read(cTemp,'(f12.0)') parms%InvCDiag_LO
     
     ErrFlag = GetVal(PropList,'InvCDiag_HI',cTemp)
-    read(cTemp,'(d12.0)') parms%InvCDiag_HI
+    read(cTemp,'(f12.0)') parms%InvCDiag_HI
     
     ErrFlag = GetVal(PropList,'InvCOffDiag_LO',cTemp)
-    read(cTemp,'(d12.0)') parms%InvCOffDiag_LO
+    read(cTemp,'(f12.0)') parms%InvCOffDiag_LO
     
     ErrFlag = GetVal(PropList,'InvCOffDiag_HI',cTemp)
-    read(cTemp,'(d12.0)') parms%InvCOffDiag_HI
+    read(cTemp,'(f12.0)') parms%InvCOffDiag_HI
     
     ErrFlag = GetVal(PropList,'BC_beta_lo',cTemp)
-    read(cTemp,'(d12.0)') parms%BC_beta_lo
+    read(cTemp,'(f12.0)') parms%BC_beta_lo
     
     ErrFlag = GetVal(PropList,'BC_beta_hi',cTemp)
-    read(cTemp,'(d12.0)') parms%BC_beta_hi
+    read(cTemp,'(f12.0)') parms%BC_beta_hi
 
     ErrFlag = GetVal(PropList,'BD_beta_lo',cTemp)
-    read(cTemp,'(d12.0)') parms%BD_beta_lo
+    read(cTemp,'(f12.0)') parms%BD_beta_lo
     
     ErrFlag = GetVal(PropList,'BD_beta_hi',cTemp)
-    read(cTemp,'(d12.0)') parms%BD_beta_hi
+    read(cTemp,'(f12.0)') parms%BD_beta_hi
 
     ! RandomB parameters: dimension of random elements of C and D
     ErrFlag = GetVal(PropList,'dim_eta',cTemp)
@@ -1371,7 +1371,7 @@ subroutine InitializeParameters(InputFile)
       col = i1-parms%J*(row-1)  
       read(unit_sigp,897) parms%sigp(row,col)
     end do
-    897 format(d25.0)
+    897 format(f25.0)
     close(unit_sigp)
     
   end subroutine ReadParameters
@@ -2247,14 +2247,14 @@ subroutine ReadWriteParameters(LocalParms,LocalAction)
 
   ! formats for data in parms.csv
   101 format(3(i4,','),i4)                               ! (model,K,J,nBC)
-  102 format(<LocalParms%J-1>(d25.16,','),d25.16)        ! B
-  103 format(<LocalParms%K-1>(d25.16,','),d25.16)        ! MUE  (K x 1)
-  104 format(<LocalParms%K-1>(d25.16,','),d25.16)        ! CSIG
+  102 format(<LocalParms%J-1>(f25.16,','),f25.16)        ! B
+  103 format(<LocalParms%K-1>(f25.16,','),f25.16)        ! MUE  (K x 1)
+  104 format(<LocalParms%K-1>(f25.16,','),f25.16)        ! CSIG
   105 format(2(i4,','),i4)                               ! (dim_eta,BC_Z_DIM,BD_Z_DIM)
-  106 format(2(i4,','),d25.16,',',d25.16)                ! nBC_COffDiag,nBD_COffDiag,BC_LO,BC_HI
-  107 format(<LocalParms%BC_Z_DIM-1>(d25.16,','),d25.16) ! BC_BETA
-  108 format(<LocalParms%BD_Z_DIM-1>(d25.16,','),d25.16) ! BD_BETA
-  109 format(<LocalParms%dim_eta-1>(d25.16,','),d25.16)  ! BC_C
+  106 format(2(i4,','),f25.16,',',f25.16)                ! nBC_COffDiag,nBD_COffDiag,BC_LO,BC_HI
+  107 format(<LocalParms%BC_Z_DIM-1>(f25.16,','),f25.16) ! BC_BETA
+  108 format(<LocalParms%BD_Z_DIM-1>(f25.16,','),f25.16) ! BD_BETA
+  109 format(<LocalParms%dim_eta-1>(f25.16,','),f25.16)  ! BC_C
 
 end subroutine ReadWriteParameters
 
@@ -2337,7 +2337,7 @@ subroutine LoadBasePrice(p0)
        action = 'read')
 
   do i1=1,parms%J
-    read(BasePriceUnit,'(d25.0)') p0(i1)
+    read(BasePriceUnit,'(f25.0)') p0(i1)
   end do
 
   close(BasePriceUnit)
