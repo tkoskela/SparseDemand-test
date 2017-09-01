@@ -1714,9 +1714,10 @@ subroutine ComputeElasticities
   real(dp), allocatable     :: R(:)
   real(dp), allocatable     :: e(:,:)
   real(dp), allocatable     :: eye(:,:),zero(:)
+  real(dp), allocatable     :: e2(:)
 
   ! allocate memory for HHData0
-  HHData0%N = HHData%N
+  HHData0%N = HHData%NSim   ! NSIM might be different from N
   call AllocateLocalHHData(HHData0)
 
   ! initialize random number generator
@@ -1745,7 +1746,7 @@ subroutine ComputeElasticities
   allocate(R(LR))
   allocate(e(HHData0%N,parms%K))
   ! generate normal random numbers
-  call G05RZF(mode,HHData0%N,parms%K,parms%MuE,parms%sig,parms%K,R,LR,state,e,HHData%N,ifail)
+  call G05RZF(mode,HHData0%N,parms%K,parms%MuE,parms%sig,parms%K,R,LR,state,e,HHData0%N,ifail)
   HHData0%e = transpose(e)
   deallocate(R,e)
 
@@ -1756,7 +1757,7 @@ subroutine ComputeElasticities
     LR = parms%dim_eta*(parms%dim_eta+1)+1
     allocate(zero(parms%dim_eta))
     allocate(eye(parms%dim_eta,parms%dim_eta))
-    allocate(e(HHData%N,parms%dim_eta))
+    allocate(e(HHData0%N,parms%dim_eta))
     allocate(R(LR))
     R    = 0.0d0
     zero = 0.0d0
@@ -1764,12 +1765,11 @@ subroutine ComputeElasticities
     do i1=1,parms%dim_eta
       eye(i1,i1) = 1.0d0
     end do
-    call G05RZF(mode,HHData%N,parms%dim_eta,zero,eye,parms%dim_eta,R,LR,state,e,HHData0%N,ifail)
+    call G05RZF(mode,HHData0%N,parms%dim_eta,zero,eye,parms%dim_eta,R,LR,state,e,HHData0%N,ifail)
     HHData0%eta = transpose(e)
     deallocate(zero,eye,e,R)
   end if
 
-  deallocate(seed,state)
 
   ! Aggregate demand from data
   ! baseline demand
@@ -1784,7 +1784,19 @@ subroutine ComputeElasticities
   ! aggregate demand in raw data
   call ComputeAggregateDemand(HHData%q,HHData%iNonZero,qdata,HHData%nNonZero,0)
 
-  HHData0%p = HHData%p
+  if (HHData0%N==HHData%N) then
+    HHData0%p = HHData%p
+  else
+    print *,'HHData%N = ',HHData0%N,'.'
+    print *,'Sample prices with replacement from raw data.'
+    allocate(e2(HHData0%N))
+    call G05SAF(HHData0%N,state,e2,ifail)
+    do i1=1,HHData0%N
+      i2 =ceiling(HHData0%n * e2(i1)) 
+      HHData0%p(:,i1) = HHData0%p(:,i2)
+    end do
+    deallocate(e2)
+  end if
   ! predicted demand at prices in data
   call ComputeDemand(HHData0)
   call ComputeAggregateDemand(HHData0%q,HHData0%iNonZero,qhat,HHData0%nNonZero,0)
@@ -1853,6 +1865,7 @@ subroutine ComputeElasticities
   deallocate(q0,q1,GradQ,ExcessQ)
   deallocate(qdata,qhat)
   deallocate(newq)
+  deallocate(seed,state)
 
 end subroutine ComputeElasticities
 

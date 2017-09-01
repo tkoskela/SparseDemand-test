@@ -35,11 +35,13 @@ small : 1.0d-50     # small number to prevent log of zero
 # Problem size
 # NMC   = number of Monte Carlo repetitions
 # N     = number of observations
+# NSIM  = number of simulations
 # M     = number of markets
 # J     = number of products
 # K     = dimension of demand system
 NMC   : 1
 N     : 20000
+NSIM  : 20000
 M     : 200
 J     : 24
 K     : 5

@@ -58,6 +58,7 @@ module GlobalModule
   type DataStructure
     integer(i4b)              :: NMC       ! number of MC replications
     integer(i4b)              :: N         ! number of households
+    integer(i4b)              :: NSim      ! number of households in simulation
     integer(i4b)              :: M         ! number of markets
     real(dp), allocatable     :: e(:,:)    ! bliss points
     real(dp), allocatable     :: q(:,:)    ! q(1:d1,i1) = nonzero elements of quantity for i1
@@ -1001,11 +1002,14 @@ subroutine InitializeParameters(InputFile)
 
   ! Define problem size:  (N,J,K)
   ! N     = sample size
+  ! NSim  = sample size for simulations
   ! M     = number of markets
   ! J     = number of products
   ! K     = rank of demand system
   ErrFlag = GetVal(PropList,'N',cTemp)
   read(cTemp,'(i5)') HHData%N
+  ErrFlag = GetVal(PropList,'NSim',cTemp)
+  read(cTemp,'(i5)') HHData%NSim
   ErrFlag = GetVal(PropList,'M',cTemp)
   read(cTemp,'(i5)') HHData%M
 
@@ -1675,6 +1679,7 @@ subroutine BroadcastParameters(pid)
   ! data information
   call mpi_bcast(HHData%NMC,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr(22))
   call mpi_bcast(HHData%N,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr(23))
+  call mpi_bcast(HHData%NSim,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr(23))
   call mpi_bcast(HHData%M,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr(24))
 
   ! allocate memory for (b,CDiag,COffDiag,xData,iXData)
