@@ -494,7 +494,7 @@ subroutine LoadData
       HHData%iNonZero(1:HHData%nNonZero(i1),i1) = pack((/1:parms%J/),qp(i1,1:2*parms%J:2)>0.0d0)
       HHData%iZero(1:parms%J-HHData%nNonZero(i1),i1) = pack((/1:parms%J/),qp(i1,1:2*parms%J:2)==0.0d0)
     end do
-389 format(3i10,<2*parms%J>d25.0,2i10,<parms%J>d25.0)
+389 format(3i10,<2*parms%J>f25.0,2i10,<parms%J>f25.0)
   elseif (HHData%RawDataFormat==2) then
     do i1=1,HHData%N
       read(DataUnit,390) HHData%HHID(i1),HHData%date(i1),HHData%shopid(i1),  &
@@ -505,7 +505,7 @@ subroutine LoadData
       HHData%iNonZero(1:HHData%nNonZero(i1),i1) = pack((/1:parms%J/),qp(i1,1:2*parms%J:2)>0.0d0)
       HHData%iZero(1:parms%J-HHData%nNonZero(i1),i1) = pack((/1:parms%J/),qp(i1,1:2*parms%J:2)==0.0d0)
     end do
-390 format(3i10,<2*parms%J>d25.0,2i10,d25.0,i10,<parms%J>d25.0)
+390 format(3i10,<2*parms%J>f25.0,2i10,f25.0,i10,<parms%J>f25.0)
   end if 
   deallocate(qp,err)
   close(DataUnit)
