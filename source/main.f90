@@ -100,7 +100,9 @@ program SparseDemand
   elseif (ControlOptions%TestLikeFlag==5) then
     ! analyse results
     IMC1 = 1
-    call AnalyseResults(IMC1)
+    if (pid==MasterID) then
+      call AnalyseResults(IMC1)
+    end if
   end if
   call DeallocateGlobalVariables
 
