@@ -1733,7 +1733,7 @@ subroutine ComputeElasticities
   lstate = 1260  ! min value for genid=3
   allocate(state(lstate))
   ifail  = -1
-  seed   = 1
+  seed   = HHData%SimulationSeed
 
   call G05KFF(genid,subid,seed,lseed,state,lstate,ifail)
 

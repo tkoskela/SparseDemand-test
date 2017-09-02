@@ -75,7 +75,9 @@ module GlobalModule
     integer(i4b),   allocatable :: HHID(:)
     integer(i4b),   allocatable :: shopid(:)
     integer(i4b),   allocatable :: date(:),day(:)
-    integer(i4b)                :: nRawVars    ! nunmber of variables in raw data file
+    integer(i4b)                :: nRawVars    ! number of variables in raw data file
+    integer(i4b)                :: EstimationSeed
+    integer(i4b)                :: SimulationSeed
   end type
 
   type ParmsStructure
@@ -900,6 +902,13 @@ subroutine InitializeParameters(InputFile)
    ErrFlag = GetVal(PropList,'RawDataFormat',cTemp)
    read(cTemp,'(i2)') HHData%RawDataFormat
 
+   ! Estimation and simulation seeds
+   ErrFlag = GetVal(PropList,'EstimationSeed',cTemp)
+   read(cTemp,'(i4)') HHData%EstimationSeed
+
+   ErrFlag = GetVal(PropList,'SimulationSeed',cTemp)
+   read(cTemp,'(i4)') HHData%SimulationSeed
+
    ! file containing base price information to use in analysis
    ErrFlag = GetVal(PropList,'BasePriceFile',BasePriceFile)
    BasePriceFile = trim(InputDir) // '/' // trim(BasePriceFile)
@@ -1008,8 +1017,8 @@ subroutine InitializeParameters(InputFile)
   ! K     = rank of demand system
   ErrFlag = GetVal(PropList,'N',cTemp)
   read(cTemp,'(i5)') HHData%N
-  ErrFlag = GetVal(PropList,'NSim',cTemp)
-  read(cTemp,'(i5)') HHData%NSim
+  ErrFlag = GetVal(PropList,'NSIM',cTemp)
+  read(cTemp,'(i5)') HHData%NSIM
   ErrFlag = GetVal(PropList,'M',cTemp)
   read(cTemp,'(i5)') HHData%M
 

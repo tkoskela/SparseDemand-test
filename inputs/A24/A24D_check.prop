@@ -60,6 +60,10 @@ Timing2_FILE : Timing2.txt
 InitialGuess1_FILE : InitialGuess1.txt
 InitialGuess2_FILE : InitialGuess2.txt
 
+# Simulation and estimation seeds
+SimulationSeed : 1
+EstimationSeed : 1
+
 #            : 01
 MaxAlgorithm : 1 # 1 = E04WDF gradient based, dense
                  # 2 = E04VHF gradient based,sparse
