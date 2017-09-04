@@ -61,7 +61,7 @@ InitialGuess1_FILE : InitialGuess1.txt
 InitialGuess2_FILE : InitialGuess2.txt
 
 # Simulation and estimation seeds
-SimulationSeed : 3452345
+SimulationSeed : 4562392
 EstimationSeed : 1
 
 #            : 01

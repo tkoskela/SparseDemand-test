@@ -1571,6 +1571,7 @@ subroutine RunMonteCarlo(IMC1,IMC2,pid)
   integer(i4b)             :: NMC
   integer(i4b)             :: ifail
   integer(i4b)             :: DateTime(8)
+  logical                  :: ExistFlag
 
   NMC = IMC2-IMC1+1
 
@@ -1582,9 +1583,12 @@ subroutine RunMonteCarlo(IMC1,IMC2,pid)
   end if
 
   if (pid==MasterID .and. ControlOptions%HotStart==1) then
-    ! copy true parameters from parms to parms0
-    call CopyParameters(parms,parms0)
-    call ReadWriteParameters(parms,'read')
+    inquire(file=parms%file,exist=ExistFlag)
+    if (ExistFlag) then
+      ! copy true parameters from parms to parms0
+      call CopyParameters(parms,parms0)
+      call ReadWriteParameters(parms,'read')
+    end if
   end if
 
 
