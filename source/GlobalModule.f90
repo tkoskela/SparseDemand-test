@@ -755,7 +755,7 @@ subroutine DeallocateGlobalVariables
 
   !------------------------------------------------------------------------------
   ! Deallocate iFree
-    if (allocated(iFree%D)) then
+  if (allocated(iFree%D)) then
     deallocate(iFree%D,iFree%xD)
   end if
   if (allocated(iFree%BC)) then
@@ -807,6 +807,10 @@ subroutine DeallocateGlobalVariables
   end if
 
 end subroutine DeallocateGlobalVariables
+
+subroutiner DeallocateIFree
+
+end
 !------------------------------------------------------------------------------
   subroutine DeallocatePenaltyParameters
     implicit none
