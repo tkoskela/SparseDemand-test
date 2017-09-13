@@ -1,7 +1,7 @@
 subroutine MaxOneAtTime(pid)
-  use nrtype  ! comment
+  use nrtype
   use GlobalModule, only : MasterID,iFree,SelectFreeType,parms, &
-                           ReadWriteParameters
+                           ReadWriteParameters,DeallocateIFree
 
   implicit none
   integer(i4b), intent(in) :: pid
@@ -13,6 +13,7 @@ subroutine MaxOneAtTime(pid)
   call CopyIFree(iFree,iFree0)
 
   do i1=1,iFree0%NALL
+    call DeallocateIFree(iFree)
     call UpdateIFree(i1,iFree0,iFree)
     if (pid==MasterID) then
       allocate(x(iFree%NALL))
@@ -30,6 +31,10 @@ subroutine MaxOneAtTime(pid)
 #endif
     end if
   end do
+
+  call DeallocateIFree(iFree)
+  call CopyIFree(iFree0,iFree)
+  call DeallocateIFree(iFree0)
 
 end subroutine MaxOneAtTime
 
@@ -49,7 +54,7 @@ subroutine CopyIFree(iFree,iFreeCopy)
   iFreeCopy%NBD_CDIAG    = iFree%NBD_CDIAG
   iFreeCopy%NBD_COFFDIAG = iFree%NBD_COFFDIAG
 
-  iFreeCopy%NBC_beta     = iFree%NBC_beta
+  iFreeCopy%NBC_CDiag     = iFree%NBC_beta
   iFreeCopy%NBC_CDIAG    = iFree%NBC_CDIAG
   iFreeCopy%NBC_COFFDIAG = iFree%NBC_COFFDIAG
 
@@ -68,6 +73,7 @@ subroutine CopyIFree(iFree,iFreeCopy)
   iFreeCopy%flagBD_beta     = iFree%flagBD_beta
   iFreeCopy%flagBD_CDiag    = iFree%flagBD_CDiag
   iFreeCopy%flagBD_COffDiag = iFree%flagBD_COffDiag
+  iFreeCopy%OneAtATime      = iFree%OneAtATime
 
   if (iFree%flagD>0) then
     allocate(iFreeCopy%D(iFree%ND))
@@ -154,5 +160,127 @@ subroutine UpdateIFree(i1,iFree0,iFreeNew)
   integer(i4b), intent(in) :: i1
   type(SelectFreeType), intent(in)    :: iFree0
   type(SelectFreeType), intent(inout) :: iFreeNew
+
+  iFreeNew%nall         = 1
+  iFreeNew%nD           = 0
+  iFreeNew%nBC          = 0
+  iFreeNew%nMUE         = 0
+  iFreeNew%nInvCDiag    = 0
+  iFreeNew%nInvCOffDiag = 0
+  iFreeNew%nBC_beta     = 0
+  iFreeNew%nBC_CDiag    = 0
+  iFreeNew%nBC_COffDiag = 0
+  iFreeNew%nBD_beta     = 0
+  iFreeNew%nBD_CDiag    = 0
+  iFreeNew%nBD_COffDiag = 0
+
+  if (iFree0%nD>0) then
+    if (any(iFree0%xD==i1)) then
+      allocate(iFreeNew%D(1))
+      allocate(IFreeNew%xD(1))
+      iFreeNew%xD = 1
+      iFreeNew%D  = pack(iFree0%D,iFree0%xD==i1)
+      iFreeNew%nD = 1
+    end if
+  end if
+
+  if (iFree0%nBC>0) then
+    if (any(iFree0%xBC==i1)) then
+      allocate(iFreeNew%BC(1))
+      allocate(IFreeNew%xBC(1))
+      iFreeNew%xBC = 1
+      iFreeNew%BC  = pack(iFree0%BC,iFree0%xBC==i1)
+      iFreeNew%nBC = 1
+    end if
+  end if
+
+  if (iFree0%nMUE>0) then
+    if (any(iFree0%xMUE==i1)) then
+      allocate(iFreeNew%MUE(1))
+      allocate(IFreeNew%xMUE(1))
+      iFreeNew%xMUE = 1
+      iFreeNew%MUE  = pack(iFree0%MUE,iFree0%xMUE==i1)
+      iFreeNew%nMUE = 1
+    end if
+  end if
+
+  if (iFree0%nInvCDiag>0) then
+    if (any(iFree0%xInvCDiag==i1)) then
+      allocate(iFreeNew%InvCDiag(1))
+      allocate(IFreeNew%xInvCDiag(1))
+      iFreeNew%xInvCDiag = 1
+      iFreeNew%InvCDiag  = pack(iFree0%InvCDiag,iFree0%xInvCDiag==i1)
+      iFreeNew%nInvCDiag = 1
+    end if
+  end if
+
+  if (iFree0%nInvCOffDiag>0) then
+    if (any(iFree0%xInvCOffDiag==i1)) then
+      allocate(iFreeNew%InvCOffDiag(1))
+      allocate(IFreeNew%xInvCOffDiag(1))
+      iFreeNew%xInvCOffDiag = 1
+      iFreeNew%InvCOffDiag  = pack(iFree0%InvCOffDiag,iFree0%xInvCOffDiag==i1)
+      iFreeNew%nInvCOffDiag = 1
+    end if
+  end if
+
+  if (iFree0%nBC_beta>0) then
+    if (any(iFree0%xBC_beta==i1)) then
+      allocate(iFreeNew%BC_beta(1))
+      allocate(IFreeNew%xBC_beta(1))
+      iFreeNew%xBC_beta = 1
+      iFreeNew%BC_beta  = pack(iFree0%BC_beta,iFree0%xBC_beta==i1)
+      iFreeNew%nBC_beta = 1
+    end if
+  end if
+  if (iFree0%nBD_beta>0) then
+    if (any(iFree0%xBD_beta==i1)) then
+      allocate(iFreeNew%BD_beta(1))
+      allocate(IFreeNew%xBD_beta(1))
+      iFreeNew%xBD_beta = 1
+      iFreeNew%BD_beta  = pack(iFree0%BD_beta,iFree0%xBD_beta==i1)
+      iFreeNew%nBD_beta = 1
+    end if
+  end if
+
+  if (iFree0%nBC_CDiag>0) then
+    if (any(iFree0%xBC_CDiag==i1)) then
+      allocate(iFreeNew%BC_CDiag(1))
+      allocate(IFreeNew%xBC_CDiag(1))
+      iFreeNew%xBC_CDiag = 1
+      iFreeNew%BC_CDiag  = pack(iFree0%BC_CDiag,iFree0%xBC_CDiag==i1)
+      iFreeNew%nBC_CDiag = 1
+    end if
+  end if
+
+  if (iFree0%nBD_CDiag>0) then
+    if (any(iFree0%xBD_CDiag==i1)) then
+      allocate(iFreeNew%BD_CDiag(1))
+      allocate(IFreeNew%xBD_CDiag(1))
+      iFreeNew%xBD_CDiag = 1
+      iFreeNew%BD_CDiag  = pack(iFree0%BD_CDiag,iFree0%xBD_CDiag==i1)
+      iFreeNew%nBD_CDiag = 1
+    end if
+  end if
+
+  if (iFree0%nBC_COffDiag>0) then
+    if (any(iFree0%xBC_COffDiag==i1)) then
+      allocate(iFreeNew%BC_COffDiag(1))
+      allocate(IFreeNew%xBC_COffDiag(1))
+      iFreeNew%xBC_COffDiag = 1
+      iFreeNew%BC_COffDiag  = pack(iFree0%BC_COffDiag,iFree0%xBC_COffDiag==i1)
+      iFreeNew%nBC_COffDiag = 1
+    end if
+  end if
+
+  if (iFree0%nBD_COffDiag>0) then
+    if (any(iFree0%xBD_COffDiag==i1)) then
+      allocate(iFreeNew%BD_COffDiag(1))
+      allocate(IFreeNew%xBD_COffDiag(1))
+      iFreeNew%xBD_COffDiag = 1
+      iFreeNew%BD_COffDiag  = pack(iFree0%BD_COffDiag,iFree0%xBD_COffDiag==i1)
+      iFreeNew%nBD_COffDiag = 1
+    end if
+  end if
 
 end subroutine UpdateIFree
