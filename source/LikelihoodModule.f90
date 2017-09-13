@@ -1624,7 +1624,7 @@ subroutine RunMonteCarlo(IMC1,IMC2,pid)
 #endif
 
     if (iFree%OneAtATime==1) then
-       call MaxOneAtATime(pid)
+       call MaxOneAtTime(pid)
     else
       if (pid==MasterID) then
         allocate(x(iFree%NALL))
@@ -1965,7 +1965,6 @@ subroutine AnalyseResults(IMC)
     call date_and_time(values=DateTime)
     print *,"Completed load data. (day,hour,min) = ",DateTime(3),DateTime(5),DateTime(6)
   end if
-end if
 
   ! reset prices = average price
   call ComputeElasticities
