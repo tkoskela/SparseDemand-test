@@ -1,5 +1,6 @@
 module LikelihoodModule
 ! Revision history
+! 2017SEP13 LN  add option to max one at time
 ! 10JUN2014 LN  continue editing random coefficients model
 ! 22MAR2013 LN  clean up
 ! 09DEC2012 LN  adapted from Like1.m
@@ -1564,7 +1565,7 @@ subroutine RunMonteCarlo(IMC1,IMC2,pid)
   integer(i4b), intent(in) :: IMC1,IMC2
   integer(i4b), intent(in) :: pid
   integer(i4b)             :: IMC
-  real(dp), allocatable    :: x(:),xTrue(:),MCX(:,:),MCLambda(:)
+  real(dp), allocatable    :: x(:),MCX(:,:),MCLambda(:)
   real(dp), allocatable    :: Grad(:),Hess(:,:)
   real(dp)                 :: LVALUE
   type(ResultStructure)    :: stats
@@ -1573,24 +1574,21 @@ subroutine RunMonteCarlo(IMC1,IMC2,pid)
   integer(i4b)             :: DateTime(8)
   logical                  :: ExistFlag
 
-  NMC = IMC2-IMC1+1
+  ! Copy parameters from parms to parms0.
+  ! Then read parameters from disk
+  inquire(file=parms%file,exist=ExistFlag)
+  if (pid==MasterID .and. ControlOptions%HotStart==1 .and. ExistFlag) then
+    call CopyParameters(parms,parms0)
+    call ReadWriteParameters(parms,'read')
+  end if
 
+  ! Set initial value of iFree and broadcast iFree
   if (pid==MasterID) then
     call SelectFreeParameters(parms,iFree)
     !if (MaxOptions%Algorithm==6) then
     !  call SetupBayesPrior(parms,iFree)
     !end if
   end if
-
-  if (pid==MasterID .and. ControlOptions%HotStart==1) then
-    inquire(file=parms%file,exist=ExistFlag)
-    if (ExistFlag) then
-      ! copy true parameters from parms to parms0
-      call CopyParameters(parms,parms0)
-      call ReadWriteParameters(parms,'read')
-    end if
-  end if
-
 
 #if USE_MPI==1
   call BroadcastParms(parms,pid)
@@ -1602,20 +1600,8 @@ subroutine RunMonteCarlo(IMC1,IMC2,pid)
   ! copy true parameters from parms to parms0
   call CopyParameters(parms,parms0)
 
-  if (pid==MasterID) then
-    allocate(x(iFree%NALL),xTrue(iFree%NALL))
-    allocate(MCX(iFree%NALL,NMC+1))
-    allocate(MCLambda(NMC))
-
-    call ComputeInitialGuess(parms,iFree,x)
-    xTrue = x
-    MCX(:,NMC+1) = xTrue
-
-    allocate(Grad(iFree%NALL),Hess(iFree%NALL,iFree%NALL))
-  end if
-
+  NMC = IMC2-IMC1+1
   do iMC=IMC1,IMC2
-
     ! reset parms to be equal to parms0
     if (iMC>IMC1) then
       call CopyParameters(parms0,parms)
@@ -1627,39 +1613,335 @@ subroutine RunMonteCarlo(IMC1,IMC2,pid)
       else
         call date_and_time(values=DateTime)
         print *,"Begin load data. (day,hour,min) = ",DateTime(3),DateTime(5),DateTime(6)
-        !print 1616,"Begin load data. (day,hour,min) = (",DateTime(3),",",DateTime(5),",",DateTime(6),")"
-!1616 format('a35,i2,a1,i2,a1,i2,a1') 
         call LoadData
         call date_and_time(values=DateTime)
         print *,"Completed load data. (day,hour,min) = ",DateTime(3),DateTime(5),DateTime(6)
-        !print 1616 ,"Completed load data. (day,hour,min) = (",DateTime(3),",",DateTime(5),",",DateTime(6),")"
       end if
     end if
 
 #if USE_MPI==1
-  call SendData(pid)
+    call SendData(pid)
 #endif
 
-    !call MinimizeBIC(x,LVALUE,Grad,Hess,Stats)
+    if (iFree%OneAtATime==1) then
+       call MaxOneAtATime(pid)
+    else
+      if (pid==MasterID) then
+        allocate(x(iFree%NALL))
+        allocate(MCX(iFree%NALL,NMC+1))
+        allocate(MCLambda(NMC))
+        allocate(Grad(iFree%NALL),Hess(iFree%NALL,iFree%NALL))
+        call ComputeInitialGuess(parms,iFree,x)
+        MCX(:,NMC+1) = x
+        call MaximizeLikelihood(x,LValue,Grad,Hess,ifail)
+        MCX(:,IMC-IMC1+1) = x
+        ! update parms
+        call UpdateParms2(x,iFree,parms)
+        ! b) save parms to disk
+        call ReadWriteParameters(parms,'write')
+        deallocate(x,Grad,Hess)
+        deallocate(MCX,MCLambda)
+      elseif (pid .ne. MasterID) then
+#if USE_MPI>0
+        call WorkerTask(parms%model,pid)
+#endif
+      end if ! if (pid==MasterID) then
+    end if   ! if (iFree%OneAtATime==1) then
+  end do     ! do IMC=IMC1,IMC2
+end subroutine RunMonteCarlo
+
+! loop over elements of x
+! in each iteration, max w.r.t. current element of x
+! one element of x at a time
+subroutine MaxOneAtTime(pid)
+  use nrtype
+  use GlobalModule, only : MasterID,iFree,SelectFreeType,parms, &
+                           ReadWriteParameters,DeallocateIFree
+
+  implicit none
+  integer(i4b), intent(in) :: pid
+  type(SelectFreeType)     :: iFree0
+  integer(i4b)             :: i1,ifail
+  real(dp), allocatable    :: x(:),Grad(:),Hess(:,:)
+  real(dp)                 :: LValue
+
+  call CopyIFree(iFree,iFree0)
+
+  do i1=1,iFree0%NALL
+    call DeallocateIFree(iFree)
+    call UpdateIFree(i1,iFree0,iFree)
     if (pid==MasterID) then
+      allocate(x(iFree%NALL))
+      allocate(Grad(iFree%NALL),Hess(iFree%NALL,iFree%NALL))
       call ComputeInitialGuess(parms,iFree,x)
       call MaximizeLikelihood(x,LValue,Grad,Hess,ifail)
-      MCX(:,IMC-IMC1+1) = x
       ! update parms
       call UpdateParms2(x,iFree,parms)
       ! b) save parms to disk
       call ReadWriteParameters(parms,'write')
-#if USE_MPI>0
+      deallocate(x,Grad,Hess)
     elseif (pid .ne. MasterID) then
+#if USE_MPI>0
       call WorkerTask(parms%model,pid)
 #endif
     end if
   end do
-  if (pid==MasterID) then
-    deallocate(x,xTrue,Grad,Hess)
-    deallocate(MCX,MCLambda)
+
+  call DeallocateIFree(iFree)
+  call CopyIFree(iFree0,iFree)
+  call DeallocateIFree(iFree0)
+
+end subroutine MaxOneAtTime
+
+! Copy iFree to iFreeCopy
+subroutine CopyIFree(iFree,iFreeCopy)
+  use GlobalModule, only : SelectFreeType
+  implicit none
+  type(SelectFreeType), intent(in) :: iFree
+  type(SelectFreeType), intent(inout) :: iFreeCopy
+
+  iFreeCopy%ND           = iFree%ND
+  iFreeCopy%NBC          = iFree%NBC
+  iFreeCopy%NMUE         = iFree%NMUE
+  iFreeCopy%NINVCDIAG    = iFree%NINVCDIAG
+  iFreeCopy%NINVCOFFDIAG = iFree%NINVCOffDiag
+
+  iFreeCopy%NBD_beta     = iFree%NBD_beta
+  iFreeCopy%NBD_CDIAG    = iFree%NBD_CDIAG
+  iFreeCopy%NBD_COFFDIAG = iFree%NBD_COFFDIAG
+
+  iFreeCopy%NBC_CDiag     = iFree%NBC_beta
+  iFreeCopy%NBC_CDIAG    = iFree%NBC_CDIAG
+  iFreeCopy%NBC_COFFDIAG = iFree%NBC_COFFDIAG
+
+  iFreeCopy%NALL         = iFREE%NALL
+
+  iFreeCopy%flagD           = iFree%flagD
+  iFreeCopy%flagBC          = iFree%flagBC
+  iFreeCopy%flagMUE         = iFree%flagMUE
+  iFreeCopy%flagInvCDiag    = iFree%flagInvCDiag
+  iFreeCopy%flagInvCOffDiag = iFree%flagInvCOffDiag
+
+  iFreeCopy%flagBC_beta     = iFree%flagBC_beta
+  iFreeCopy%flagBC_CDiag    = iFree%flagBC_CDiag
+  iFreeCopy%flagBC_COffDiag = iFree%flagBC_COffDiag
+
+  iFreeCopy%flagBD_beta     = iFree%flagBD_beta
+  iFreeCopy%flagBD_CDiag    = iFree%flagBD_CDiag
+  iFreeCopy%flagBD_COffDiag = iFree%flagBD_COffDiag
+  iFreeCopy%OneAtATime      = iFree%OneAtATime
+
+  if (iFree%flagD>0) then
+    allocate(iFreeCopy%D(iFree%ND))
+    allocate(iFreeCopy%xD(iFree%ND))
+    iFreeCopy%D = iFree%D
+    iFreeCopy%xD = iFree%xD
   end if
-end subroutine RunMonteCarlo
+
+  if (iFree%flagBC>0) then
+    allocate(iFreeCopy%BC(iFree%NBC))
+    allocate(iFreeCopy%xBC(iFree%NBC))
+    iFreeCopy%BC = iFree%BC
+    iFreeCopy%xBC = iFree%xBC
+  end if
+
+  if (iFree%flagMUE>0) then
+    allocate(iFreeCopy%MUE(iFree%NMUE))
+    allocate(iFreeCopy%xD(iFree%NMUE))
+    iFreeCopy%MUE = iFree%MUE
+    iFreeCopy%xMUE = iFree%xMUE
+  end if
+
+  if (iFree%flagInvCDiag>0) then
+    allocate(iFreeCopy%InvCDiag(iFree%NInvCDiag))
+    allocate(iFreeCopy%xInvCDiag(iFree%NInvCDiag))
+    iFreeCopy%InvCDiag = iFree%InvCDiag
+    iFreeCopy%xInvCDiag = iFree%xInvCDiag
+  end if
+
+  if (iFree%flagInvCOffDiag>0) then
+    allocate(iFreeCopy%InvCOffDiag(iFree%NInvCOffDiag))
+    allocate(iFreeCopy%xInvCOffDiag(iFree%NInvCOffDiag))
+    iFreeCopy%InvCOffDiag = iFree%InvCOffDiag
+    iFreeCopy%xInvCOffDiag = iFree%xInvCOffDiag
+  end if
+
+  if (iFree%flagBC_beta>0) then
+    allocate(iFreeCopy%BC_beta(iFree%NBC_beta))
+    allocate(iFreeCopy%xBC_beta(iFree%NBC_beta))
+    iFreeCopy%BC_beta = iFree%BC_beta
+    iFreeCopy%xBC_beta = iFree%xBC_beta
+  end if
+
+  if (iFree%flagBC_CDiag>0) then
+    allocate(iFreeCopy%BC_CDiag(iFree%NBC_CDiag))
+    allocate(iFreeCopy%xBC_CDiag(iFree%NBC_CDiag))
+    iFreeCopy%BC_CDiag = iFree%BC_CDiag
+    iFreeCopy%xBC_CDiag = iFree%xBC_CDiag
+  end if
+
+  if (iFree%flagBC_COffDiag>0) then
+    allocate(iFreeCopy%BC_COffDiag(iFree%NBC_COffDiag))
+    allocate(iFreeCopy%xBC_COffDiag(iFree%NBC_COffDiag))
+    iFreeCopy%BC_COffDiag = iFree%BC_COffDiag
+    iFreeCopy%xBC_COffDiag = iFree%xBC_COffDiag
+  end if
+
+  if (iFree%flagBD_beta>0) then
+    allocate(iFreeCopy%BD_beta(iFree%NBD_beta))
+    allocate(iFreeCopy%xBD_beta(iFree%NBD_beta))
+    iFreeCopy%BD_beta = iFree%BD_beta
+    iFreeCopy%xBD_beta = iFree%xBD_beta
+  end if
+
+  if (iFree%flagBD_CDiag>0) then
+    allocate(iFreeCopy%BD_CDiag(iFree%NBD_CDiag))
+    allocate(iFreeCopy%xBD_CDiag(iFree%NBD_CDiag))
+    iFreeCopy%BD_CDiag = iFree%BD_CDiag
+    iFreeCopy%xBD_CDiag = iFree%xBD_CDiag
+  end if
+
+  if (iFree%flagBD_COffDiag>0) then
+    allocate(iFreeCopy%BD_COffDiag(iFree%NBD_COffDiag))
+    allocate(iFreeCopy%xBD_COffDiag(iFree%NBD_COffDiag))
+    iFreeCopy%BD_COffDiag = iFree%BD_COffDiag
+    iFreeCopy%xBD_COffDiag = iFree%xBD_COffDiag
+  end if
+
+end subroutine CopyIFree
+
+! Set iFreeNew equal to element i1 of iFree0
+subroutine UpdateIFree(i1,iFree0,iFreeNew)
+  use GlobalModule, only : SelectFreeType
+  implicit none
+  integer(i4b), intent(in) :: i1
+  type(SelectFreeType), intent(in)    :: iFree0
+  type(SelectFreeType), intent(inout) :: iFreeNew
+
+  iFreeNew%nall         = 1
+  iFreeNew%nD           = 0
+  iFreeNew%nBC          = 0
+  iFreeNew%nMUE         = 0
+  iFreeNew%nInvCDiag    = 0
+  iFreeNew%nInvCOffDiag = 0
+  iFreeNew%nBC_beta     = 0
+  iFreeNew%nBC_CDiag    = 0
+  iFreeNew%nBC_COffDiag = 0
+  iFreeNew%nBD_beta     = 0
+  iFreeNew%nBD_CDiag    = 0
+  iFreeNew%nBD_COffDiag = 0
+
+  if (iFree0%nD>0) then
+    if (any(iFree0%xD==i1)) then
+      allocate(iFreeNew%D(1))
+      allocate(IFreeNew%xD(1))
+      iFreeNew%xD = 1
+      iFreeNew%D  = pack(iFree0%D,iFree0%xD==i1)
+      iFreeNew%nD = 1
+    end if
+  end if
+
+  if (iFree0%nBC>0) then
+    if (any(iFree0%xBC==i1)) then
+      allocate(iFreeNew%BC(1))
+      allocate(IFreeNew%xBC(1))
+      iFreeNew%xBC = 1
+      iFreeNew%BC  = pack(iFree0%BC,iFree0%xBC==i1)
+      iFreeNew%nBC = 1
+    end if
+  end if
+
+  if (iFree0%nMUE>0) then
+    if (any(iFree0%xMUE==i1)) then
+      allocate(iFreeNew%MUE(1))
+      allocate(IFreeNew%xMUE(1))
+      iFreeNew%xMUE = 1
+      iFreeNew%MUE  = pack(iFree0%MUE,iFree0%xMUE==i1)
+      iFreeNew%nMUE = 1
+    end if
+  end if
+
+  if (iFree0%nInvCDiag>0) then
+    if (any(iFree0%xInvCDiag==i1)) then
+      allocate(iFreeNew%InvCDiag(1))
+      allocate(IFreeNew%xInvCDiag(1))
+      iFreeNew%xInvCDiag = 1
+      iFreeNew%InvCDiag  = pack(iFree0%InvCDiag,iFree0%xInvCDiag==i1)
+      iFreeNew%nInvCDiag = 1
+    end if
+  end if
+
+  if (iFree0%nInvCOffDiag>0) then
+    if (any(iFree0%xInvCOffDiag==i1)) then
+      allocate(iFreeNew%InvCOffDiag(1))
+      allocate(IFreeNew%xInvCOffDiag(1))
+      iFreeNew%xInvCOffDiag = 1
+      iFreeNew%InvCOffDiag  = pack(iFree0%InvCOffDiag,iFree0%xInvCOffDiag==i1)
+      iFreeNew%nInvCOffDiag = 1
+    end if
+  end if
+
+  if (iFree0%nBC_beta>0) then
+    if (any(iFree0%xBC_beta==i1)) then
+      allocate(iFreeNew%BC_beta(1))
+      allocate(IFreeNew%xBC_beta(1))
+      iFreeNew%xBC_beta = 1
+      iFreeNew%BC_beta  = pack(iFree0%BC_beta,iFree0%xBC_beta==i1)
+      iFreeNew%nBC_beta = 1
+    end if
+  end if
+  if (iFree0%nBD_beta>0) then
+    if (any(iFree0%xBD_beta==i1)) then
+      allocate(iFreeNew%BD_beta(1))
+      allocate(IFreeNew%xBD_beta(1))
+      iFreeNew%xBD_beta = 1
+      iFreeNew%BD_beta  = pack(iFree0%BD_beta,iFree0%xBD_beta==i1)
+      iFreeNew%nBD_beta = 1
+    end if
+  end if
+
+  if (iFree0%nBC_CDiag>0) then
+    if (any(iFree0%xBC_CDiag==i1)) then
+      allocate(iFreeNew%BC_CDiag(1))
+      allocate(IFreeNew%xBC_CDiag(1))
+      iFreeNew%xBC_CDiag = 1
+      iFreeNew%BC_CDiag  = pack(iFree0%BC_CDiag,iFree0%xBC_CDiag==i1)
+      iFreeNew%nBC_CDiag = 1
+    end if
+  end if
+
+  if (iFree0%nBD_CDiag>0) then
+    if (any(iFree0%xBD_CDiag==i1)) then
+      allocate(iFreeNew%BD_CDiag(1))
+      allocate(IFreeNew%xBD_CDiag(1))
+      iFreeNew%xBD_CDiag = 1
+      iFreeNew%BD_CDiag  = pack(iFree0%BD_CDiag,iFree0%xBD_CDiag==i1)
+      iFreeNew%nBD_CDiag = 1
+    end if
+  end if
+
+  if (iFree0%nBC_COffDiag>0) then
+    if (any(iFree0%xBC_COffDiag==i1)) then
+      allocate(iFreeNew%BC_COffDiag(1))
+      allocate(IFreeNew%xBC_COffDiag(1))
+      iFreeNew%xBC_COffDiag = 1
+      iFreeNew%BC_COffDiag  = pack(iFree0%BC_COffDiag,iFree0%xBC_COffDiag==i1)
+      iFreeNew%nBC_COffDiag = 1
+    end if
+  end if
+
+  if (iFree0%nBD_COffDiag>0) then
+    if (any(iFree0%xBD_COffDiag==i1)) then
+      allocate(iFreeNew%BD_COffDiag(1))
+      allocate(IFreeNew%xBD_COffDiag(1))
+      iFreeNew%xBD_COffDiag = 1
+      iFreeNew%BD_COffDiag  = pack(iFree0%BD_COffDiag,iFree0%xBD_COffDiag==i1)
+      iFreeNew%nBD_COffDiag = 1
+    end if
+  end if
+
+end subroutine UpdateIFree
+
 
 !!   BEGIN ANALYSIS of DEMAND
 subroutine AnalyseResults(IMC)

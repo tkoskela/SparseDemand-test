@@ -219,6 +219,7 @@ module GlobalModule
     integer(i4b)              :: flagBD_beta
     integer(i4b)              :: flagBD_CDiag
     integer(i4b)              :: flagBD_COffDiag
+    integer(i4b)              :: OneAtATime
 
     character(len=20), allocatable :: xlabels(:)
   end type
@@ -753,60 +754,68 @@ subroutine DeallocateGlobalVariables
     deallocate(RandomB%weights)
   end if
 
-  !------------------------------------------------------------------------------
-  ! Deallocate iFree
-    if (allocated(iFree%D)) then
-    deallocate(iFree%D,iFree%xD)
-  end if
-  if (allocated(iFree%BC)) then
-    deallocate(iFree%BC,iFree%xBC)
-  end if
-  if (allocated(iFree%MuE)) then
-    deallocate(iFree%MuE,iFree%xMuE)
-  end if
-  if (allocated(iFree%InvCDiag)) then
-    deallocate(iFree%InvCDiag,iFree%xInvCDiag)
-  end if
-  if (allocated(iFree%InvCOffDiag)) then
-    deallocate(iFree%InvCOffDiag,iFree%xInvCOffDiag)
-  end if
-
-  if (allocated(iFree%BD_beta)) then
-    deallocate(iFree%BD_beta)
-    deallocate(iFree%xBD_beta)
-  end if
-
-
-  if (allocated(iFree%BC_beta)) then
-    deallocate(iFree%BC_beta)
-    deallocate(IFree%xBC_beta)
-  end if
-
-  if (allocated(iFree%BD_CDiag)) then
-    deallocate(iFree%BD_CDiag)
-    deallocate(iFree%xBD_CDiag)
-  end if
-
-  if (allocated(iFree%BD_COffDiag)) then
-    deallocate(iFree%BD_COffDiag)
-    deallocate(iFree%xBD_COffDiag)
-  end if
-
-  if (allocated(iFree%BC_CDiag)) then
-    deallocate(iFree%BC_CDiag)
-    deallocate(iFree%xBC_CDiag)
-  end if
-
-  if (allocated(iFree%BC_COffDiag)) then
-    deallocate(iFree%BC_COffDiag)
-    deallocate(iFree%xBC_COffDiag)
-  end if
-
-  if (allocated(iFree%xlabels)) then
-    deallocate(iFree%xlabels)
-  end if
+  call DeallocateIFree(iFree)
 
 end subroutine DeallocateGlobalVariables
+
+subroutine DeallocateIFree(LocalIFree)
+  implicit none
+  type(SelectFreeType), intent(inout) :: LocalIFree
+
+  !------------------------------------------------------------------------------
+  ! Deallocate iFree
+  if (allocated(LocalIFree%D)) then
+    deallocate(LocalIFree%D,LocalIFree%xD)
+  end if
+  if (allocated(LocalIFree%BC)) then
+    deallocate(LocalIFree%BC,LocalIFree%xBC)
+  end if
+  if (allocated(LocalIFree%MuE)) then
+    deallocate(LocalIFree%MuE,LocalIFree%xMuE)
+  end if
+  if (allocated(LocalIFree%InvCDiag)) then
+    deallocate(LocalIFree%InvCDiag,LocalIFree%xInvCDiag)
+  end if
+  if (allocated(LocalIFree%InvCOffDiag)) then
+    deallocate(LocalIFree%InvCOffDiag,LocalIFree%xInvCOffDiag)
+  end if
+
+  if (allocated(LocalIFree%BD_beta)) then
+    deallocate(LocalIFree%BD_beta)
+    deallocate(LocalIFree%xBD_beta)
+  end if
+
+  if (allocated(LocalIFree%BC_beta)) then
+    deallocate(LocalIFree%BC_beta)
+    deallocate(LocalIFree%xBC_beta)
+  end if
+
+  if (allocated(LocalIFree%BD_CDiag)) then
+    deallocate(LocalIFree%BD_CDiag)
+    deallocate(LocalIFree%xBD_CDiag)
+  end if
+
+  if (allocated(LocalIFree%BD_COffDiag)) then
+    deallocate(LocalIFree%BD_COffDiag)
+    deallocate(LocalIFree%xBD_COffDiag)
+  end if
+
+  if (allocated(LocalIFree%BC_CDiag)) then
+    deallocate(LocalIFree%BC_CDiag)
+    deallocate(LocalIFree%xBC_CDiag)
+  end if
+
+  if (allocated(LocalIFree%BC_COffDiag)) then
+    deallocate(LocalIFree%BC_COffDiag)
+    deallocate(LocalIFree%xBC_COffDiag)
+  end if
+
+  if (allocated(LocalIFree%xlabels)) then
+    deallocate(LocalIFree%xlabels)
+  end if
+
+end subroutine DeallocateIFree
+
 !------------------------------------------------------------------------------
   subroutine DeallocatePenaltyParameters
     implicit none
@@ -1139,6 +1148,9 @@ subroutine InitializeParameters(InputFile)
     ErrFlag = GetVal(PropList,'FreeFlagBD_COffDiag',cTemp)
     read(cTemp,'(i2)') iFree%flagBD_COffDiag
   end if
+
+  ErrFlag = GetVal(PropList,'OneAtATime',cTemp)
+  read(cTemp,'(i2)') iFree%OneAtATime
 
   end subroutine InitializeParameters
 
@@ -1854,6 +1866,7 @@ subroutine BroadcastIFree(pid)
   call mpi_bcast(iFree%flagBD_beta,1,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
   call mpi_bcast(iFree%flagBD_CDiag,1,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
   call mpi_bcast(iFree%flagBD_COffDiag,1,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
+  call mpi_bcast(iFree%OneAtATime,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr)
 
   call mpi_bcast(iFree%nD,1,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
   call mpi_bcast(iFree%nBC,1,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)

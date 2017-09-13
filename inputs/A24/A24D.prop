@@ -153,6 +153,7 @@ FreeFlagBD_COffDiag : 0
 FreeFlagBC_beta     : 0
 FreeFlagBC_CDiag    : 1
 FreeFlagBC_COffDiag : 0
+OneAtATime          : 0
 
 # Parameter file names
 MUE_FILE : A/MUE.raw
