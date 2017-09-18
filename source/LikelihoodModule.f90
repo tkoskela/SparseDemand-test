@@ -220,6 +220,61 @@ end subroutine Like2
 
 !-----------------------------------------------------------------------------
 !
+!  LIKE2Hess:   Compute vector of log-likelihood values:
+!               one element for each observation in sample
+!               (used to compute information matrix approximation)
+!
+!-----------------------------------------------------------------------------
+subroutine Like2Hess(nx,x,L)
+  use nrtype
+  use GlobalModule, only : iFree,parms,HHData,RandomB,small
+  use DataModule,   only : ComputeCurrentB
+  implicit none
+  
+  integer(i4b), intent(in)           :: nx
+  real(dp),     intent(in)           :: x(:)
+  real(dp),     intent(out)          :: L(:)
+
+  integer(i4b)                       :: d1,d2,d3,iHH,iq
+  real(dp)                           :: L1
+  real(dp), allocatable              :: GradL1(:)
+
+  integer(i4b)                       :: mode
+
+  mode = 0 ! only compute L(iHH)
+
+  call UpdateParms2(x,iFree,parms)
+  
+  ! Initial values for likelihood
+  L     = 0.0d0
+
+  ! Loop through households
+  
+  allocate(GradL1(nx))
+  do iHH=1,HHData%N
+
+    d1 = HHData%nNonZero(iHH)
+    d2 = parms%K - d1
+    d3 = parms%J-d1
+
+    do iq=1,RandomB%nall
+      ! update parms%B
+      call ComputeCurrentB(RandomB%nodes(iq,:),parms)
+      call Like1_wrapper(iHH,d1,d2,d3,parms,mode,L1,GradL1)
+      if (L1>0.0d0) then
+        L(iHH) = L(iHH) + RandomB%weights(iq)*L1
+      end if
+    end do
+    ! avoid log of zero
+    L(iHH) = dlog(small+L(iHH))
+  end do
+
+  deallocate(GradL1)
+  
+end subroutine Like2Hess
+
+!-----------------------------------------------------------------------------
+!
 ! Like1_wrapper:   Given (i1,B), compute likelihood for 3 cases 
 !
 !-----------------------------------------------------------------------------
@@ -2659,7 +2714,7 @@ subroutine MaximizeLikelihood1(x,LValue,Grad,Hess,ierr)
 #if USE_MPI==1
   use mpi
 #endif
-  use GlobalModule, only : ControlOptions,parms,InputDir,OutDir,MasterID,HHData,iFree,MaxOptions
+  use GlobalModule, only : ControlOptions,parms,InputDir,OutDir,MasterID,HHData,iFree,MaxOptions,ResultsStructure
   use nag_library,  only : E04WCF,E04WDF,E04WDP,E04WEF,E04WFF, &
                            X04AAF,X04ABF,X04ACF,X04ADF
 
@@ -2687,6 +2742,9 @@ subroutine MaximizeLikelihood1(x,LValue,Grad,Hess,ierr)
   ! initial value of x and likelihood function
   real(dp), allocatable       :: x0(:)
   real(dp)                    :: LValue0
+
+  ! statistics from MLE
+  type(ResultsStructure)      :: LikeStats
 
   ! linear constraints on optimization problem
   real(dp), allocatable       :: A(:,:)
@@ -2851,7 +2909,8 @@ subroutine MaximizeLikelihood1(x,LValue,Grad,Hess,ierr)
                    NAGConstraintWrapper,LikeFunc,iter,ISTATE,CCON,CJAC,CLAMBDA,  &
                    LValue,GRAD,HESS,x,IW,LENIW,RW,LENRW,iuser,RUSER,ifail)
        call ComputeHess(x0,LValue0,GRAD,Hess,iuser,ruser)
-       call ComputeHess(x,LValue,GRAD,Hess,iuser,ruser)
+!       call ComputeHess(x,LValue,GRAD,Hess,iuser,ruser)
+       call ComputeHess2(x,LValue,Grad,Hess)
     else if (ControlOptions%TestLikeFlag==3) then
       ! test non-linear contraint
       mode_constraint=0
@@ -2869,7 +2928,13 @@ subroutine MaximizeLikelihood1(x,LValue,Grad,Hess,ierr)
                    E04WDP,LikeFunc,iter,ISTATE,CCON,CJAC,CLAMBDA,                &
                    LValue,GRAD,HESS,x,IW,LENIW,RW,LENRW,iuser,RUSER,ifail)
        call ComputeHess(x0,LValue0,GRAD,Hess,iuser,ruser)
-       call ComputeHess(x,LValue,GRAD,Hess,iuser,ruser)
+!       call ComputeHess(x,LValue,GRAD,Hess,iuser,ruser)
+       call ComputeHess2(x,LValue,Grad,Hess)
+    end if
+
+    if (ControlOptions%OutputFlag==1) then
+      call ComputeStats(x,LValue,Grad,Hess,HHData%N,LikeStats)
+      call SaveOutputs(parms%model,x,LValue,Grad,Hess,LikeStats)
     end if
 
     OutFile = trim(OutDir) // '/results.txt'
@@ -3393,6 +3458,52 @@ subroutine ComputeHess(x,L,GradL,Hess,iuser,ruser)
   Hess = 0.5d0 * (Hess+transpose(Hess))
   deallocate(x1,x2,GradL1,GradL2)
 end subroutine ComputeHess
+
+! Compute hessian = variance of score of likelihood
+subroutine ComputeHess2(x,L,Grad,Hess)
+  use GlobalModule, only :: HHData
+  use nrtype
+  implicit none
+  real(dp), intent(in)  :: x(:)
+  real(dp), intent(out) :: L,Grad(:),Hess(:,:)
+
+  integer(i4b)          :: i1,i2,nx
+  real(dp), allocatable :: LHH0(:),LHH1(:),x1(:)
+  real(dp), allocatable :: GradLHH(:,:)
+  real(dp)              :: h
+
+  nx = size(x,1)
+  allocate(LHH0(HHData%n),LHH1(HHData%n))
+  allocate(GradLHH(HHData%n,nx))
+  allocate(x1(nx))
+
+  L       = 0.0d0
+  Grad    = 0.0d0
+  Hess    = 0.0d0
+  GradLHH = 0.0d0
+  LHH0    = 0.0d0
+  LHH1    = 0.0d0
+  h       = 1.0e-4
+
+  call Like2Hess(nx,x,LHH0)
+  L  = sum(LHH0)/real(HHData%n,dp)
+
+  do i1=1,nx
+    x1=x
+    x1(i1) = x(i1)+h
+    call Like2Hess(nx,x1,LHH1)
+    GradLHH(:,i1) = (LHH1-LHH0)/(x1(i1)-x(i1))
+    Grad(i1) = sum(GradLHH(:,i1))/real(HHData%N,dp)
+    do i2=1,i1
+      Hess(i2,i1) = sum(GradLHH(:,i1) * GradLHH(:,i2))/real(HHData%N,dp)
+      Hess(i1,i2) = Hess(i2,i1)
+    end do
+  end do
+
+  deallocate(LHH0,LHH1,x1)
+  deallocate(GradLHH)
+
+end subroutine ComputeHess2
 
 subroutine SetBounds(x,BL,BU)
   use nrtype
