@@ -1,4 +1,6 @@
-WorkDir = '/home/uctpln0/FruitDemand/code/fortran/output/A24B';
+%WorkDir = '/home/uctpln0/FruitDemand/code/fortran/output/A24B';
+WorkDir = '/SAN/economics/Nesheim-IO/FruitDemand/output/A24_20170629';
+
 [qdata,qhat,qaverage] = ...
     ImportDemandData(fullfile(WorkDir,'demand_data.csv'), 1, 24);
 
@@ -96,6 +98,6 @@ end
 
 % Load elasticities
 elas = ImportElasticity(fullfile(WorkDir,'elas.csv'), 1, J);
-elas = ImportElasticity2(fullfile(WorkDir,'elas.csv'), 1, J);
+%elas = ImportElasticity2(fullfile(WorkDir,'elas.csv'), 1, J);
 
 CreateElasTable(fullfile(WorkDir,'elas1.tex'),elas,FruitLabels);
