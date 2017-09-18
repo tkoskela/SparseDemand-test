@@ -1747,7 +1747,7 @@ subroutine CopyIFree(iFree,iFreeCopy)
 
   if (iFree%flagMUE>0) then
     allocate(iFreeCopy%MUE(iFree%NMUE))
-    allocate(iFreeCopy%xD(iFree%NMUE))
+    allocate(iFreeCopy%xMUE(iFree%NMUE))
     iFreeCopy%MUE = iFree%MUE
     iFreeCopy%xMUE = iFree%xMUE
   end if
@@ -1830,6 +1830,8 @@ subroutine UpdateIFree(i1,iFree0,iFreeNew)
   iFreeNew%nBD_beta     = 0
   iFreeNew%nBD_CDiag    = 0
   iFreeNew%nBD_COffDiag = 0
+  allocate(iFreeNew%xlabels(1))
+  write(iFreeNew%xlabels(1),'(i3.0)') i1
 
   if (iFree0%nD>0) then
     if (any(iFree0%xD==i1)) then
