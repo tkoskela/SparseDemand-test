@@ -2035,6 +2035,7 @@ subroutine ComputeElasticities
                            DeallocateLocalHHData,LoadBasePrice
   use nag_library, only  : G05KFF,G05RZF,G05SAF
   use OutputModule, only : WriteElasticities,WriteDemandResults1,WriteDemandResults2
+  use ToolsModule, only  : InverseNormal_mkl
   implicit none
 
   integer(i4b)              :: i1,i2,i3
@@ -2068,7 +2069,7 @@ subroutine ComputeElasticities
   SimData1%N = 9  ! simulate and graph for 9 people with varying levels of 
                   ! (eta1,eta2)
   call AllocateLocalHHData(SimData1)
-  allocate(eta(nprob),prob(prob))
+  allocate(eta(nprob),prob(nprob))
   prob = (/0.25d0,0.5d0,0.75d0/)
   ! SimData1% e = MuE for all people
   eta = InverseNormal_mkl(prob,nprob,ifail)
@@ -2162,7 +2163,7 @@ subroutine ComputeElasticities
   end if
   ! predicted demand at prices in data
   call ComputeDemand(HHDataSim1)
-  call ComputeAggregateDemand(HHDataSim1%q,HHDataSim1%iNonZero,qhat,HHData0Sim1%nNonZero,0)
+  call ComputeAggregateDemand(HHDataSim1%q,HHDataSim1%iNonZero,qhat,HHDataSim1%nNonZero,0)
 
   ! set price = average price
   call LoadBasePrice(p0)
