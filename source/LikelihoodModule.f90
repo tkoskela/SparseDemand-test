@@ -2038,7 +2038,7 @@ subroutine ComputeElasticities
   implicit none
 
   integer(i4b)              :: i1,i2,i3
-  type(DataStructure)       :: HHData0,HHData1
+  type(DataStructure)       :: HHDataSim1,HHDataSim2,SimData1
 
   ! variables to compute demand
   real(dp)                  :: h
@@ -2046,7 +2046,7 @@ subroutine ComputeElasticities
   real(dp), allocatable     :: GradQ(:,:)
   real(dp), allocatable     :: elas(:,:)
   real(dp), allocatable     :: newQ(:,:),p(:),p0(:)
-  integer(i4b)              :: np
+  integer(i4b)              :: np,nProb
 
   ! initialize random number generator
   integer(i4b)              :: genid,subid,lseed,ifail,lstate
@@ -2055,13 +2055,33 @@ subroutine ComputeElasticities
   ! variables used by E04RZF: normal random number generator
   integer(i4b)              :: mode,ldc,ldx,LR
   real(dp), allocatable     :: R(:)
-  real(dp), allocatable     :: e(:,:)
+  real(dp), allocatable     :: e(:,:),eta(:),prob(:)
   real(dp), allocatable     :: eye(:,:),zero(:)
   real(dp), allocatable     :: e2(:)
 
+  ! SimData1 will simulate results for a small number of individual people
+  !   nprob = number of values of eta in each dimension
+  !   N     = total number of individuals in simulation
+  !   prob  = quantiles of eta distribution at which results will be computed
+  !   eta   = corresponding points in eta distribution
+  nprob      = 3
+  SimData1%N = 9  ! simulate and graph for 9 people with varying levels of 
+                  ! (eta1,eta2)
+  call AllocateLocalHHData(SimData1)
+  allocate(eta(nprob),prob(prob))
+  prob = (/0.25d0,0.5d0,0.75d0/)
+  ! SimData1% e = MuE for all people
+  eta = InverseNormal_mkl(prob,nprob,ifail)
+  SimData1%e = spread(Parms%MuE,1,9)
+  do i1=1,parms%dim_eta
+  do i2=1,nprob
+    SimData1%eta(i1,i2) = eta(i2)
+  end do
+  end do
+
   ! allocate memory for HHData0
-  HHData0%N = HHData%NSim   ! NSIM might be different from N
-  call AllocateLocalHHData(HHData0)
+  HHDataSim1%N = HHData%NSim   ! NSIM might be different from N
+  call AllocateLocalHHData(HHDataSim1)
 
   ! initialize random number generator
   !  external G05KFF  ! NAG routine to set seed for random number generator
@@ -2080,17 +2100,18 @@ subroutine ComputeElasticities
 
   call G05KFF(genid,subid,seed,lseed,state,lstate,ifail)
 
-  ! Generate HHData%e
+  ! Generate HHDataSim1%e
   mode = 2
   ifail = 0
   ldc = parms%K
   ldx = parms%K
   LR = parms%K*(parms%K+1)+1
   allocate(R(LR))
-  allocate(e(HHData0%N,parms%K))
+  allocate(e(HHDataSim1%N,parms%K))
   ! generate normal random numbers
-  call G05RZF(mode,HHData0%N,parms%K,parms%MuE,parms%sig,parms%K,R,LR,state,e,HHData0%N,ifail)
-  HHData0%e = transpose(e)
+  call G05RZF(mode,HHDataSim1%N,parms%K,parms%MuE,parms%sig,parms%K,R,LR,state,e,HHDataSim1%N,ifail)
+  HHDataSim1%e = transpose(e)
+
   deallocate(R,e)
 
   ! Random coefficients in utility
@@ -2100,7 +2121,7 @@ subroutine ComputeElasticities
     LR = parms%dim_eta*(parms%dim_eta+1)+1
     allocate(zero(parms%dim_eta))
     allocate(eye(parms%dim_eta,parms%dim_eta))
-    allocate(e(HHData0%N,parms%dim_eta))
+    allocate(e(HHDataSim1%N,parms%dim_eta))
     allocate(R(LR))
     R    = 0.0d0
     zero = 0.0d0
@@ -2108,11 +2129,10 @@ subroutine ComputeElasticities
     do i1=1,parms%dim_eta
       eye(i1,i1) = 1.0d0
     end do
-    call G05RZF(mode,HHData0%N,parms%dim_eta,zero,eye,parms%dim_eta,R,LR,state,e,HHData0%N,ifail)
-    HHData0%eta = transpose(e)
+    call G05RZF(mode,HHDataSim1%N,parms%dim_eta,zero,eye,parms%dim_eta,R,LR,state,e,HHDataSim1%N,ifail)
+    HHDataSim1%eta = transpose(e)
     deallocate(zero,eye,e,R)
   end if
-
 
   ! Aggregate demand from data
   ! baseline demand
@@ -2127,40 +2147,43 @@ subroutine ComputeElasticities
   ! aggregate demand in raw data
   call ComputeAggregateDemand(HHData%q,HHData%iNonZero,qdata,HHData%nNonZero,0)
 
-  if (HHData0%N==HHData%N) then
-    HHData0%p = HHData%p
+  if (HHDataSim1%N==HHData%N) then
+    HHDataSim1%p = HHData%p
   else
-    print *,'HHData%N = ',HHData0%N,'.'
+    print *,'HHDataSim1%N = ',HHDataSim1%N,'.'
     print *,'Sample prices with replacement from raw data.'
-    allocate(e2(HHData0%N))
-    call G05SAF(HHData0%N,state,e2,ifail)
-    do i1=1,HHData0%N
-      i2 =ceiling(HHData0%n * e2(i1)) 
-      HHData0%p(:,i1) = HHData0%p(:,i2)
+    allocate(e2(HHDataSim1%N))
+    call G05SAF(HHDataSim1%N,state,e2,ifail)
+    do i1=1,HHDataSim1%N
+      i2 =ceiling(HHData%n * e2(i1))
+      HHDataSim1%p(:,i1) = HHData%p(:,i2)
     end do
     deallocate(e2)
   end if
   ! predicted demand at prices in data
-  call ComputeDemand(HHData0)
-  call ComputeAggregateDemand(HHData0%q,HHData0%iNonZero,qhat,HHData0%nNonZero,0)
+  call ComputeDemand(HHDataSim1)
+  call ComputeAggregateDemand(HHDataSim1%q,HHDataSim1%iNonZero,qhat,HHData0Sim1%nNonZero,0)
 
   ! set price = average price
   call LoadBasePrice(p0)
-  HHData0%p = spread(sum(HHData%p,2)/real(HHData%n,dp)+p0,2,HHData0%N)
+  HHDataSim1%p = spread(sum(HHDataSim1%p,2)/real(HHDataSim1%n,dp)+p0,2,HHDataSim1%N)
+  SimData1%p = spread(sum(HHDataSim1%p,2)/real(HHDataSim1%n,dp),2,SimData1%N)
+
   ! Compute baseline demand
-  call ComputeDemand(HHData0)
-  call ComputeAggregateDemand(HHData0%q,HHData0%iNonZero,q0,HHData0%nNonZero,0)
+  call ComputeDemand(HHDataSim1)
+  call ComputeDemand(SimData1)
+  call ComputeAggregateDemand(HHDataSim1%q,HHDataSim1%iNonZero,q0,HHDataSim1%nNonZero,0)
   deallocate(p0)
 
   ExcessQ = q0-qdata
   call WriteDemandResults1(qdata,qhat,q0)
 
-  ! copy exogenous variables from HHData0 to HHData1
-  HHData1%N = HHData0%N
-  call AllocateLocalHHData(HHData1)
-  HHData1%e   = HHData0%e
-  HHData1%eta = HHData0%eta
-  HHData1%p   = HHData0%p
+  ! copy exogenous variables from HHDataSim1 to HHDataSim2
+  HHDataSim2%N = HHDataSim1%N
+  call AllocateLocalHHData(HHDataSim2)
+  HHDataSim2%e   = HHDataSim1%e
+  HHDataSim2%eta = HHDataSim1%eta
+  HHDataSim2%p   = HHDataSim1%p
 
   ! Compute slope of demand
   allocate(GradQ(parms%J,parms%J))
@@ -2170,12 +2193,12 @@ subroutine ComputeElasticities
   h = 1.0d-4
   do i1=1,parms%J
     ! size(p) = (J x N)
-    HHData1%p(i1,:) = HHData0%p(i1,:) + h
-    call ComputeDemand(HHData1)
-    call ComputeAggregateDemand(HHData1%q,HHData1%iNonZero,q1,HHData1%nNonZero,0)
-    GradQ(:,i1) = (q1-q0)/(HHData1%p(i1,1)-HHData0%p(i1,1))
-    elas(:,i1)  = HHData0%p(i1,1)*GradQ(:,i1)/q0
-    HHData1%p(i1,:) = HHData0%p(i1,:)
+    HHDataSim2%p(i1,:) = HHDataSim1%p(i1,:) + h
+    call ComputeDemand(HHDataSim2)
+    call ComputeAggregateDemand(HHDataSim2%q,HHDataSim2%iNonZero,q1,HHDataSim2%nNonZero,0)
+    GradQ(:,i1) = (q1-q0)/(HHDataSim2%p(i1,1)-HHDataSim1%p(i1,1))
+    elas(:,i1)  = HHDataSim1%p(i1,1)*GradQ(:,i1)/q0
+    HHDataSim2%p(i1,:) = HHDataSim1%p(i1,:)
   end do
 
   call WriteElasticities(elas)
@@ -2187,30 +2210,86 @@ subroutine ComputeElasticities
   allocate(newq(np,parms%k+1),p(np))
   newq = 0.0d0
   do i1=1,parms%J
-    p    = HHData0%p(i1,1) * (0.5d0+(2.0d0-0.5d0)*real((/0:np-1/),dp)/real(np-1,dp))
+    p    = HHDataSim1%p(i1,1) * (0.5d0+(2.0d0-0.5d0)*real((/0:np-1/),dp)/real(np-1,dp))
     do i2=1,np
-      HHData1%p(i1,:) = p(i2)
-      call ComputeDemand(HHData1)
+      HHDataSim2%p(i1,:) = p(i2)
+      call ComputeDemand(HHDataSim2)
       do i3=0,parms%K
         ! Compute q(i1) conditional on nNonZero==n
         !    if n==0, then compute total demand
         !    save results in matrix newq
-       call ComputeAggregateDemand(HHData1%q,HHData1%iNonZero,q1,HHData1%nNonZero,i3)
+       call ComputeAggregateDemand(HHDataSim2%q,HHDataSim2%iNonZero,q1,HHDataSim2%nNonZero,i3)
        newq(i2,i3+1) = q1(i1)
       end do
     end do
     call WriteDemandResults2(p,NewQ,i1)
   end do
 
+  ! Compute demands for 9 individuals
+  ! write output to file
+  call ComputeIndividualDemand(SimData1)
+
   ! deallocate memory for HHData0
-  call DeallocateLocalHHData(HHData0)
-  call DeallocateLocalHHData(HHData1)
+  call DeallocateLocalHHData(HHDataSim1)
+  call DeallocateLocalHHData(HHDataSim2)
   deallocate(q0,q1,GradQ,ExcessQ)
   deallocate(qdata,qhat)
   deallocate(newq)
   deallocate(seed,state)
+  deallocate(eta,prob)
+
 
 end subroutine ComputeElasticities
+
+subroutine ComputeIndividualDemand(SimData1)
+  use nrtype
+  use GlobalModule, only : DataStructure,parms
+  use OutputModule, only : MakeFullFileName
+  implicit none
+  type(DataStructure), intent(inout) :: SimData1
+
+  integer(i4b)              :: nHH,np,SimUnit
+  integer(i4b)              :: i1,i2,ihh
+  real(dp), allocatable     :: p(:)
+  character(len=99)         :: SimFile
+
+  nHH = SimData1%n
+  np  = 30
+  allocate(p(np))
+  p = 0.0d0
+
+  SimUnit = 45
+  SimFile = MakeFullFileName('IndividualDemand.txt')
+  open(Unit= SimUNit, &
+       File= SimFile, &
+       action = 'write')
+
+
+  do i1=1,parms%J
+    p = SimData1%p(i1,1) * (0.5d0+(2.0d0-0.5d0)*real((/0:np-1/),dp)/real(np-1,dp))
+    do i2=1,np
+      SimData1%p(i1,:) = p(i2)
+      call ComputeDemand(SimData1)
+
+      do ihh=1,nHH
+        ! iHH  i1 i2  eta(1)  eta(2)  nNonZero i1-i5 q1-q5 p1-p24
+        write(SimUnit,30) ihh,i1,i2,SimData1%eta(:,ihh),SimData1%nNonZero(ihh), &
+                          SimData1%iNonZero(:,ihh),SimData1%q(:,ihh), &
+                          SimData1%p(:,ihh)
+      end do
+    end do
+  end do
+30 format(3(i2,","), &
+          <parms%dim_eta>(g12.4,","), &
+          i2,",",              &
+          <parms%K>(i3,","),   &
+          <parms%K>(g12.4,",") &
+          <parms%J>(g12.4,:,","))
+
+  close(SimUnit)
+
+  deallocate(p)
+end subroutine ComputeIndividualDemand
 
 subroutine ComputeAggregateDemand(q,iNonZero,TotalQ,nNonZero,n)
 use nrtype
