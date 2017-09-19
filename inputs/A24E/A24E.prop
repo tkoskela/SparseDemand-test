@@ -147,12 +147,12 @@ FreeFlagMUE         : 0   # 1 to be free, 0 to be fixed
 FreeFlagInvCDiag    : 0   # 1 to be free, 0 to be fixed
 FreeFlagInvCOffDiag : 0   # 1 to be free, 0 to be fixed
 
-FreeFlagBD_beta     : 1
-FreeFlagBD_CDiag    : 1
-FreeFlagBD_COffDiag : 1
-FreeFlagBC_beta     : 0
-FreeFlagBC_CDiag    : 0
-FreeFlagBC_COffDiag : 0
+FreeFlagBD_beta     : 0
+FreeFlagBD_CDiag    : 0
+FreeFlagBD_COffDiag : 0
+FreeFlagBC_beta     : 1
+FreeFlagBC_CDiag    : 1
+FreeFlagBC_COffDiag : 1
 OneAtATime          : 1
 
 # Parameter file names
