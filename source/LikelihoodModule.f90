@@ -2073,12 +2073,9 @@ subroutine ComputeElasticities
   prob = (/0.25d0,0.5d0,0.75d0/)
   ! SimData1% e = MuE for all people
   eta = InverseNormal_mkl(prob,nprob,ifail)
-  SimData1%e = spread(Parms%MuE,1,9)
-  do i1=1,parms%dim_eta
-  do i2=1,nprob
-    SimData1%eta(i1,i2) = eta(i2)
-  end do
-  end do
+  SimData1%e        = spread(Parms%MuE,2,9)
+  SimData1%eta(1,:) = reshape(spread(eta,2,nprob),(/nprob*nprob/))
+  SimData1%eta(2,:) = reshape(spread(eta,1,nprob),(/nprob*nprob/))
 
   ! allocate memory for HHData0
   HHDataSim1%N = HHData%NSim   ! NSIM might be different from N
@@ -2207,7 +2204,7 @@ subroutine ComputeElasticities
   ! Plot demand functions w.r.t. own price
   !   for each good save
   !   p(i1), q(i1), q1,q2,q3,q4,q5,n1,n2,n3,n4,n5
-  np = 30
+  np = 2
   allocate(newq(np,parms%k+1),p(np))
   newq = 0.0d0
   do i1=1,parms%J
