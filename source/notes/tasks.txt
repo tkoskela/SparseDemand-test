@@ -1,3 +1,9 @@
+i1) standard errors
+2) plot demand for 5 people (mean person, high and low values of eta)
+3) tax/policy experiment
+4) estimate model with 20 goods
+5) estimate logit
+
 1) check for convergence
    a) restart from final point and check
    b) plot likelihood function

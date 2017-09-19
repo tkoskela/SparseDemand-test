@@ -2714,9 +2714,10 @@ subroutine MaximizeLikelihood1(x,LValue,Grad,Hess,ierr)
 #if USE_MPI==1
   use mpi
 #endif
-  use GlobalModule, only : ControlOptions,parms,InputDir,OutDir,MasterID,HHData,iFree,MaxOptions,ResultsStructure
+  use GlobalModule, only : ControlOptions,parms,InputDir,OutDir,MasterID,HHData,iFree,MaxOptions,ResultStructure
   use nag_library,  only : E04WCF,E04WDF,E04WDP,E04WEF,E04WFF, &
                            X04AAF,X04ABF,X04ACF,X04ADF
+  use OutputModule, only : ComputeStats, SaveOutputs
 
   implicit none
   real(dp),     intent(inout) :: x(:)
@@ -2744,7 +2745,7 @@ subroutine MaximizeLikelihood1(x,LValue,Grad,Hess,ierr)
   real(dp)                    :: LValue0
 
   ! statistics from MLE
-  type(ResultsStructure)      :: LikeStats
+  type(ResultStructure)      :: LikeStats
 
   ! linear constraints on optimization problem
   real(dp), allocatable       :: A(:,:)
@@ -3461,7 +3462,7 @@ end subroutine ComputeHess
 
 ! Compute hessian = variance of score of likelihood
 subroutine ComputeHess2(x,L,Grad,Hess)
-  use GlobalModule, only :: HHData
+  use GlobalModule, only : HHData
   use nrtype
   implicit none
   real(dp), intent(in)  :: x(:)
