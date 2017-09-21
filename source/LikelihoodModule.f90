@@ -3573,7 +3573,7 @@ subroutine ComputeHess2(x,L,Grad,Hess)
     GradLHH(:,i1) = (LHH1-LHH0)/(x1(i1)-x(i1))
     Grad(i1) = sum(GradLHH(:,i1))/real(HHData%N,dp)
     do i2=1,i1
-      Hess(i2,i1) = sum(GradLHH(:,i1) * GradLHH(:,i2))/real(HHData%N,dp)
+      Hess(i2,i1) = sum((GradLHH(:,i1)-Grad(i1)) * (GradLHH(:,i2)-Grad(i2)))/real(HHData%N,dp)
       Hess(i1,i2) = Hess(i2,i1)
     end do
   end do

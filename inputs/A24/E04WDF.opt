@@ -4,7 +4,7 @@ Begin
   Derivative Level = 0
   Function Precision = 1.7e-5
   Major Optimality Tolerance = 1.0e-02
-  Iterations Limit = 200000
+  Iterations Limit = 2
   Major Iterations Limit = 50
   Major Print Level = 1
   Major Step Limit = 5.0
