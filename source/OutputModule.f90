@@ -4,10 +4,10 @@ module OutputModule
   implicit none
   
   ! Output filenames
-  character(len=200)          :: Results1_FILE
+  character(len=200)          :: Results_FILE
   character(len=200)          :: BayesResults_FILE
   character(len=200)          :: Results1P_FILE
-  character(len=200)          :: Hess1_FILE
+  character(len=200)          :: Hess_FILE
   character(len=200)          :: SaveDataFile_q
   character(len=200)          :: SaveDataFile_p
   character(len=200)          :: SaveDataFile_e
@@ -23,7 +23,7 @@ module OutputModule
   character(len=200)          :: DemandFile
 
   ! Output file: unit numbers
-  integer(i4b), parameter :: Results1_UNIT          = 2
+  integer(i4b), parameter :: Results_UNIT          = 2
   integer(i4b), parameter :: BayesResults_UNIT      = 18
   integer(i4b), parameter :: Results1P_UNIT         = 3
   integer(i4b), parameter :: Hess1_UNIT             = 4
@@ -49,9 +49,9 @@ subroutine DefineFileNames(pid)
   character(len=30)        :: TempFileName
 
 !  OutDir        = 'output'
-  Results1_File         = MakeFullFileName('Results1.txt')
+  Results_File          = MakeFullFileName('results.txt')
   BayesResults_File     = MakeFullFileName('BayesResults.txt')
-  Hess1_FILE            = MakeFullFileName('Hess1.txt')
+  Hess_FILE             = MakeFullFileName('hess.txt')
   SaveDataFile_q        = MakeFullFileName('q.csv')
   SaveDataFile_p        = MakeFullFileName('p.csv')
   SaveDataFile_e        = MakeFullFileName('e.csv')
@@ -80,11 +80,11 @@ end subroutine DefinePenaltyFileNames
 
 !------------------------------------------------------------------------------
 !
-! subroutine SaveOutputs(model,xFree,LValue,Grad,Hess)
+! subroutine SaveOutputs(xFree,LValue,Grad,Hess)
 !
 !  Hess   : estimate of Hessian
 !------------------------------------------------------------------------------
-subroutine SaveOutputs(model,xFree,LValue,Grad,Hess,Stats)
+subroutine SaveOutputs(xFree,LValue,Grad,Hess,Stats)
   use NewTools,     only : MatrixInverse
   use GlobalModule, only : iFree,           &
                            HHData,          &
@@ -93,7 +93,6 @@ subroutine SaveOutputs(model,xFree,LValue,Grad,Hess,Stats)
                            Penalty
 
   implicit none
-  integer(i4b), intent(in)  :: model
   real(dp),     intent(in)  :: xFree(:)
   real(dp),     intent(in)  :: LValue
   real(dp),     intent(in)  :: Grad(:)
@@ -115,67 +114,146 @@ subroutine SaveOutputs(model,xFree,LValue,Grad,Hess,Stats)
   allocate(InvHess(n,n))
   allocate(StandardErrors(n))
  
-  !----------------------------------------------------------------------------
-  !  Write Model 1 output
-  !---------------------------------------------------------------------------- 
-  if (model==1) then
-    call MatrixInverse(Hess,InvHess,'Symmetric')
-    do i1=1,n
-      StandardErrors(i1) = dsqrt(InvHess(i1,i1))
-    end do
+  call MatrixInverse(Hess,InvHess,'Symmetric')
+  do i1=1,n
+    StandardErrors(i1) = dsqrt(InvHess(i1,i1))
+  end do
   
-    !--------------------------------------------------------------------------
-    ! Write parameters and std. err.
-    !--------------------------------------------------------------------------
-    open(UNIT = Results1_UNIT, &
-         FILE = Results1_FILE, &
-         ACTION = 'WRITE')
+  !--------------------------------------------------------------------------
+  ! Write parameters and std. err.
+  !--------------------------------------------------------------------------
+  open(UNIT = Results_UNIT, &
+       FILE = Results_FILE, &
+       ACTION = 'WRITE')
 
-    write(Results1_UNIT,2) 'Variable','Coef','Gradient','s.e.' 
-    ! write parms%B_D
+  write(Results_UNIT,2) 'Variable','Coef','Gradient','s.e.'
+
+  ! write parms%B_D
+  if (iFree%flagD>0) then
     do i1=1,iFree%nD
       ! parms%D(iFree%D) = xFree(iFree%xD)
-      write(Results1_UNIT,1) HHData%ColumnLabels(iFree%D(i1)), &
-                             xFree(iFree%xD(i1)),  &
-                             Grad(iFree%xD(i1)),   &
-                             StandardErrors(iFree%xD(i1))
-    end do
-    ! write parms%CSig
+      write(Results_UNIT,1) HHData%ColumnLabels(iFree%D(i1)), &
+                            xFree(iFree%xD(i1)),  &
+                            Grad(iFree%xD(i1)),   &
+                            StandardErrors(iFree%xD(i1))
+      end do
+  end if
+
+  ! write parms%CSig
+  if (iFree%flagBC>0) then
     do i1=1,iFree%nBC
       ! parms%CSig(iFree%BC) = xFree(iFree%xBC)
-      write(cTemp,'(a4,i4)') 'phi_',i1
-      write(Results1_UNIT,1) cTemp,                &
-                             xFree(iFree%xBC(i1)),  &
-                             Grad(iFree%xBC(i1)),   &
-                             StandardErrors(iFree%xBC(i1))
+      write(cTemp,'(a4,i2.2)') 'phi_',i1
+      write(Results_UNIT,1) cTemp,                &
+                            xFree(iFree%xBC(i1)),  &
+                            Grad(iFree%xBC(i1)),   &
+                            StandardErrors(iFree%xBC(i1))
     end do
-    ! write parms%MUE
+  end if
+
+  ! write parms%MUE
+  if (iFree%flagMUE>0) then
     do i1=1,iFree%nMUE
       ! parms%MUE(iFree%mUE) = xFree(iFree%xMUE)
-      write(cTemp,'(a4,i4)') 'MUE_',i1
-      write(Results1_UNIT,1) cTemp,                &
-                             xFree(iFree%xMUE(i1)),  &
-                             Grad(iFree%XMUE(i1)),   &
-                             StandardErrors(iFree%XMUE(i1))
+      write(cTemp,'(a4,i2.2)') 'MUE_',i1
+      write(Results_UNIT,1) cTemp,                &
+                            xFree(iFree%xMUE(i1)),  &
+                            Grad(iFree%XMUE(i1)),   &
+                            StandardErrors(iFree%XMUE(i1))
     end do
-    ! write parms%INVCDiag
+  end if
+
+  ! write parms%INVCDiag
+  if (iFree%flagInvCDiag>0) then
     do i1=1,iFree%nINVCDiag
       ! parms%INVCDiag(iFree%INVCDiag) = xFree(iFree%xInvCDiag)
-      write(cTemp,'(a7,i4)') 'INVCDiag',i1
-      write(Results1_UNIT,1) cTemp,                &
-                             xFree(iFree%xInvCDiag(i1)),  &
-                             Grad(iFree%xInvCDiag(i1)),   &
-                             StandardErrors(iFree%xInvCDiag(i1))
+      write(cTemp,'(a7,i2.2)') 'INVCDiag',i1
+      write(Results_UNIT,1) cTemp,                &
+                            xFree(iFree%xInvCDiag(i1)),  &
+                            Grad(iFree%xInvCDiag(i1)),   &
+                            StandardErrors(iFree%xInvCDiag(i1))
     end do
-    ! write parms%INVCOffDiag
+  end if
+
+! write parms%INVCOffDiag
+  if (iFree%flagInvCOffDiag>0) then
     do i1=1,iFree%nINVCOffDiag
       ! parms%INVCOffDiag(iFree%INVCOffDiag) = xFree(iFree%xInvCOffDiag)
-      write(cTemp,'(a9,i4)') 'INVCOffDiag',i1
-      write(Results1_UNIT,1) cTemp,                &
-                             xFree(iFree%xInvCOffDiag(i1)),  &
-                             Grad(iFree%xInvCOffDiag(i1)),   &
-                             StandardErrors(iFree%xInvCOffDiag(i1))
+      write(cTemp,'(a9,i2.2)') 'INVCOffDiag',i1
+      write(Results_UNIT,1) cTemp,                &
+                            xFree(iFree%xInvCOffDiag(i1)),  &
+                            Grad(iFree%xInvCOffDiag(i1)),   &
+                            StandardErrors(iFree%xInvCOffDiag(i1))
     end do
+  end if
+
+  if (iFree%flagBC_beta>0) then
+    do i1=1,iFree%nBC_beta
+      ! parms%BC_beta(iFree%BC_beta) = xFree(iFree%xBC_beta)
+      write(cTemp,'(a9,i2.2)') 'BC_beta',i1
+      write(Results_UNIT,1) cTemp,                &
+                            xFree(iFree%xBC_beta(i1)),  &
+                            Grad(iFree%xBC_beta(i1)),   &
+                            StandardErrors(iFree%xBC_beta(i1))
+    end do
+  end if
+  if (iFree%flagBC_CDiag>0) then
+    do i1=1,iFree%nBC_CDiag
+      ! parms%BC_beta(iFree%BC_CDiag) = xFree(iFree%xBC_CDiag)
+      write(cTemp,'(a9,i2.2)') 'BC_CDiag',i1
+      write(Results_UNIT,1) cTemp,                &
+                            xFree(iFree%xBC_CDiag(i1)),  &
+                            Grad(iFree%xBC_CDiag(i1)),   &
+                            StandardErrors(iFree%xBC_CDiag(i1))
+    end do
+  end if
+
+  if (iFree%flagBC_COffDiag>0) then
+    do i1=1,iFree%nBC_COffDiag
+      ! parms%BC_COffDiag(iFree%BC_COffDiag) = xFree(iFree%xBC_COffDiag)
+      write(cTemp,'(a9,i2.2)') 'BC_COffDiag',i1
+      write(Results_UNIT,1) cTemp,                &
+                            xFree(iFree%xBC_COffDiag(i1)),  &
+                            Grad(iFree%xBC_COffDiag(i1)),   &
+                            StandardErrors(iFree%xBC_COffDiag(i1))
+    end do
+  end if
+
+  if (iFree%flagBD_beta>0) then
+    do i1=1,iFree%nBD_beta
+      ! parms%BD_beta(iFree%BD_beta) = xFree(iFree%xBD_beta)
+      write(cTemp,'(a9,i2.2)') 'BD_beta',i1
+      write(Results_UNIT,1) cTemp,                &
+                            xFree(iFree%xBD_beta(i1)),  &
+                            Grad(iFree%xBD_beta(i1)),   &
+                            StandardErrors(iFree%xBD_beta(i1))
+    end do
+  end if
+
+  if (iFree%flagBD_CDiag>0) then
+    do i1=1,iFree%nBD_CDiag
+      ! parms%BD_CDiag(iFree%BD_CDiag) = xFree(iFree%xBD_CDiag)
+      write(cTemp,'(a9,i2.2)') 'BD_CDiag',i1
+      write(Results_UNIT,1) cTemp,                &
+                            xFree(iFree%xBD_CDiag(i1)),  &
+                            Grad(iFree%xBD_CDiag(i1)),   &
+                            StandardErrors(iFree%xBD_CDiag(i1))
+    end do
+  end if
+
+  if (iFree%flagBD_COffDiag>0) then
+    do i1=1,iFree%nBD_COffDiag
+      ! parms%BD_COffDiag(iFree%BD_COffDiag) = xFree(iFree%xBD_COffDiag)
+      write(cTemp,'(a9,i2.2)') 'BD_COffDiag',i1
+      write(Results_UNIT,1) cTemp,                &
+                            xFree(iFree%xBD_COffDiag(i1)),  &
+                            Grad(iFree%xBD_COffDiag(i1)),   &
+                            StandardErrors(iFree%xBD_COffDiag(i1))
+    end do
+  end if
+
+
+
     1 format( a20,3es25.16)
     2 format( a20,3a25   )
     ! write stats: (likelihood,nobs,maxgrad,MinEigHess,BIC,nNonZero)
@@ -240,15 +318,16 @@ subroutine SavePenaltyOutputs(iter,model,xFree,LValue,Grad,Hess,Stats)
   allocate(InvHess(n,n))
   allocate(StandardErrors(n))
 
+  call MatrixInverse(Hess,InvHess,'Symmetric')
+  do i1=1,n
+    StandardErrors(i1) = dsqrt(InvHess(i1,i1))
+  end do
+
   !----------------------------------------------------------------------------
   !  Write Model 1 output
   !---------------------------------------------------------------------------- 
   if (model==1) then
-    call MatrixInverse(Hess,InvHess,'Symmetric')
-    do i1=1,n
-      StandardErrors(i1) = dsqrt(InvHess(i1,i1))
-    end do
-  
+
     !--------------------------------------------------------------------------
     ! Write parameters and std. err.
     !--------------------------------------------------------------------------

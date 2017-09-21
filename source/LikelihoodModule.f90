@@ -3012,7 +3012,7 @@ subroutine MaximizeLikelihood1(x,LValue,Grad,Hess,ierr)
 
     if (ControlOptions%OutputFlag==1) then
       call ComputeStats(x,LValue,Grad,Hess,HHData%N,LikeStats)
-      call SaveOutputs(parms%model,x,LValue,Grad,Hess,LikeStats)
+      call SaveOutputs(x,LValue,Grad,Hess,LikeStats)
     end if
 
     OutFile = trim(OutDir) // '/results.txt'
