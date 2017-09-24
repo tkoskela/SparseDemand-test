@@ -2,7 +2,7 @@
 # 31mar2013 LN  continue to adapt
 # 07dec2012 LN    adapt from Horowitz project
 #
-# Frequently changing optinos
+# Frequently changing options
 #  Name of output directory
 OutDir : /SAN/economics/Nesheim-IO/FruitDemand/output/A24_20170629
 InputDir: /home/uctpln0/FruitDemand/code/fortran/inputs/A24
@@ -16,8 +16,6 @@ BICFlag          : 0 # 1 to minimize BIC
 SimulateDataFlag : 0 # 1 simulate data, 0 = load data from file
 HotStart         : 1 # 1 to do HotStart, from previous saved output
 
-
-#
 # Flags
 OutputFlag   : 1     #  0 don't print output and 1 to print output
 SaveDataFlag : 1     # 1 to save data, 0 otherwise
