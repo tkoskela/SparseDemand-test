@@ -23,23 +23,23 @@ module OutputModule
   character(len=200)          :: DemandFile
 
   ! Output file: unit numbers
-  integer(i4b), parameter :: Results_UNIT          = 2
-  integer(i4b), parameter :: BayesResults_UNIT      = 18
-  integer(i4b), parameter :: Results1P_UNIT         = 3
-  integer(i4b), parameter :: Hess1_UNIT             = 4
+  integer(i4b), parameter :: Results_UNIT           = 12
+  integer(i4b), parameter :: BayesResults_UNIT      = 13
+  integer(i4b), parameter :: Results1P_UNIT         = 14 
+  integer(i4b), parameter :: Hess_UNIT              = 15
   integer(i4b), parameter :: SaveData_UNIT_q        = 16
   integer(i4b), parameter :: SaveData_UNIT_p        = 17
-  integer(i4b), parameter :: SaveData_UNIT_e        = 7
-  integer(i4b), parameter :: SaveData_UNIT_iNonZero = 8
-  integer(i4b), parameter :: SaveData_UNIT_iZero    = 9
-  integer(i4b), parameter :: SaveData_UNIT_nNonZero = 10
-  integer(i4b), parameter :: SaveData_UNIT_market   = 11
-  integer(i4b), parameter :: BIC1_UNIT              = 12
-  integer(i4b), parameter :: MC_UNIT1               = 13
-  integer(i4b), parameter :: SaveData_UNIT_eta      = 14
-  integer(i4b), parameter :: MC_UNIT2               = 15
-  integer(i4b), parameter :: Elas_UNIT              = 16
-  integer(i4b), parameter :: Demand_UNIT            = 17
+  integer(i4b), parameter :: SaveData_UNIT_e        = 18
+  integer(i4b), parameter :: SaveData_UNIT_iNonZero = 19
+  integer(i4b), parameter :: SaveData_UNIT_iZero    = 20
+  integer(i4b), parameter :: SaveData_UNIT_nNonZero = 21
+  integer(i4b), parameter :: SaveData_UNIT_market   = 22
+  integer(i4b), parameter :: BIC1_UNIT              = 23
+  integer(i4b), parameter :: MC_UNIT1               = 24
+  integer(i4b), parameter :: SaveData_UNIT_eta      = 25
+  integer(i4b), parameter :: MC_UNIT2               = 26
+  integer(i4b), parameter :: Elas_UNIT              = 27
+  integer(i4b), parameter :: Demand_UNIT            = 28
 
 contains
 
@@ -252,34 +252,31 @@ subroutine SaveOutputs(xFree,LValue,Grad,Hess,Stats)
     end do
   end if
 
-
-
-    1 format( a20,3es25.16)
-    2 format( a20,3a25   )
-    ! write stats: (likelihood,nobs,maxgrad,MinEigHess,BIC,nNonZero)
-    write(Results1_UNIT,'(A12,g11.4)') 'Likelihood',LValue
-    write(Results1_UNIT,'(A12,I11)')   'nobs',stats%N
-    write(Results1_UNIT,'(A12,I11)')   'No. Parms',stats%nNonZero
-    write(Results1_UNIT,'(A12,g11.4)') 'BIC',stats%BIC
-    write(Results1_UNIT,'(A12,g11.4)') 'Max. Grad.',stats%MaxGrad
-    write(Results1_UNIT,'(A12,g11.4)') 'Min. Eig.',stats%MinEigHess
-    if (Penalty%method>0) then
-      write(Results1_UNIT,'(A12,g11.4)') 'Penalty',Penalty%lambda
-    end if
-    close(UNIT = Results1_UNIT)
-  
-    !--------------------------------------------------------------------------
-    ! Write Hessian for model 1
-    !--------------------------------------------------------------------------
-    open(UNIT = Hess1_UNIT, &
-         FILE = Hess1_FILE, &
-         ACTION = 'WRITE')
-    do i1=1,n
-      write(Hess1_UNIT,3)  Hess(i1,:)
-    end do
-    3 format(<n>es25.16)
-    close(UNIT = Hess1_UNIT) 
+  1 format( a20,3es25.16)
+  2 format( a20,3a25   )
+  ! write stats: (likelihood,nobs,maxgrad,MinEigHess,BIC,nNonZero)
+  write(Results_UNIT,'(A12,g11.4)') 'Likelihood',LValue
+  write(Results_UNIT,'(A12,I11)')   'nobs',stats%N
+  write(Results_UNIT,'(A12,I11)')   'No. Parms',stats%nNonZero
+  write(Results_UNIT,'(A12,g11.4)') 'BIC',stats%BIC
+  write(Results_UNIT,'(A12,g11.4)') 'Max. Grad.',stats%MaxGrad
+  write(Results_UNIT,'(A12,g11.4)') 'Min. Eig.',stats%MinEigHess
+  if (Penalty%method>0) then
+    write(Results_UNIT,'(A12,g11.4)') 'Penalty',Penalty%lambda
   end if
+  close(UNIT = Results_UNIT)
+  
+  !--------------------------------------------------------------------------
+  ! Write Hessian for model 1
+  !--------------------------------------------------------------------------
+  open(UNIT = Hess_UNIT, &
+       FILE = Hess_FILE, &
+       ACTION = 'WRITE')
+  do i1=1,n
+    write(Hess_UNIT,3)  Hess(i1,:)
+  end do
+  3 format(<n>es25.16)
+  close(UNIT = Hess_UNIT) 
   deallocate(InvHess,StandardErrors)
 end subroutine SaveOutputs
 

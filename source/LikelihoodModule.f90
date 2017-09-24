@@ -2980,15 +2980,20 @@ subroutine MaximizeLikelihood1(x,LValue,Grad,Hess,ierr)
     if (ControlOptions%TestLikeFlag==0) then
        ! Maximise likelihood 
        print *,'Begin maximization.'
-       call ComputeHess(x0,LValue0,GRAD,Hess,iuser,ruser)
+       if (ControlOptions%OutputFlag .ne. 1) then
+          call ComputeHess(x0,LValue0,GRAD,Hess,iuser,ruser)
+       end if
        print *,'LValue0',LValue0
        ifail = -1
        call E04WDF(nx,nc_lin,nc_nonlin,LDA,LDCJ,LDH,A,BL,BU,                     &
                    NAGConstraintWrapper,LikeFunc,iter,ISTATE,CCON,CJAC,CLAMBDA,  &
                    LValue,GRAD,HESS,x,IW,LENIW,RW,LENRW,iuser,RUSER,ifail)
-       call ComputeHess(x0,LValue0,GRAD,Hess,iuser,ruser)
-!       call ComputeHess(x,LValue,GRAD,Hess,iuser,ruser)
-       call ComputeHess2(x,LValue,Grad,Hess)
+       if (ControlOptions%OutputFlag .ne. 1) then
+         call ComputeHess(x0,LValue0,GRAD,Hess,iuser,ruser)
+         call ComputeHess(x,LValue,GRAD,Hess,iuser,ruser)
+       else if (ControlOptions%OutputFlag==1) then
+         call ComputeHess2(x,LValue,Grad,Hess)
+       end if
     else if (ControlOptions%TestLikeFlag==3) then
       ! test non-linear contraint
       mode_constraint=0
@@ -2999,32 +3004,36 @@ subroutine MaximizeLikelihood1(x,LValue,Grad,Hess,ierr)
     else if (ControlOptions%TestLikeFlag==4) then
        ! maximise likelihood with no non-linear constraints
        print *,'Begin maximization with no non-linear constraints.'
-       call ComputeHess(x0,LValue0,GRAD,Hess,iuser,ruser)
+       if (ControlOptions%OutputFlag .ne. 1) then
+         call ComputeHess(x0,LValue0,GRAD,Hess,iuser,ruser)
+       end if
        print *,'LValue0',LValue0
        ifail = -1
        call E04WDF(nx,nc_lin,nc_nonlin,LDA,LDCJ,LDH,A,BL,BU,                     &
                    E04WDP,LikeFunc,iter,ISTATE,CCON,CJAC,CLAMBDA,                &
                    LValue,GRAD,HESS,x,IW,LENIW,RW,LENRW,iuser,RUSER,ifail)
-       call ComputeHess(x0,LValue0,GRAD,Hess,iuser,ruser)
-!       call ComputeHess(x,LValue,GRAD,Hess,iuser,ruser)
-       call ComputeHess2(x,LValue,Grad,Hess)
+       if (ControlOptions%OutputFlag .ne. 1) then
+         call ComputeHess(x0,LValue0,GRAD,Hess,iuser,ruser)
+         call ComputeHess(x,LValue,GRAD,Hess,iuser,ruser)
+       else if (ControlOptions%OutputFlag==1) then
+         call ComputeHess2(x,LValue,Grad,Hess)
+       end if
     end if
 
     if (ControlOptions%OutputFlag==1) then
       call ComputeStats(x,LValue,Grad,Hess,HHData%N,LikeStats)
       call SaveOutputs(x,LValue,Grad,Hess,LikeStats)
+    else 
+      OutFile = trim(OutDir) // '/results.txt'
+      open(unit = 130,file = OutFile,action = 'write')
+      write(130,'(a20,3a25)') 'Var. Name','x0','x','Gradient'
+      do i1=1,nx
+        write(130,'(a20,3d25.12)') trim(iFree%xlabels(i1)), x0(i1),x(i1), Grad(i1)
+      end do
+      write(130,'(a25,d25.12)') 'LValue0',LValue0
+      write(130,'(a25,d25.12)') 'LValue',LValue
+      close(130)
     end if
-
-    OutFile = trim(OutDir) // '/results.txt'
-    open(unit = 130,file = OutFile,action = 'write')
-    write(130,'(a20,3a25)') 'Var. Name','x0','x','Gradient'
-    do i1=1,nx
-      write(130,'(a20,3d25.12)') trim(iFree%xlabels(i1)), x0(i1),x(i1), Grad(i1)
-    end do
-    write(130,'(a25,d25.12)') 'LValue0',LValue0
-    write(130,'(a25,d25.12)') 'LValue',LValue
-    close(130)
-  
     if (MaxOptions%SaveBasis==1) then
       close(101)
       close(103)
