@@ -3558,7 +3558,7 @@ subroutine ComputeHess2(x,L,Grad,Hess)
   real(dp), intent(out) :: L,Grad(:),Hess(:,:)
 
   integer(i4b)              :: i0,i1,i2,nx
-  integer()i4b)             :: nmax,niter
+  integer(i4b)              :: nmax,niter
   integer(i4b), allocatable :: blockindex(:)
   real(dp), allocatable     :: LHH0(:),LHH1(:),x1(:)
   real(dp), allocatable     :: GradLHH(:,:),GradLHH1(:)
@@ -3570,7 +3570,7 @@ subroutine ComputeHess2(x,L,Grad,Hess)
   ! when nx >50, break up computation into iterations
   ! compute in max block size of 50 x 50
   nx = size(x,1)
-  nmax = 50
+  nmax = 3 
   niter = nx/nmax+1  ! number of iterations
   allocate(blockIndex(nmax))
 
@@ -3624,23 +3624,25 @@ subroutine ComputeHess2(x,L,Grad,Hess)
     end do
 
     ! fill in off-diagonal blocks
-    if (blockindex(50)<=nx) then
+    if (blockindex(nmax)<nx) then
       do i1=blockindex(nmax)+1,nx
         SubTime(i1) = time()
         x1=x
         x1(i1) = x(i1)+h
-      call Like2Hess(nx,x1,LHH1)
-      GradLHH1 = (LHH1-LHH0)/(x1(i1)-x(i1))
-      Grad(i1) = sum(GradLHH1)/real(HHData%N,dp)
-      do i2=1,i1
-        Hess(i2,i1) = &
-          sum((GradLHH1-Grad(i1)) &
-              * (GradLHH(:,i2)-Grad(i2)))/real(HHData%N,dp)
-        Hess(i1,i2) = Hess(i2,i1)
+        call Like2Hess(nx,x1,LHH1)
+        GradLHH1 = (LHH1-LHH0)/(x1(i1)-x(i1))
+        Grad(i1) = sum(GradLHH1)/real(HHData%N,dp)
+        do i2=1,nmax
+          Hess(blockindex(i2),i1) = &
+            sum((GradLHH1-Grad(i1)) &
+                * (GradLHH(:,blockindex(i2))-Grad(blockindex(i2))))/real(HHData%N,dp)
+          Hess(i1,blockindex(i2)) = Hess(blockindex(i2),i1)
+        end do
+        SubTime(i1) = time() - SubTime(i1) ! elapsed time in seconds
+        write(6,'(3a4,2a11)') 'nx','block','i1','time','TotalTime'
+        write(6,'(3i4,2i11)') nx,blockindex(nmax),i1,SubTime(i1),time()-TotalTime
       end do
-      SubTime(i1) = time() - SubTime(i1) ! elapsed time in seconds
-      write(6,'(3a4,2a11)') 'nx','block','i1','time','TotalTime'
-      write(6,'(3i4,2i11)') nx,blockindex(nmax),i1,SubTime(i1),time()-TotalTime
+    end if
   end do
 
   deallocate(LHH0,LHH1,x1)
