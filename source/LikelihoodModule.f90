@@ -2988,6 +2988,7 @@ subroutine MaximizeLikelihood1(x,LValue,Grad,Hess,ierr)
        call E04WDF(nx,nc_lin,nc_nonlin,LDA,LDCJ,LDH,A,BL,BU,                     &
                    NAGConstraintWrapper,LikeFunc,iter,ISTATE,CCON,CJAC,CLAMBDA,  &
                    LValue,GRAD,HESS,x,IW,LENIW,RW,LENRW,iuser,RUSER,ifail)
+       print *,'E04WDF complete.'
        if (ControlOptions%OutputFlag .ne. 1) then
          call ComputeHess(x0,LValue0,GRAD,Hess,iuser,ruser)
          call ComputeHess(x,LValue,GRAD,Hess,iuser,ruser)
@@ -3012,6 +3013,7 @@ subroutine MaximizeLikelihood1(x,LValue,Grad,Hess,ierr)
        call E04WDF(nx,nc_lin,nc_nonlin,LDA,LDCJ,LDH,A,BL,BU,                     &
                    E04WDP,LikeFunc,iter,ISTATE,CCON,CJAC,CLAMBDA,                &
                    LValue,GRAD,HESS,x,IW,LENIW,RW,LENRW,iuser,RUSER,ifail)
+       print *,'E04WDF complete.'
        if (ControlOptions%OutputFlag .ne. 1) then
          call ComputeHess(x0,LValue0,GRAD,Hess,iuser,ruser)
          call ComputeHess(x,LValue,GRAD,Hess,iuser,ruser)
@@ -3549,6 +3551,7 @@ end subroutine ComputeHess
 ! Compute hessian = variance of score of likelihood
 subroutine ComputeHess2(x,L,Grad,Hess)
   use GlobalModule, only : HHData
+  use IFPORT, only : time
   use nrtype
   implicit none
   real(dp), intent(in)  :: x(:)
@@ -3558,11 +3561,15 @@ subroutine ComputeHess2(x,L,Grad,Hess)
   real(dp), allocatable :: LHH0(:),LHH1(:),x1(:)
   real(dp), allocatable :: GradLHH(:,:)
   real(dp)              :: h
+  integer(i4b)          :: TotalTime
+  integer(i4b), allocatable :: SubTime(:)
+  character(len=10)         :: StartTime 
 
   nx = size(x,1)
   allocate(LHH0(HHData%n),LHH1(HHData%n))
   allocate(GradLHH(HHData%n,nx))
   allocate(x1(nx))
+  allocate(SubTime(nx)) 
 
   L       = 0.0d0
   Grad    = 0.0d0
@@ -3572,10 +3579,14 @@ subroutine ComputeHess2(x,L,Grad,Hess)
   LHH1    = 0.0d0
   h       = 1.0e-4
 
+  call date_and_time(time=StartTime)
+  print *,'Begin ComputeHess2. Start time is (hhmmss.sss):',StartTime
   call Like2Hess(nx,x,LHH0)
   L  = sum(LHH0)/real(HHData%n,dp)
-
+  TotalTime = time()
+  SubTime   = 0.0d0
   do i1=1,nx
+    SubTime(i1) = time()
     x1=x
     x1(i1) = x(i1)+h
     call Like2Hess(nx,x1,LHH1)
@@ -3585,10 +3596,14 @@ subroutine ComputeHess2(x,L,Grad,Hess)
       Hess(i2,i1) = sum((GradLHH(:,i1)-Grad(i1)) * (GradLHH(:,i2)-Grad(i2)))/real(HHData%N,dp)
       Hess(i1,i2) = Hess(i2,i1)
     end do
+    SubTime(i1) = time() - SubTime(i1) ! elapsed time in seconds
+    write(6,'(2a4,2a11)') 'nx','i1','time','TotalTime'
+    write(6,'(2i4,2i11)') nx,i1,SubTime(i1),time()-TotalTime
   end do
 
   deallocate(LHH0,LHH1,x1)
   deallocate(GradLHH)
+  deallocate(SubTime)
 
 end subroutine ComputeHess2
 

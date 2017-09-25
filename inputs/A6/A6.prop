@@ -17,8 +17,8 @@ SimulateDataFlag : 0 # 1 simulate data, 0 = load data from file
 HotStart         : 0 # 1 to do HotStart, from previous saved output
 
 # Flags
-OutputFlag   : 1     #  0 don't print output and 1 to print output
-SaveDataFlag : 1     # 1 to save data, 0 otherwise
+OutputFlag   : 0     #  0 don't print output and 1 to print output
+SaveDataFlag : 0     # 1 to save data, 0 otherwise
 TestIntegrationFlag : 0 # 1 to test accuracy of integration
 SimulateDataFlag    : 0 # 1 simulate data, 0 = load data from file
 RawDataFormat       : 2 # 1 = old format, 2 = 20161225 format
@@ -38,8 +38,8 @@ small : 1.0d-50     # small number to prevent log of zero
 # J     = number of products
 # K     = dimension of demand system
 NMC   : 1
-N     : 20000
-NSIM  : 20000
+N     : 10000
+NSIM  : 10000
 M     : 200
 J     : 6
 K     : 3
@@ -142,15 +142,15 @@ InvCOffDiag_HI : 0.95d0  # BU = pi * InvCOffDiag_HI
 FreeFlagD           : 0   # 1 to be free, 0 to be fixed
 FreeFlagBC          : 0   # 1 to be free, 0 to be fixed
 FreeFlagMUE         : 1   # 1 to be free, 0 to be fixed
-FreeFlagInvCDiag    : 1   # 1 to be free, 0 to be fixed
-FreeFlagInvCOffDiag : 1   # 1 to be free, 0 to be fixed
+FreeFlagInvCDiag    : 0   # 1 to be free, 0 to be fixed
+FreeFlagInvCOffDiag : 0   # 1 to be free, 0 to be fixed
 
 FreeFlagBD_beta     : 1
-FreeFlagBD_CDiag    : 1
-FreeFlagBD_COffDiag : 1
+FreeFlagBD_CDiag    : 0
+FreeFlagBD_COffDiag : 0
 FreeFlagBC_beta     : 1
-FreeFlagBC_CDiag    : 1
-FreeFlagBC_COffDiag : 1
+FreeFlagBC_CDiag    : 0
+FreeFlagBC_COffDiag : 0
 OneAtATime          : 0
 
 # Parameter file names
