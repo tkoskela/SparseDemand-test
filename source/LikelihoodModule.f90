@@ -3557,17 +3557,26 @@ subroutine ComputeHess2(x,L,Grad,Hess)
   real(dp), intent(in)  :: x(:)
   real(dp), intent(out) :: L,Grad(:),Hess(:,:)
 
-  integer(i4b)          :: i1,i2,nx
-  real(dp), allocatable :: LHH0(:),LHH1(:),x1(:)
-  real(dp), allocatable :: GradLHH(:,:)
-  real(dp)              :: h
-  integer(i4b)          :: TotalTime
+  integer(i4b)              :: i0,i1,i2,nx
+  integer()i4b)             :: nmax,niter
+  integer(i4b), allocatable :: blockindex(:)
+  real(dp), allocatable     :: LHH0(:),LHH1(:),x1(:)
+  real(dp), allocatable     :: GradLHH(:,:),GradLHH1(:)
+  real(dp)                  :: h
+  integer(i4b)              :: TotalTime
   integer(i4b), allocatable :: SubTime(:)
   character(len=10)         :: StartTime 
 
+  ! when nx >50, break up computation into iterations
+  ! compute in max block size of 50 x 50
   nx = size(x,1)
+  nmax = 50
+  niter = nx/nmax+1  ! number of iterations
+  allocate(blockIndex(nmax))
+
   allocate(LHH0(HHData%n),LHH1(HHData%n))
-  allocate(GradLHH(HHData%n,nx))
+  allocate(GradLHH(HHData%n,nmax))
+  allocate(GradLHH1(HHData%n))
   allocate(x1(nx))
   allocate(SubTime(nx)) 
 
@@ -3585,25 +3594,59 @@ subroutine ComputeHess2(x,L,Grad,Hess)
   L  = sum(LHH0)/real(HHData%n,dp)
   TotalTime = time()
   SubTime   = 0.0d0
-  do i1=1,nx
-    SubTime(i1) = time()
-    x1=x
-    x1(i1) = x(i1)+h
-    call Like2Hess(nx,x1,LHH1)
-    GradLHH(:,i1) = (LHH1-LHH0)/(x1(i1)-x(i1))
-    Grad(i1) = sum(GradLHH(:,i1))/real(HHData%N,dp)
-    do i2=1,i1
-      Hess(i2,i1) = sum((GradLHH(:,i1)-Grad(i1)) * (GradLHH(:,i2)-Grad(i2)))/real(HHData%N,dp)
-      Hess(i1,i2) = Hess(i2,i1)
+
+  do i0=1,niter
+    blockindex = (i0-1)*nmax+(/1:nmax/)
+    GradLHH = 0.0d0
+
+    ! fill in diagonal blocks of hessian of size (50,50)
+    ! hess(blockindex,blockindex)
+    do i1=1,nmax
+      if (blockIndex(i1)>nx) then
+        exit
+      end if
+      SubTime(i1) = time()
+      x1=x
+      x1(blockindex(i1)) = x(blockindex(i1))+h
+      call Like2Hess(nx,x1,LHH1)
+      GradLHH(:,i1) = (LHH1-LHH0)/(x1(blockIndex(i1))-x(blockIndex(i1)))
+      Grad(blockIndex(i1)) = sum(GradLHH(:,i1))/real(HHData%N,dp)
+      do i2=1,i1
+        Hess(blockIndex(i2),blockIndex(i1)) = &
+          sum((GradLHH(:,i1)-Grad(blockIndex(i1))) &
+              * (GradLHH(:,i2)-Grad(blockIndex(i2))))/real(HHData%N,dp)
+        Hess(blockIndex(i1),blockIndex(i2)) &
+           = Hess(BlockIndex(i2),blockIndex(i1))
+      end do
+      SubTime(i1) = time() - SubTime(i1) ! elapsed time in seconds
+      write(6,'(2a4,2a11)') 'nx','i1','time','TotalTime'
+      write(6,'(2i4,2i11)') nx,blockindex(i1),SubTime(i1),time()-TotalTime
     end do
-    SubTime(i1) = time() - SubTime(i1) ! elapsed time in seconds
-    write(6,'(2a4,2a11)') 'nx','i1','time','TotalTime'
-    write(6,'(2i4,2i11)') nx,i1,SubTime(i1),time()-TotalTime
+
+    ! fill in off-diagonal blocks
+    if (blockindex(50)<=nx) then
+      do i1=blockindex(nmax)+1,nx
+        SubTime(i1) = time()
+        x1=x
+        x1(i1) = x(i1)+h
+      call Like2Hess(nx,x1,LHH1)
+      GradLHH1 = (LHH1-LHH0)/(x1(i1)-x(i1))
+      Grad(i1) = sum(GradLHH1)/real(HHData%N,dp)
+      do i2=1,i1
+        Hess(i2,i1) = &
+          sum((GradLHH1-Grad(i1)) &
+              * (GradLHH(:,i2)-Grad(i2)))/real(HHData%N,dp)
+        Hess(i1,i2) = Hess(i2,i1)
+      end do
+      SubTime(i1) = time() - SubTime(i1) ! elapsed time in seconds
+      write(6,'(3a4,2a11)') 'nx','block','i1','time','TotalTime'
+      write(6,'(3i4,2i11)') nx,blockindex(nmax),i1,SubTime(i1),time()-TotalTime
   end do
 
   deallocate(LHH0,LHH1,x1)
-  deallocate(GradLHH)
+  deallocate(GradLHH,GradLHH1)
   deallocate(SubTime)
+  deallocate(blockIndex)
 
 end subroutine ComputeHess2
 
