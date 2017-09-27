@@ -3550,7 +3550,8 @@ end subroutine ComputeHess
 
 ! Compute hessian = variance of score of likelihood
 subroutine ComputeHess2(x,L,Grad,Hess)
-  use GlobalModule, only : HHData
+  use GlobalModule, only : HHData,ifree
+  use OutputModule, only : WriteHess
   use IFPORT, only : time
   use nrtype
   implicit none
@@ -3570,7 +3571,7 @@ subroutine ComputeHess2(x,L,Grad,Hess)
   ! when nx >50, break up computation into iterations
   ! compute in max block size of 50 x 50
   nx = size(x,1)
-  nmax = 3 
+  nmax = iFree%HessNMax
   niter = nx/nmax+1  ! number of iterations
   allocate(blockIndex(nmax))
 
@@ -3590,12 +3591,40 @@ subroutine ComputeHess2(x,L,Grad,Hess)
 
   call date_and_time(time=StartTime)
   print *,'Begin ComputeHess2. Start time is (hhmmss.sss):',StartTime
+  if (iFree%flagmue>0) then
+    print *,'ifree%xmue:',iFree%xmue(1),maxval(iFree%xmue)
+  end if
+  if (iFree%flagInvCDiag>0) then
+    print *,'ifree%xInvCDiag:',iFree%xInvCDiag(1),maxval(iFree%xInvCDiag)
+  end if
+  if (iFree%flagInvCOffDiag>0) then
+    print *,'ifree%xInvCOffDiag:',iFree%xInvCOffDiag(1),maxval(iFree%xInvCOffDiag)
+  end if
+  if (iFree%flagBD_beta>0) then
+    print *,'ifree%xBD_beta:',iFree%xBD_beta(1),maxval(iFree%xBD_beta)
+  end if
+  if (iFree%flagBC_beta>0) then
+    print *,'ifree%xBC_beta:',iFree%xBC_beta(1),maxval(iFree%xBC_beta)
+  end if
+  if (iFree%flagBD_CDiag>0) then
+    print *,'ifree%xBD_CDiag:',iFree%xBD_CDiag(1),maxval(iFree%xBD_CDiag)
+  end if
+  if (iFree%flagBD_COffDiag>0) then
+    print *,'ifree%xBD_COffDiag:',iFree%xBD_COffDiag(1),maxval(iFree%xBD_COffDiag)
+  end if
+  if (iFree%flagBC_CDiag>0) then
+    print *,'ifree%xBC_CDiag:',iFree%xBC_CDiag(1),maxval(iFree%xBC_CDiag)
+  end if
+  if (iFree%flagBC_COffDiag>0) then
+    print *,'ifree%xBC_COffDiag:',iFree%xBC_COffDiag(1),maxval(iFree%xBC_COffDiag)
+  end if
+
   call Like2Hess(nx,x,LHH0)
   L  = sum(LHH0)/real(HHData%n,dp)
   TotalTime = time()
   SubTime   = 0.0d0
 
-  do i0=1,niter
+  do i0=iFree%HessIter0,niter
     blockindex = (i0-1)*nmax+(/1:nmax/)
     GradLHH = 0.0d0
 
@@ -3621,6 +3650,7 @@ subroutine ComputeHess2(x,L,Grad,Hess)
       SubTime(i1) = time() - SubTime(i1) ! elapsed time in seconds
       write(6,'(2a4,2a11)') 'nx','i1','time','TotalTime'
       write(6,'(2i4,2i11)') nx,blockindex(i1),SubTime(i1),time()-TotalTime
+      Call WriteHess(Hess)
     end do
 
     ! fill in off-diagonal blocks
@@ -3639,8 +3669,9 @@ subroutine ComputeHess2(x,L,Grad,Hess)
           Hess(i1,blockindex(i2)) = Hess(blockindex(i2),i1)
         end do
         SubTime(i1) = time() - SubTime(i1) ! elapsed time in seconds
-        write(6,'(3a4,2a11)') 'nx','block','i1','time','TotalTime'
-        write(6,'(3i4,2i11)') nx,blockindex(nmax),i1,SubTime(i1),time()-TotalTime
+        write(6,'(2a4,a6,2a11)') 'nx','block','i1','time','TotalTime'
+        write(6,'(2i4,i6,2i11)') nx,blockindex(nmax),i1,SubTime(i1),time()-TotalTime
+        call WriteHess(hess)
       end do
     end if
   end do

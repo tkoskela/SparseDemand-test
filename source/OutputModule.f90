@@ -280,6 +280,24 @@ subroutine SaveOutputs(xFree,LValue,Grad,Hess,Stats)
   deallocate(InvHess,StandardErrors)
 end subroutine SaveOutputs
 
+subroutine WriteHess(hess)
+  implicit none
+  real(dp), intent(in) :: hess(:,:)
+  integer(i4b) :: i1,n
+
+  n = size(hess,1)
+
+  open(UNIT = Hess_UNIT, &
+       FILE = Hess_FILE, &
+       ACTION = 'WRITE')
+  do i1=1,n
+    write(Hess_UNIT,3)  Hess(i1,:)
+  end do
+  3 format(<n>es25.16)
+  close(UNIT = Hess_UNIT) 
+  
+end subroutine WriteHess
+
 !------------------------------------------------------------------------------
 !
 ! subroutine SavePenaltyOutputs(iter,model,xFree,LValue,Grad,Hess)
