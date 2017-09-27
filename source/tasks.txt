@@ -1,0 +1,2 @@
+1) write GradLHH to file   (N x NX)
+2) start ComputeHess2 from x(83) find out why frozen
