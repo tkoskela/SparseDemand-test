@@ -3548,6 +3548,7 @@ subroutine ComputeHess(x,L,GradL,Hess,iuser,ruser)
   deallocate(x1,x2,GradL1,GradL2)
 end subroutine ComputeHess
 
+#if OLDHESS==1
 ! Compute hessian = variance of score of likelihood
 subroutine ComputeHess2(x,L,Grad,Hess)
   use GlobalModule, only : HHData,ifree
@@ -3682,8 +3683,8 @@ subroutine ComputeHess2(x,L,Grad,Hess)
   deallocate(blockIndex)
 
 end subroutine ComputeHess2
+#endif
 
-#if OLDHESS==1
 ! Compute hessian = variance of score of likelihood
 subroutine ComputeHess2(x,L,Grad,Hess)
   use GlobalModule, only : HHData,ifree
@@ -3785,7 +3786,6 @@ subroutine ComputeHess2(x,L,Grad,Hess)
   deallocate(SubTime)
 
 end subroutine ComputeHess2
-#endif
 
 subroutine SetBounds(x,BL,BU)
   use nrtype
