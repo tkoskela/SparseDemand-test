@@ -171,7 +171,7 @@ BasePriceFile : A/BasePrice.raw
 
 # Determine which blocks of hessian to compute
 # used in ComputeHess2
-# HessIter0 = 1 compute full hessian
-# HessNMax  = max size of block to compute
-HessIter0 : 1
-HessNMax  : 100
+# nHess0 = start computation from x(nHess0)
+# nHess1 = stop computation after x(minval(nx,nHess1))
+nHess0 : 1
+nHess1 : 0    # if 0 nHess1 = nx

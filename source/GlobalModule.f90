@@ -222,9 +222,9 @@ module GlobalModule
     integer(i4b)              :: OneAtATime
 
     character(len=20), allocatable :: xlabels(:)
-    integer(i4b)              :: HessIter0,HessNMax ! used by ComputeHess2
-                                                    ! determine block of hessian 
-                                                    ! to compute
+    integer(i4b)              :: nHess0,nHess1 ! used by ComputeHess2
+                                               ! determine block of hessian
+                                               ! to compute
   end type
 
   type PenaltyStructureType
@@ -1157,10 +1157,10 @@ subroutine InitializeParameters(InputFile)
 
   ! Determine which block of hessian to compute
   ! used in ComputeHess2
-  ErrFlag = GetVal(PropList,'HessIter0',ctemp)
-  read(ctemp,'(i4)') iFree%HessIter0
-  ErrFlag = GetVal(PropList,'HessNMax',ctemp)
-  read(ctemp,'(i4)') iFree%HessNMax
+  ErrFlag = GetVal(PropList,'nHess0',ctemp)
+  read(ctemp,'(i4)') iFree%nHess0
+  ErrFlag = GetVal(PropList,'nHess1',ctemp)
+  read(ctemp,'(i4)') iFree%nHess1
 
 end subroutine InitializeParameters
 

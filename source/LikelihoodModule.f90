@@ -3683,6 +3683,110 @@ subroutine ComputeHess2(x,L,Grad,Hess)
 
 end subroutine ComputeHess2
 
+#if OLDHESS==1
+! Compute hessian = variance of score of likelihood
+subroutine ComputeHess2(x,L,Grad,Hess)
+  use GlobalModule, only : HHData,ifree
+  use OutputModule, only : WriteHess,ReadWriteGradLHH
+  use IFPORT, only : time
+  use nrtype
+  implicit none
+  real(dp), intent(in)  :: x(:)
+  real(dp), intent(out) :: L,Grad(:),Hess(:,:)
+
+  integer(i4b)              :: i1,i2,nx,i1min,i1max
+  real(dp), allocatable     :: LHH0(:),LHH1(:),x1(:)
+  real(dp), allocatable     :: GradLHH(:,:)
+  real(dp)                  :: h
+  integer(i4b)              :: TotalTime
+  integer(i4b), allocatable :: SubTime(:)
+  character(len=10)         :: StartTime 
+
+  nx = size(x,1)
+
+  allocate(LHH0(HHData%n),LHH1(HHData%n))
+  allocate(GradLHH(HHData%n,nx))
+  allocate(x1(nx))
+  allocate(SubTime(nx)) 
+
+  L       = 0.0d0
+  Grad    = 0.0d0
+  Hess    = 0.0d0
+  GradLHH = 0.0d0
+  LHH0    = 0.0d0
+  LHH1    = 0.0d0
+  h       = 1.0e-4
+
+  call date_and_time(time=StartTime)
+  print *,'Begin ComputeHess2. Start time is (hhmmss.sss):',StartTime
+  if (iFree%flagmue>0) then
+    print *,'ifree%xmue:',iFree%xmue(1),maxval(iFree%xmue)
+  end if
+  if (iFree%flagInvCDiag>0) then
+    print *,'ifree%xInvCDiag:',iFree%xInvCDiag(1),maxval(iFree%xInvCDiag)
+  end if
+  if (iFree%flagInvCOffDiag>0) then
+    print *,'ifree%xInvCOffDiag:',iFree%xInvCOffDiag(1),maxval(iFree%xInvCOffDiag)
+  end if
+  if (iFree%flagBD_beta>0) then
+    print *,'ifree%xBD_beta:',iFree%xBD_beta(1),maxval(iFree%xBD_beta)
+  end if
+  if (iFree%flagBC_beta>0) then
+    print *,'ifree%xBC_beta:',iFree%xBC_beta(1),maxval(iFree%xBC_beta)
+  end if
+  if (iFree%flagBD_CDiag>0) then
+    print *,'ifree%xBD_CDiag:',iFree%xBD_CDiag(1),maxval(iFree%xBD_CDiag)
+  end if
+  if (iFree%flagBD_COffDiag>0) then
+    print *,'ifree%xBD_COffDiag:',iFree%xBD_COffDiag(1),maxval(iFree%xBD_COffDiag)
+  end if
+  if (iFree%flagBC_CDiag>0) then
+    print *,'ifree%xBC_CDiag:',iFree%xBC_CDiag(1),maxval(iFree%xBC_CDiag)
+  end if
+  if (iFree%flagBC_COffDiag>0) then
+    print *,'ifree%xBC_COffDiag:',iFree%xBC_COffDiag(1),maxval(iFree%xBC_COffDiag)
+  end if
+
+  call Like2Hess(nx,x,LHH0)
+  L  = sum(LHH0)/real(HHData%n,dp)
+  TotalTime = time()
+  SubTime   = 0.0d0
+
+  GradLHH = 0.0d0
+
+  i1min = iFreenHess0
+  i1max = merge(nx,min(nx,iFree%nHess1),iFree%nHess1==0)
+  if (i1min>1) then
+    call ReadWriteGradLHH(GradLHH,'read')
+  end if
+  do i1=i1min,i1max
+    SubTime(i1) = time()
+    x1=x
+    x1(i1) = x(i1)+h
+    call Like2Hess(nx,x1,LHH1)
+    GradLHH(:,i1) = (LHH1-LHH0)/(x1(i1)-x(i1))
+    Grad(i1) = sum(GradLHH(:,i1))/real(HHData%N,dp)
+    do i2=1,i1
+      Hess(i2,i1) = &
+        sum((GradLHH(:,i1)-Grad(i1)) &
+            * (GradLHH(:,i2)-Grad(i2)))/real(HHData%N,dp)
+      Hess(i1,i2) &
+         = Hess(i2,i1)
+    end do
+    SubTime(i1) = time() - SubTime(i1) ! elapsed time in seconds
+    write(6,'(2a4,2a11)') 'nx','i1','time','TotalTime'
+    write(6,'(2i4,2i11)') nx,i1,SubTime(i1),time()-TotalTime
+    call ReadWriteGradLHH(GradLHH,'write')
+    Call WriteHess(Hess)
+  end do
+
+  deallocate(LHH0,LHH1,x1)
+  deallocate(GradLHH)
+  deallocate(SubTime)
+
+end subroutine ComputeHess2
+#endif
+
 subroutine SetBounds(x,BL,BU)
   use nrtype
   use GlobalModule, only : iFree,MaxOptions,bayes,parms

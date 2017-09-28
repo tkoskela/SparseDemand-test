@@ -8,6 +8,7 @@ module OutputModule
   character(len=200)          :: BayesResults_FILE
   character(len=200)          :: Results1P_FILE
   character(len=200)          :: Hess_FILE
+  character(len=200)          :: GradLHH_FILE
   character(len=200)          :: SaveDataFile_q
   character(len=200)          :: SaveDataFile_p
   character(len=200)          :: SaveDataFile_e
@@ -40,6 +41,7 @@ module OutputModule
   integer(i4b), parameter :: MC_UNIT2               = 26
   integer(i4b), parameter :: Elas_UNIT              = 27
   integer(i4b), parameter :: Demand_UNIT            = 28
+  integer(i4b), parameter :: GradLHH_unit           = 29
 
 contains
 
@@ -52,6 +54,7 @@ subroutine DefineFileNames(pid)
   Results_File          = MakeFullFileName('results.txt')
   BayesResults_File     = MakeFullFileName('BayesResults.txt')
   Hess_FILE             = MakeFullFileName('hess.txt')
+  GradLHH_FILE          = MakeFullFileName('gradLHH.txt')
   SaveDataFile_q        = MakeFullFileName('q.csv')
   SaveDataFile_p        = MakeFullFileName('p.csv')
   SaveDataFile_e        = MakeFullFileName('e.csv')
@@ -298,6 +301,40 @@ subroutine WriteHess(hess)
   
 end subroutine WriteHess
 
+subroutine ReadWriteGradLHH(GradLHH,action)
+  implicit none
+  real(dp), intent(inout)      :: GradLHH(:,:)
+  character(len=*), intent(in) :: action
+
+  integer(i4b)                 :: n,nx
+
+  n = size(GradLHH,1)
+  nx = size(GradLHH,2)
+  open(unit = GradLHH_unit, &
+       file = GradLHH_file, &
+       action = 'read')
+
+  select case (action)
+    case ('read')
+      open(unit = GradLHH_unit, &
+           file = GradLHH_file, &
+           action = 'read')
+      GradLHH = 0.0d0
+      do i1=1,n
+        read(GradLHH_unit,329) GradLHH(i1,:)
+      end do
+    case('write')
+      open(unit = GradLHH_unit, &
+           file = GradLHH_file, &
+           action = 'write')
+      do i1=1,n
+        write(GradLHH_unit,329) GradLHH(i1,:)
+      end do
+  end select
+329 format(<nx>g25.16)
+close(GradLHH_unit)
+
+end subroutine ReadWriteGradLHH
 !------------------------------------------------------------------------------
 !
 ! subroutine SavePenaltyOutputs(iter,model,xFree,LValue,Grad,Hess)

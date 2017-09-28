@@ -2,7 +2,7 @@
 # 31mar2013 LN  continue to adapt
 # 07dec2012 LN    adapt from Horowitz project
 #
-# Frequently changing optinos
+# Frequently changing options
 #  Name of output directory
 OutDir : /SAN/economics/Nesheim-IO/FruitDemand/output/201709/A24E
 InputDir: /home/uctpln0/FruitDemand/code/fortran/inputs/A24E
@@ -16,8 +16,6 @@ BICFlag          : 0 # 1 to minimize BIC
 SimulateDataFlag : 0 # 1 simulate data, 0 = load data from file
 HotStart         : 1 # 1 to do HotStart, from previous saved output
 
-
-#
 # Flags
 OutputFlag   : 0     #  0 don't print output and 1 to print output
 SaveDataFlag : 1     # 1 to save data, 0 otherwise
@@ -170,3 +168,10 @@ BD_COFFDIAG_FILE : A/BD_COffDiag.raw
 SIGP_FILE        : A/sigp.raw
 
 BasePriceFile : A/BasePrice.raw
+
+# Determine which blocks of hessian to compute
+# used in ComputeHess2
+# nHess0 = start computation from x(nHess0)
+# nHess1 = stop computation after x(minval(nx,nHess1))
+nHess0 : 1
+nHess1 : 0    # if 0 nHess1 = nx
