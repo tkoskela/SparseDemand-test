@@ -6,12 +6,13 @@
 #  Name of output directory
 OutDir : /SAN/economics/Nesheim-IO/FruitDemand/output/A24_20170629
 InputDir: /home/uctpln0/FruitDemand/code/fortran/inputs/A24
-TestLikeFlag : 4     # 0 = maximise likelihood
+TestLikeFlag : 5     # 0 = maximise likelihood
                      # 1 = test likelihood gradient
                      # 2 = plot likelihood
                      # 3 = test non-linear constraint
                      # 4 = no non-linear constraints
-                     # 5 = analyse results
+                     # 5 = only compute hessian
+                     # 6 = analyse results
 BICFlag          : 0 # 1 to minimize BIC
 SimulateDataFlag : 0 # 1 simulate data, 0 = load data from file
 HotStart         : 1 # 1 to do HotStart, from previous saved output
@@ -173,5 +174,5 @@ BasePriceFile : A/BasePrice.raw
 # used in ComputeHess2
 # nHess0 = start computation from x(nHess0)
 # nHess1 = stop computation after x(minval(nx,nHess1))
-nHess0 : 1
+nHess0 : 247
 nHess1 : 0    # if 0 nHess1 = nx

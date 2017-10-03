@@ -306,23 +306,25 @@ subroutine ReadWriteGradLHH(GradLHH,action)
   real(dp), intent(inout)      :: GradLHH(:,:)
   character(len=*), intent(in) :: action
 
-  integer(i4b)                 :: n,nx
+  integer(i4b)                 :: n,nx,i1
+  logical                      :: existflag
 
   n = size(GradLHH,1)
   nx = size(GradLHH,2)
-  open(unit = GradLHH_unit, &
-       file = GradLHH_file, &
-       action = 'read')
 
   select case (action)
     case ('read')
-      open(unit = GradLHH_unit, &
-           file = GradLHH_file, &
-           action = 'read')
       GradLHH = 0.0d0
-      do i1=1,n
-        read(GradLHH_unit,329) GradLHH(i1,:)
-      end do
+      inquire(file=GradLHH_file,exist=existflag)
+      if (existflag) then
+        open(unit = GradLHH_unit, &
+             file = GradLHH_file, &
+             action = 'read')
+        do i1=1,n
+          read(GradLHH_unit,329) GradLHH(i1,:)
+        end do
+        close(GradLHH_unit)
+      end if
     case('write')
       open(unit = GradLHH_unit, &
            file = GradLHH_file, &
@@ -330,9 +332,9 @@ subroutine ReadWriteGradLHH(GradLHH,action)
       do i1=1,n
         write(GradLHH_unit,329) GradLHH(i1,:)
       end do
+      close(GradLHH_unit)
   end select
 329 format(<nx>g25.16)
-close(GradLHH_unit)
 
 end subroutine ReadWriteGradLHH
 !------------------------------------------------------------------------------

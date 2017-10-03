@@ -35,6 +35,7 @@ module GlobalModule
     integer(i4b) :: SimulateData
     integer(i4b) :: TestLikeFlag
     integer(i4b) :: TestIntegrationFlag
+    integer(i4b) :: ComputeHessFlag
     integer(i4b) :: BICFlag
     integer(i4b) :: MPIFlag   ! 2 = each processor, 1 MC rep
                               ! 1 = each processor, subset of data
@@ -948,6 +949,11 @@ subroutine InitializeParameters(InputFile)
    !                0 maximise likelihood
    ErrFlag = GetVal(PropList,'TestLikeFlag',cTemp)
    read(cTemp,'(i2)') ControlOptions%TestLikeFlag
+
+   ! ComputeHessFlag: 1 use ComputeHess2(...)
+   !                  2 load GradLHH from file and then compute hess
+   ErrFlag = GetVal(PropList,'ComputeHessFlag',cTemp)
+   read(cTemp,'(i2)') ControlOptions%ComputeHessFlag
 
    ! TestIntegrationFlag : 0 do not test
    !                       1 test accuracy of integration

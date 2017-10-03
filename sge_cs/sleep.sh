@@ -1,13 +1,13 @@
 #!/bin/bash
 #$ -S /bin/bash
 #$ -wd /home/uctpln0/FruitDemand/code/fortran/source
-#$ -o /home/uctpln0/FruitDemand/code/fortran/output/sleep1.out
+#$ -o /home/uctpln0/FruitDemand/code/fortran/output/sleep2.out
 #$ -N A24DS
 #$ -j y
 #$ -R y
 #$ -cwd
 #$ -V
-#$ -t 1-101
+#$ -t 1-401
 #$ -l tmem=2.4G,h_vmem=2.4G
 #$ -l h_rt=240:0:0
 ##$ -l hostname="fry*|burns*|larry*|zeppo*"

@@ -94,10 +94,10 @@ program SparseDemand
     call ComputeNMC(pid,HHData%NMC,IMC1,IMC2)
   end if
 
-  if (ControlOptions%TestLikeFlag<=4) then 
+  if (ControlOptions%TestLikeFlag<=5) then 
     ! Estimate model
     call RunMonteCarlo(IMC1,IMC2,pid)
-  elseif (ControlOptions%TestLikeFlag==5) then
+  elseif (ControlOptions%TestLikeFlag==6) then
     ! analyse results
     IMC1 = 1
     if (pid==MasterID) then

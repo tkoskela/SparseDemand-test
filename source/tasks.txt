@@ -1,2 +1,3 @@
-1) write GradLHH to file   (N x NX)
-2) start ComputeHess2 from x(83) find out why frozen
+1) load gradLHH and hess can compare
+2) write code to load GradLHH and compute hess
+3) why does computeHess2 quite after 82 iterations?

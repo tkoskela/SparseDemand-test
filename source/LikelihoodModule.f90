@@ -2791,7 +2791,8 @@ subroutine MaximizeLikelihood1(x,LValue,Grad,Hess,ierr)
 #if USE_MPI==1
   use mpi
 #endif
-  use GlobalModule, only : ControlOptions,parms,InputDir,OutDir,MasterID,HHData,iFree,MaxOptions,ResultStructure
+  use GlobalModule, only : ControlOptions,parms,InputDir,OutDir,MasterID,HHData,iFree, &
+                           MaxOptions,ResultStructure,ReadWriteParameters
   use nag_library,  only : E04WCF,E04WDF,E04WDP,E04WEF,E04WFF, &
                            X04AAF,X04ABF,X04ACF,X04ADF
   use OutputModule, only : ComputeStats, SaveOutputs
@@ -2882,7 +2883,7 @@ subroutine MaximizeLikelihood1(x,LValue,Grad,Hess,ierr)
   if (ControlOptions%TestLikeFlag<4) then
     ! normal non-linear constraints
     call ComputeNC(nc_nonlin)   ! number of nonlinear constraints
-  else if (ControlOptions%TestLikeFlag==4) then
+  else if (ControlOptions%TestLikeFlag>=4) then
     ! no non-linear constraints
     nc_nonlin=0
   end if
@@ -2988,12 +2989,21 @@ subroutine MaximizeLikelihood1(x,LValue,Grad,Hess,ierr)
        call E04WDF(nx,nc_lin,nc_nonlin,LDA,LDCJ,LDH,A,BL,BU,                     &
                    NAGConstraintWrapper,LikeFunc,iter,ISTATE,CCON,CJAC,CLAMBDA,  &
                    LValue,GRAD,HESS,x,IW,LENIW,RW,LENRW,iuser,RUSER,ifail)
+       ! update parms
+       call UpdateParms2(x,iFree,parms)
+       ! b) save parms to disk
+       call ReadWriteParameters(parms,'write')
        print *,'E04WDF complete.'
+
        if (ControlOptions%OutputFlag .ne. 1) then
          call ComputeHess(x0,LValue0,GRAD,Hess,iuser,ruser)
          call ComputeHess(x,LValue,GRAD,Hess,iuser,ruser)
        else if (ControlOptions%OutputFlag==1) then
-         call ComputeHess2(x,LValue,Grad,Hess)
+         if (ControlOptions%ComputeHessFlag==1) then
+           call ComputeHess2(x,LValue,Grad,Hess)
+         else if (ControlOptions%ComputeHessFlag==2) then
+           call ReadGradLHH(Hess)
+         end if
        end if
     else if (ControlOptions%TestLikeFlag==3) then
       ! test non-linear contraint
@@ -3013,13 +3023,28 @@ subroutine MaximizeLikelihood1(x,LValue,Grad,Hess,ierr)
        call E04WDF(nx,nc_lin,nc_nonlin,LDA,LDCJ,LDH,A,BL,BU,                     &
                    E04WDP,LikeFunc,iter,ISTATE,CCON,CJAC,CLAMBDA,                &
                    LValue,GRAD,HESS,x,IW,LENIW,RW,LENRW,iuser,RUSER,ifail)
+       ! update parms
+       call UpdateParms2(x,iFree,parms)
+       ! b) save parms to disk
+       call ReadWriteParameters(parms,'write')
        print *,'E04WDF complete.'
        if (ControlOptions%OutputFlag .ne. 1) then
          call ComputeHess(x0,LValue0,GRAD,Hess,iuser,ruser)
          call ComputeHess(x,LValue,GRAD,Hess,iuser,ruser)
        else if (ControlOptions%OutputFlag==1) then
-         call ComputeHess2(x,LValue,Grad,Hess)
+         if (ControlOptions%ComputeHessFlag==1) then
+           call ComputeHess2(x,LValue,Grad,Hess)
+         else if (ControlOptions%ComputeHessFlag==2) then
+           call ReadGradLHH(Hess)
+         end if
        end if
+    else if (ControlOptions%TestLikeFlag==5) then
+      ! Compute Hess only
+      if (ControlOptions%ComputeHessFlag==1) then
+        call ComputeHess2(x,LValue,Grad,Hess)
+      else if (ControlOptions%ComputeHessFlag==2) then
+        call ReadGradLHH(Hess)
+      end if
     end if
 
     if (ControlOptions%OutputFlag==1) then
@@ -3755,7 +3780,7 @@ subroutine ComputeHess2(x,L,Grad,Hess)
 
   GradLHH = 0.0d0
 
-  i1min = iFreenHess0
+  i1min = iFree%nHess0
   i1max = merge(nx,min(nx,iFree%nHess1),iFree%nHess1==0)
   if (i1min>1) then
     call ReadWriteGradLHH(GradLHH,'read')
