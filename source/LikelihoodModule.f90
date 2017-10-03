@@ -3762,9 +3762,10 @@ subroutine ComputeHess2(x,L,Grad,Hess,ComputeHessFlag)
     print *,'ifree%xBC_COffDiag:',iFree%xBC_COffDiag(1),maxval(iFree%xBC_COffDiag)
   end if
 
+  call Like2Hess(nx,x,LHH0)
+  L  = sum(LHH0)/real(HHData%n,dp)
+  
   if (ComputeHessFlag==1) then
-    call Like2Hess(nx,x,LHH0)
-    L  = sum(LHH0)/real(HHData%n,dp)
     TotalTime = time()
     SubTime   = 0.0d0
 
@@ -3804,9 +3805,10 @@ subroutine ComputeHess2(x,L,Grad,Hess,ComputeHessFlag)
         Hess(i1,i2) &
            = Hess(i2,i1)
       end do
-      Call WriteHess(Hess)
     end do
   end if
+  Hess = Hess*real(HHData%N,dp)
+  Call WriteHess(Hess)
   deallocate(LHH0,LHH1,x1)
   deallocate(GradLHH)
   deallocate(SubTime)
