@@ -3762,7 +3762,7 @@ subroutine ComputeHess2(x,L,Grad,Hess,ComputeHessFlag)
     print *,'ifree%xBC_COffDiag:',iFree%xBC_COffDiag(1),maxval(iFree%xBC_COffDiag)
   end if
 
-  if (ComputeHessFlag==1)
+  if (ComputeHessFlag==1) then
     call Like2Hess(nx,x,LHH0)
     L  = sum(LHH0)/real(HHData%n,dp)
     TotalTime = time()
