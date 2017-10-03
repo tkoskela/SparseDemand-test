@@ -2999,11 +2999,7 @@ subroutine MaximizeLikelihood1(x,LValue,Grad,Hess,ierr)
          call ComputeHess(x0,LValue0,GRAD,Hess,iuser,ruser)
          call ComputeHess(x,LValue,GRAD,Hess,iuser,ruser)
        else if (ControlOptions%OutputFlag==1) then
-         if (ControlOptions%ComputeHessFlag==1) then
-           call ComputeHess2(x,LValue,Grad,Hess)
-         else if (ControlOptions%ComputeHessFlag==2) then
-           call ReadGradLHH(Hess)
-         end if
+         call ComputeHess2(x,LValue,Grad,Hess,ControlOptions%ComputeHessFlag)
        end if
     else if (ControlOptions%TestLikeFlag==3) then
       ! test non-linear contraint
@@ -3032,19 +3028,11 @@ subroutine MaximizeLikelihood1(x,LValue,Grad,Hess,ierr)
          call ComputeHess(x0,LValue0,GRAD,Hess,iuser,ruser)
          call ComputeHess(x,LValue,GRAD,Hess,iuser,ruser)
        else if (ControlOptions%OutputFlag==1) then
-         if (ControlOptions%ComputeHessFlag==1) then
-           call ComputeHess2(x,LValue,Grad,Hess)
-         else if (ControlOptions%ComputeHessFlag==2) then
-           call ReadGradLHH(Hess)
-         end if
+         call ComputeHess2(x,LValue,Grad,Hess,ControlOptions%ComputeHessFlag)
        end if
     else if (ControlOptions%TestLikeFlag==5) then
       ! Compute Hess only
-      if (ControlOptions%ComputeHessFlag==1) then
-        call ComputeHess2(x,LValue,Grad,Hess)
-      else if (ControlOptions%ComputeHessFlag==2) then
-        call ReadGradLHH(Hess)
-      end if
+      call ComputeHess2(x,LValue,Grad,Hess,ControlOptions%ComputeHessFlag)
     end if
 
     if (ControlOptions%OutputFlag==1) then
@@ -3711,14 +3699,15 @@ end subroutine ComputeHess2
 #endif
 
 ! Compute hessian = variance of score of likelihood
-subroutine ComputeHess2(x,L,Grad,Hess)
+subroutine ComputeHess2(x,L,Grad,Hess,ComputeHessFlag)
   use GlobalModule, only : HHData,ifree
   use OutputModule, only : WriteHess,ReadWriteGradLHH
   use IFPORT, only : time
   use nrtype
   implicit none
-  real(dp), intent(in)  :: x(:)
-  real(dp), intent(out) :: L,Grad(:),Hess(:,:)
+  real(dp), intent(in)     :: x(:)
+  real(dp), intent(out)    :: L,Grad(:),Hess(:,:)
+  integer(i4b), intent(in) :: ComputeHessFlag
 
   integer(i4b)              :: i1,i2,nx,i1min,i1max
   real(dp), allocatable     :: LHH0(:),LHH1(:),x1(:)
@@ -3773,39 +3762,51 @@ subroutine ComputeHess2(x,L,Grad,Hess)
     print *,'ifree%xBC_COffDiag:',iFree%xBC_COffDiag(1),maxval(iFree%xBC_COffDiag)
   end if
 
-  call Like2Hess(nx,x,LHH0)
-  L  = sum(LHH0)/real(HHData%n,dp)
-  TotalTime = time()
-  SubTime   = 0.0d0
+  if (ComputeHessFlag==1)
+    call Like2Hess(nx,x,LHH0)
+    L  = sum(LHH0)/real(HHData%n,dp)
+    TotalTime = time()
+    SubTime   = 0.0d0
 
-  GradLHH = 0.0d0
-
-  i1min = iFree%nHess0
-  i1max = merge(nx,min(nx,iFree%nHess1),iFree%nHess1==0)
-  if (i1min>1) then
-    call ReadWriteGradLHH(GradLHH,'read')
-  end if
-  do i1=i1min,i1max
-    SubTime(i1) = time()
-    x1=x
-    x1(i1) = x(i1)+h
-    call Like2Hess(nx,x1,LHH1)
-    GradLHH(:,i1) = (LHH1-LHH0)/(x1(i1)-x(i1))
-    Grad(i1) = sum(GradLHH(:,i1))/real(HHData%N,dp)
-    do i2=1,i1
-      Hess(i2,i1) = &
-        sum((GradLHH(:,i1)-Grad(i1)) &
-            * (GradLHH(:,i2)-Grad(i2)))/real(HHData%N,dp)
-      Hess(i1,i2) &
-         = Hess(i2,i1)
+    i1min = iFree%nHess0
+    i1max = merge(nx,min(nx,iFree%nHess1),iFree%nHess1==0)
+    if (i1min>1) then
+      call ReadWriteGradLHH(GradLHH,'read')
+    end if
+    do i1=i1min,i1max
+      SubTime(i1) = time()
+      x1=x
+      x1(i1) = x(i1)+h
+      call Like2Hess(nx,x1,LHH1)
+      GradLHH(:,i1) = (LHH1-LHH0)/(x1(i1)-x(i1))
+      Grad(i1) = sum(GradLHH(:,i1))/real(HHData%N,dp)
+      do i2=1,i1
+        Hess(i2,i1) = &
+          sum((GradLHH(:,i1)-Grad(i1)) &
+              * (GradLHH(:,i2)-Grad(i2)))/real(HHData%N,dp)
+        Hess(i1,i2) &
+           = Hess(i2,i1)
+      end do
+      SubTime(i1) = time() - SubTime(i1) ! elapsed time in seconds
+      write(6,'(2a4,2a11)') 'nx','i1','time','TotalTime'
+      write(6,'(2i4,2i11)') nx,i1,SubTime(i1),time()-TotalTime
+      call ReadWriteGradLHH(GradLHH,'write')
+      Call WriteHess(Hess)
     end do
-    SubTime(i1) = time() - SubTime(i1) ! elapsed time in seconds
-    write(6,'(2a4,2a11)') 'nx','i1','time','TotalTime'
-    write(6,'(2i4,2i11)') nx,i1,SubTime(i1),time()-TotalTime
-    call ReadWriteGradLHH(GradLHH,'write')
-    Call WriteHess(Hess)
-  end do
-
+  else if (ComputeHessFlag==2) then
+    call ReadWriteGradLHH(GradLHH,'read')
+    do i1=1,nx
+      Grad(i1) = sum(GradLHH(:,i1))/real(HHData%N,dp)
+      do i2=1,i1
+        Hess(i2,i1) = &
+          sum((GradLHH(:,i1)-Grad(i1)) &
+              * (GradLHH(:,i2)-Grad(i2)))/real(HHData%N,dp)
+        Hess(i1,i2) &
+           = Hess(i2,i1)
+      end do
+      Call WriteHess(Hess)
+    end do
+  end if
   deallocate(LHH0,LHH1,x1)
   deallocate(GradLHH)
   deallocate(SubTime)
