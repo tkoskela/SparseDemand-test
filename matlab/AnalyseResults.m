@@ -1,5 +1,11 @@
-%WorkDir = '/home/uctpln0/FruitDemand/code/fortran/output/A24B';
-WorkDir = '/SAN/economics/Nesheim-IO/FruitDemand/output/A24_20170629';
+% 1) load demand data from current results
+% 2) plot predicted demand vs actual
+% 3) plot demand curve for each category
+% 4) Create table of elasticities
+addpath('ImportTools')
+
+%WorkDir = '/SAN/economics/Nesheim-IO/FruitDemand/output/A24_20170629';
+WorkDir = '/SAN/economics/Nesheim-IO/FruitDemand/output/butter/A24E_20171009';
 
 [qdata,qhat,qaverage] = ...
     ImportDemandData(fullfile(WorkDir,'demand_data.csv'), 1, 24);
