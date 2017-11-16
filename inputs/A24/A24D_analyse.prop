@@ -168,6 +168,7 @@ BD_COFFDIAG_FILE : A/BD_COffDiag.raw
 SIGP_FILE        : A/sigp.raw
 
 BasePriceFile : A/BasePrice.raw
+nPrices_plot  : 30   # number of prices for demand plotting
 
 # Determine which blocks of hessian to compute
 # used in ComputeHess2
