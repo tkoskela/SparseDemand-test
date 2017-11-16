@@ -3,10 +3,14 @@
 % 3) plot demand curve for each category
 % 4) Create table of elasticities
 addpath('ImportTools')
+FigDir = 'figures';
 
 %WorkDir = '/SAN/economics/Nesheim-IO/FruitDemand/output/A24_20170629';
-WorkDir = '/SAN/economics/Nesheim-IO/FruitDemand/output/butter/A24E_20171009';
-
+WorkDir = '/SAN/economics/Nesheim-IO/FruitDemand/output/A24E_20171009';
+if exist(WorkDir,'dir')~=7
+  display(['WorkDir = ',WorkDir]);    
+  error('Directory does not exist.')
+end
 [qdata,qhat,qaverage] = ...
     ImportDemandData(fullfile(WorkDir,'demand_data.csv'), 1, 24);
 
@@ -15,17 +19,25 @@ FontSize = 16;
 
 % Plot qdata vs qhat
 % Plot qhat vs qaverage
+[~,i1]=sort(qdata);
 figure(fig1)
 subplot(2,1,1)
-plot(qdata,qhat,'.')
-xlabel('Actual consumption','FontSize',FontSize);
-ylabel('Predicted demand','FontSize',FontSize);
+hold off
+plot(log(qdata(i1)+1),log(qhat(i1)+1),'rx')
+hold on
+plot(log(qdata(i1)+1),log(qdata(i1)+1),'k')
+xlabel('Actual log consumption','FontSize',FontSize);
+ylabel('Predicted log demand','FontSize',FontSize);
 
+[~,i1]=sort(qhat);
 subplot(2,1,2)
-plot(qhat,qaverage,'.')
-xlabel('Actual prices','FontSize',FontSize);
-ylabel('Average prices','FontSize',FontSize);
-print(fig1,'fig0_model_fit.eps','-depsc');
+hold off
+plot(log(qhat(i1)+1),log(qaverage(i1)+1),'rx')
+hold on
+plot(log(qhat(i1)+1),log(qhat(i1)+1),'k')
+xlabel('Predicted log demand: actual prices','FontSize',FontSize);
+ylabel('Predicted log demand: average prices','FontSize',FontSize);
+print(fig1,fullfile(FigDir,'fig0_model_fit.eps'),'-depsc');
 
 
 % for each product, plot demand
@@ -67,6 +79,7 @@ for j1=1:J
   end
   str1 = fullfile(WorkDir,str1);
   str2 = sprintf('%c%c%c%c',FruitLabels{j1});
+  [p,q1,q2,q3,q4,q5,q6]=ImportDemandData2(str1, 1, np);
   [price(:,j1),      ...
    quantity(:,1,j1), ...
    quantity(:,2,j1), ...

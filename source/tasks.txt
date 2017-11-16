@@ -1,3 +1,0 @@
-1) load gradLHH and hess can compare
-2) write code to load GradLHH and compute hess
-3) why does computeHess2 quite after 82 iterations?

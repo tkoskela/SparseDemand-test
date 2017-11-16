@@ -2204,7 +2204,7 @@ subroutine ComputeElasticities
   ! Plot demand functions w.r.t. own price
   !   for each good save
   !   p(i1), q(i1), q1,q2,q3,q4,q5,n1,n2,n3,n4,n5
-  np = 2
+  np = parms%nPrices_plot
   allocate(newq(np,parms%k+1),p(np))
   newq = 0.0d0
   do i1=1,parms%J
@@ -2235,7 +2235,6 @@ subroutine ComputeElasticities
   deallocate(newq)
   deallocate(seed,state)
   deallocate(eta,prob)
-
 
 end subroutine ComputeElasticities
 

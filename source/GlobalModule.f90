@@ -17,6 +17,7 @@ module GlobalModule
     character(len=99) :: sigp
   end type
   type(FilenameStructure) :: ParmFiles
+
   character(len=99)       :: BasePriceFile
  
   type ResultStructure
@@ -162,6 +163,9 @@ module GlobalModule
     real(dp)              :: BC_beta_hi   ! upper bound
     real(dp)              :: BD_beta_lo   ! lower bound
     real(dp)              :: BD_beta_hi   ! upper bound
+    
+    ! parameters used to determine details of analysisof results
+    integer(i4b) :: nPrices_plot  ! number of prices to plot when demand plotting
   end type
 
   !  structure containing indexes
@@ -925,6 +929,10 @@ subroutine InitializeParameters(InputFile)
    ! file containing base price information to use in analysis
    ErrFlag = GetVal(PropList,'BasePriceFile',BasePriceFile)
    BasePriceFile = trim(InputDir) // '/' // trim(BasePriceFile)
+
+   ! number of prices to plot when plotting demand
+   ErrFlag = GetVal(PropList,'nPrices_plot',cTemp)
+   read(cTemp,'(i4)') parms%nPrices_plot 
 
    ! Parameter filenames
    ErrFlag = GetVal(PropList,'MUE_FILE',ParmFiles%MUE)
@@ -1712,6 +1720,9 @@ subroutine BroadcastParameters(pid)
     call mpi_bcast(parms%InvCOffDiag_LO,1,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(21))
     call mpi_bcast(parms%InvCOffDiag_HI,1,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(21))
   end if
+
+  ! parameters defining counterfactuals for analysis of results
+  call mpi_bcast(parms%nPrices_plot,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr(21))
 
   ! data information
   call mpi_bcast(HHData%NMC,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr(22))
