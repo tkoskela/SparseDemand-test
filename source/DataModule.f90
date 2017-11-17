@@ -306,7 +306,7 @@ subroutine SendData(pid)
 
   ! send subset of data to each pid
   ! HHData%N = sample size
-  integer(i4b) :: N1,N2,R,iHH1,iHH2,iw,i1,ierr(6)
+  integer(i4b) :: N1,N2,R,iHH1,iHH2,iw,i1,ierr(13)
   real(dp),     allocatable :: temp1(:)
   integer(i4b), allocatable :: itemp1(:)
   integer(i4b), allocatable :: request(:)
@@ -347,48 +347,62 @@ subroutine SendData(pid)
       allocate(temp1(parms%J*N2))
       temp1(1:parms%K*N2) = reshape(HHData%q(:,iHH1:iHH2),(/parms%K*N2/))
       call mpi_send(temp1(1:parms%K*N2),parms%K*N2,MPI_DOUBLE_PRECISION,iw,1,MPI_COMM_WORLD,ierr(1))
-      !call mpi_isend(temp1(1:parms%K*N2),parms%K*N2,MPI_DOUBLE_PRECISION,iw,1,MPI_COMM_WORLD, &
-      !               request(6*(iw-1)+1),ierr)
    
       ! send p 
       temp1 = reshape(HHData%p(:,iHH1:iHH2),(/parms%J*N2/))
       call mpi_send(temp1,parms%J*N2,MPI_DOUBLE_PRECISION,iw,2,MPI_COMM_WORLD,ierr(2))
-      !call mpi_isend(temp1,parms%J*N2,MPI_DOUBLE_PRECISION,iw,2,MPI_COMM_WORLD,               &
-      !               request(6*(iw-1)+2),ierr)
+  
+      ! send expenditure
+      temp1 = HHData%expenditure(iHH1:iHH2)
+      call mpi_send(temp1,N2,MPI_DOUBLE_PRECISION,iw,3,MPI_COMM_WORLD,ierr(3))
+
       deallocate(temp1)
  
       ! send market
       allocate(itemp1(parms%J*N2))
       itemp1(1:N2) = HHData%market(iHH1:iHH2)
-      call mpi_send(itemp1(1:N2),N2,MPI_INTEGER,iw,3,MPI_COMM_WORLD,ierr(3))
-      !call mpi_isend(itemp1(1:N2),N2,MPI_INTEGER,iw,3,MPI_COMM_WORLD,      &
-      !               request(6*(iw-1)+3),ierr)
+      call mpi_send(itemp1(1:N2),N2,MPI_INTEGER,iw,4,MPI_COMM_WORLD,ierr(4))
 
       ! send iNonZero
       itemp1(1:parms%K*N2) = reshape(HHData%iNonZero(:,iHH1:iHH2),(/parms%K*N2/))
-      call mpi_send(itemp1(1:N2*parms%K),N2*parms%K,MPI_INTEGER,iw,4,MPI_COMM_WORLD,ierr(4))
-      !call mpi_isend(itemp1(1:N2*parms%K),N2*parms%K,MPI_INTEGER,iw,4,MPI_COMM_WORLD, &
-      !               request(6*(iw-1)+4),ierr)
+      call mpi_send(itemp1(1:N2*parms%K),N2*parms%K,MPI_INTEGER,iw,5,MPI_COMM_WORLD,ierr(5))
 
-      ! end iZero
+      ! send iZero
       itemp1               = reshape(HHData%iZero(:,iHH1:iHH2),(/parms%J*N2/))
-      call mpi_send(itemp1,N2*parms%J,MPI_INTEGER,iw,5,MPI_COMM_WORLD,ierr(5))
-      !call mpi_isend(itemp1,N2*parms%J,MPI_INTEGER,iw,5,MPI_COMM_WORLD, &
-      !               request(6*(iw-1)+5),ierr)
+      call mpi_send(itemp1,N2*parms%J,MPI_INTEGER,iw,6,MPI_COMM_WORLD,ierr(6))
 
-      ! end nNonZero
+      ! send nNonZero
       itemp1(1:N2) = HHData%nNonZero(iHH1:iHH2)
-      call mpi_send(itemp1(1:N2),N2,MPI_INTEGER,iw,6,MPI_COMM_WORLD,ierr(6))
-      !call mpi_isend(itemp1(1:N2),N2,MPI_INTEGER,iw,6,MPI_COMM_WORLD, &
-      !               request(6*(iw-1)+6),ierr)
+      call mpi_send(itemp1(1:N2),N2,MPI_INTEGER,iw,7,MPI_COMM_WORLD,ierr(7))
+
+      ! send (fascia,internet,SmallStore)
+      iTemp1(1:N2) = HHData%fascia(iHH1:iHH2)
+      call mpi_send(itemp1(1:N2),N2,MPI_INTEGER,iw,8,MPI_COMM_WORLD,ierr(8))
+
+      ! send (fascia,internet,SmallStore)
+      iTemp1(1:N2) = HHData%internet(iHH1:iHH2)
+      call mpi_send(itemp1(1:N2),N2,MPI_INTEGER,iw,9,MPI_COMM_WORLD,ierr(9))
+
+      ! send (fascia,internet,SmallStore)
+      iTemp1(1:N2) = HHData%SmallStore(iHH1:iHH2)
+      call mpi_send(itemp1(1:N2),N2,MPI_INTEGER,iw,10,MPI_COMM_WORLD,ierr(10))
+
+      ! send (day,week,month)
+      iTemp1(1:N2) = HHData%day(iHH1:iHH2)
+      call mpi_send(itemp1(1:N2),N2,MPI_INTEGER,iw,11,MPI_COMM_WORLD,ierr(11))
+
+      ! send (day,week,month)
+      iTemp1(1:N2) = HHData%week(iHH1:iHH2)
+      call mpi_send(itemp1(1:N2),N2,MPI_INTEGER,iw,12,MPI_COMM_WORLD,ierr(12))
+
+      ! send (day,week,month)
+      iTemp1(1:N2) = HHData%month(iHH1:iHH2)
+      call mpi_send(itemp1(1:N2),N2,MPI_INTEGER,iw,13,MPI_COMM_WORLD,ierr(13))
+
       deallocate(itemp1)
       print 380,'datasend',pid,ierr
 380 format(a10,i4,6i3)
-      !call sleep(1)
-      !do i1=1,6
-      !  call mpi_wait(request(6*(iw-1)+i1),stat_array(:,6*(iw-1)+i1),ierr)
-      !end do
-    end do
+    end do  ! do i1=1,nworkers
   else if (pid .ne. MasterID) then
     ! receive subset of data
     N2 = merge(N1+1,N1,pid<=R)
@@ -399,47 +413,73 @@ subroutine SendData(pid)
     
     ! receive q
     call mpi_recv(temp1(1:parms%K*N2),parms%K*N2,MPI_DOUBLE_PRECISION,MasterID,1,MPI_COMM_WORLD,stat1,ierr(1))
-    !call mpi_irecv(temp1(1:parms%K*N2),parms%K*N2,MPI_DOUBLE_PRECISION,MasterID,1,MPI_COMM_WORLD, &
-    !               request(6*(nworkers+pid-1)+1),ierr)
     HHData%q = reshape(temp1(1:parms%K*N2),(/parms%K,n2/))
    
+
     ! receive p 
     call mpi_recv(temp1,parms%J*N2,MPI_DOUBLE_PRECISION,MasterID,2,MPI_COMM_WORLD,stat1,ierr(2))
-    !call mpi_irecv(temp1,parms%J*N2,MPI_DOUBLE_PRECISION,MasterID,2,MPI_COMM_WORLD, &
-    !               request(6*(nworkers+pid-1)+2),ierr)
     HHData%p = reshape(temp1,(/parms%J,N2/))
+
+    ! receive expenditure 
+    call mpi_recv(temp1,N2,MPI_DOUBLE_PRECISION,MasterID,3,MPI_COMM_WORLD,stat1,ierr(3))
+    HHData%expenditure = temp1
     deallocate(temp1)
 
     allocate(iTemp1(N2*parms%J))
     ! receive market
-    call mpi_recv(itemp1(1:N2),N2,MPI_INTEGER,MasterID,3,MPI_COMM_WORLD,stat1,ierr(3))
-    !call mpi_irecv(itemp1(1:N2),N2,MPI_INTEGER,MasterID,3,MPI_COMM_WORLD, &
-    !               request(6*(nworkers+pid-1)+3),ierr)
+    call mpi_recv(itemp1(1:N2),N2,MPI_INTEGER,MasterID,4,MPI_COMM_WORLD,stat1,ierr(4))
     HHData%market = itemp1(1:N2)
 
     ! receive iNonZero
-    call mpi_recv(itemp1(1:parms%K*N2),parms%K*N2,MPI_INTEGER,MasterID,4,MPI_COMM_WORLD,stat1,ierr(4))
-    !call mpi_irecv(itemp1(1:parms%K*N2),parms%K*N2,MPI_INTEGER,MasterID,4,MPI_COMM_WORLD, &
-    !               request(6*(nworkers+pid-1)+4),ierr)
+    call mpi_recv(itemp1(1:parms%K*N2),parms%K*N2,MPI_INTEGER,MasterID,5,MPI_COMM_WORLD,stat1,ierr(5))
     HHData%iNonZero = reshape(itemp1(1:parms%K*N2),(/parms%K,N2/))
 
     ! receive iZero
-    call mpi_recv(itemp1,parms%J*N2,MPI_INTEGER,MasterID,5,MPI_COMM_WORLD,stat1,ierr(5))
-    !call mpi_irecv(itemp1,parms%J*N2,MPI_INTEGER,MasterID,5,MPI_COMM_WORLD, &
-    !               request(6*(nworkers+pid-1)+5),ierr)
+    call mpi_recv(itemp1,parms%J*N2,MPI_INTEGER,MasterID,6,MPI_COMM_WORLD,stat1,ierr(6))
     HHData%iZero = reshape(itemp1,(/parms%J,N2/))
 
     ! receive nNonZero
-    call mpi_recv(itemp1(1:N2),N2,MPI_INTEGER,MasterID,6,MPI_COMM_WORLD,stat1,ierr(6))
-    !call mpi_irecv(itemp1(1:N2),N2,MPI_INTEGER,MasterID,6,MPI_COMM_WORLD, &
-    !               request(6*(nworkers+pid-1)+6),ierr)
+    call mpi_recv(itemp1(1:N2),N2,MPI_INTEGER,MasterID,7,MPI_COMM_WORLD,stat1,ierr(7))
     HHData%nNonZero = itemp1(1:N2)
+
+    ! receive (fascia,internet,SmallStore)
+    call mpi_recv(itemp1(1:N2),N2,MPI_INTEGER,MasterID,8,MPI_COMM_WORLD,stat1,ierr(8))
+    HHData%fascia = itemp1(1:N2)
+
+    ! receive (fascia,internet,SmallStore)
+    call mpi_recv(itemp1(1:N2),N2,MPI_INTEGER,MasterID,9,MPI_COMM_WORLD,stat1,ierr(9))
+    HHData%internet = itemp1(1:N2)
+
+    ! receive (fascia,internet,SmallStore)
+    call mpi_recv(itemp1(1:N2),N2,MPI_INTEGER,MasterID,10,MPI_COMM_WORLD,stat1,ierr(10))
+    HHData%SmallStore = itemp1(1:N2)
+
+    ! receive (day,week,month)
+    call mpi_recv(itemp1(1:N2),N2,MPI_INTEGER,MasterID,11,MPI_COMM_WORLD,stat1,ierr(11))
+    HHData%day = itemp1(1:N2)
+
+    ! receive (day,week,month)
+    call mpi_recv(itemp1(1:N2),N2,MPI_INTEGER,MasterID,12,MPI_COMM_WORLD,stat1,ierr(12))
+    HHData%week = itemp1(1:N2)
+
+    ! receive (day,week,month)
+    call mpi_recv(itemp1(1:N2),N2,MPI_INTEGER,MasterID,13,MPI_COMM_WORLD,stat1,ierr(13))
+    HHData%month = itemp1(1:N2)
+
     deallocate(itemp1) 
     print 433,'receive:',pid,ierr
 433 format(a10,i4,6i3)
     !do i1=1,6
     !  call mpi_wait(request(6*(nworkers+pid-1)+i1),stat_array(:,6*(nworkers+pid-1)+i1),ierr)
     !end do
+
+    ! send fascia
+    ! send internet
+    ! send SmallStore
+    ! send day
+    ! send month
+    ! send week
+    ! send expedntiure
   end if
 
   !call mpi_waitall(12*nworkers,request,stat_array,ierr) 
@@ -454,7 +494,6 @@ subroutine LoadData
   integer(i4b)  :: DataUnit,iComma,i1
   character(400) :: AllLabels
   real(dp),     allocatable :: qp(:,:),err(:,:),tiering(:,:),expenditure(:)
-  integer(i4b), allocatable :: fascia(:)
 
   DataUnit = 20
   open(unit = DataUnit, &
@@ -482,10 +521,11 @@ subroutine LoadData
   allocate(qp(HHData%N,2*parms%J))
   allocate(tiering(HHData%N,parms%J))
   allocate(expenditure(HHData%N))
-  allocate(fascia(HHData%N))
   allocate(err(HHData%N,parms%J))
 
-  if (HHData%RawDataFormat==1) then
+  select case (HHData%RawDataFormat)
+
+  case('1')
     do i1=1,HHData%N
       read(DataUnit,389) HHData%HHID(i1),HHData%date(i1),HHData%shopid(i1),  &
                          qp(i1,:),HHData%nNonZero(i1),HHData%day(i1),err(i1,:)
@@ -495,18 +535,33 @@ subroutine LoadData
       HHData%iZero(1:parms%J-HHData%nNonZero(i1),i1) = pack((/1:parms%J/),qp(i1,1:2*parms%J:2)==0.0d0)
     end do
 389 format(3i10,<2*parms%J>f25.0,2i10,<parms%J>f25.0)
-  elseif (HHData%RawDataFormat==2) then
+  case('3')
     do i1=1,HHData%N
       read(DataUnit,390) HHData%HHID(i1),HHData%date(i1),HHData%shopid(i1),  &
                          qp(i1,:),HHData%nNonZero(i1),         &
-                         fascia(i1),expenditure(i1),HHData%day(i1),err(i1,:)
+                         HHData%fascia(i1),expenditure(i1),HHData%day(i1),err(i1,:)
       HHData%q(1:HHData%nNonZero(i1),i1) = pack(qp(i1,1:2*parms%J:2),qp(i1,1:2*parms%J:2)>0.0d0)
       HHData%p(:,i1) = qp(i1,2:2*parms%J:2)
       HHData%iNonZero(1:HHData%nNonZero(i1),i1) = pack((/1:parms%J/),qp(i1,1:2*parms%J:2)>0.0d0)
       HHData%iZero(1:parms%J-HHData%nNonZero(i1),i1) = pack((/1:parms%J/),qp(i1,1:2*parms%J:2)==0.0d0)
     end do
 390 format(3i10,<2*parms%J>f25.0,2i10,f25.0,i10,<parms%J>f25.0)
-  end if 
+  case('20111109')
+    do i1=1,HHData%N
+      read(DataUnit,522) HHData%HHID(i1),HHData%date(i1),HHData%shopid(i1),  &
+                         qp(i1,:),HHData%nNonZero(i1),              &
+                         HHData%fascia(i1),HHData%internet(i1),HHData%SmallStore(i1),    &
+                         expenditure(i1),HHData%day(i1),err(i1,:)
+      HHData%q(1:HHData%nNonZero(i1),i1) = pack(qp(i1,1:2*parms%J:2),qp(i1,1:2*parms%J:2)>0.0d0)
+      HHData%p(:,i1) = qp(i1,2:2*parms%J:2)
+      HHData%iNonZero(1:HHData%nNonZero(i1),i1) = pack((/1:parms%J/),qp(i1,1:2*parms%J:2)>0.0d0)
+      HHData%iZero(1:parms%J-HHData%nNonZero(i1),i1) = pack((/1:parms%J/),qp(i1,1:2*parms%J:2)==0.0d0)
+    end do
+522 format(3i10,<2*parms%J>f25.0,4i10,f25.0,i10,<parms%J>f25.0)
+    ! Create month and week
+    HHData%month = HHData%day/12
+    HHData%week  = HHData%day/52
+  end select
   deallocate(qp,err)
   close(DataUnit)
 

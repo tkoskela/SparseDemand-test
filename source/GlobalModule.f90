@@ -65,6 +65,7 @@ module GlobalModule
     real(dp), allocatable     :: e(:,:)    ! bliss points
     real(dp), allocatable     :: q(:,:)    ! q(1:d1,i1) = nonzero elements of quantity for i1
     real(dp), allocatable     :: p(:,:)    ! p(:,i1)    = prices for household i1
+    real(dp), allocatable     :: expenditure(:)
     integer(i4b),   allocatable :: market(:) ! market id
     integer(i4b),   allocatable :: iNonZero(:,:) ! iNonZero(1:d1,i1) = indexes of nonzero elements of q for i1
     integer(i4b),   allocatable :: iZero(:,:)    ! iZero(1:d3,i1)    = indexes of zero elements of q for i1
@@ -72,11 +73,14 @@ module GlobalModule
     character(20),  allocatable :: ColumnLabels(:) ! (J x 1) labels for columns of B
     real(dp),       allocatable :: eta(:,:)
     character(200)              :: RawDataFile
-    integer(i4b)                :: RawDataFormat
+    character(8)                :: RawDataFormat
     character(100), allocatable :: RawDataLabels(:)
     integer(i4b),   allocatable :: HHID(:)
     integer(i4b),   allocatable :: shopid(:)
-    integer(i4b),   allocatable :: date(:),day(:)
+    integer(i4b),   allocatable :: fascia(:)
+    integer(i4b),   allocatable :: internet(:)
+    integer(i4b),   allocatable :: SmallStore(:)
+    integer(i4b),   allocatable :: date(:),day(:),month(:),week(:)
     integer(i4b)                :: nRawVars    ! number of variables in raw data file
     integer(i4b)                :: EstimationSeed
     integer(i4b)                :: SimulationSeed
@@ -435,6 +439,7 @@ contains
     allocate(HHData%q(parms%K,HHData%N))
     allocate(HHData%p(parms%J,HHData%N))
     allocate(HHData%e(parms%K,HHData%N))
+    allocate(HHData%expenditure(HHData%N))
     allocate(HHData%market(HHData%N))
     allocate(HHData%iNonZero(parms%K,HHData%N))
     allocate(HHData%iZero(parms%J,HHData%N))
@@ -443,7 +448,12 @@ contains
     allocate(HHData%HHID(HHData%N))
     allocate(HHData%date(HHData%N))
     allocate(HHData%day(HHData%N))
+    allocate(HHData%month(HHData%N))
+    allocate(HHData%week(HHData%N))
     allocate(HHData%shopid(HHData%N))
+    allocate(HHData%fascia(HHData%N))
+    allocate(HHData%internet(HHData%N))
+    allocate(HHData%SmallStore(HHData%N))
 
     if (parms%model==2) then
       allocate(HHData%eta(parms%dim_eta,HHData%N))
@@ -458,6 +468,7 @@ contains
     allocate(LocalHHData%q(parms%K,LocalHHData%N))
     allocate(LocalHHData%p(parms%J,LocalHHData%N))
     allocate(LocalHHData%e(parms%K,LocalHHData%N))
+    allocate(LocalHHData%expenditure(LocalHHData%N))
     allocate(LocalHHData%market(LocalHHData%N))
     allocate(LocalHHData%iNonZero(parms%K,LocalHHData%N))
     allocate(LocalHHData%iZero(parms%J,LocalHHData%N))
@@ -466,7 +477,12 @@ contains
     allocate(LocalHHData%HHID(LocalHHData%N))
     allocate(LocalHHData%date(LocalHHData%N))
     allocate(LocalHHData%day(LocalHHData%N))
+    allocate(LocalHHData%month(LocalHHData%N))
+    allocate(LocalHHData%week(LocalHHData%N))
     allocate(LocalHHData%shopid(LocalHHData%N))
+    allocate(LocalHHData%fascia(LocalHHData%N))
+    allocate(LocalHHData%internet(LocalHHData%N))
+    allocate(LocalHHData%SmallStore(LocalHHData%N))
 
     if (parms%model==2) then
       allocate(LocalHHData%eta(parms%dim_eta,LocalHHData%N))
@@ -715,7 +731,11 @@ subroutine DeallocateLocalHHData(LocalHHData)
   type(DataStructure), intent(inout) :: LocalHHData
 
   deallocate(LocalHHData%q,LocalHHData%p,LocalHHData%iNonZero,LocalHHData%iZero,LocalHHData%nNonZero)
+  deallocate(LocalHHData%expenditure)
   deallocate(LocalHHData%HHID,LocalHHData%shopid,LocalHHData%date,LocalHHData%day)
+  deallocate(LocalHHData%month,LocalHHData%week)
+  deallocate(LocalHHData%fascia,LocalHHData%internet,LocalHHData%SmallStore)
+
   deallocate(LocalHHData%market,LocalHHData%e)
   deallocate(LocalHHData%ColumnLabels)
   if (allocated(LocalHHData%eta)) then
@@ -737,7 +757,10 @@ subroutine DeallocateGlobalVariables
   ! deallocate HHData
   deallocate(HHData%q,HHData%p,HHData%iNonZero,HHData%iZero,HHData%nNonZero)
   deallocate(HHData%HHID,HHData%shopid,HHData%date,HHData%day)
+  deallocate(HHData%month,HHData%week)
+  deallocate(HHData%fascia,HHData%internet,HHData%SmallStore)
   deallocate(HHData%market,HHData%e)
+  deallocate(HHData%expenditure)
   deallocate(HHData%ColumnLabels)
   if (allocated(HHData%eta)) then
     deallocate(HHData%eta)
@@ -916,8 +939,8 @@ subroutine InitializeParameters(InputFile)
 
    ! Raw data file
    ErrFlag = GetVal(PropList,'RawData_FILE',HHData%RawDataFile)
-   ErrFlag = GetVal(PropList,'RawDataFormat',cTemp)
-   read(cTemp,'(i2)') HHData%RawDataFormat
+
+   ErrFlag = GetVal(PropList,'RawDataFormat',HHData%RawDataFormat)
 
    ! Estimation and simulation seeds
    ErrFlag = GetVal(PropList,'EstimationSeed',cTemp)
