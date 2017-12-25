@@ -6,7 +6,9 @@ addpath('ImportTools')
 FigDir = 'figures';
 
 %WorkDir = '/SAN/economics/Nesheim-IO/FruitDemand/output/A24_20170629';
-WorkDir = '/SAN/economics/Nesheim-IO/FruitDemand/output/A24E_20171009';
+%WorkDir = '/SAN/economics/Nesheim-IO/FruitDemand/output/A24E_20171009';
+WorkDir = '/SAN/economics/Nesheim-IO/FruitDemand/output/A27_20171116';
+
 if exist(WorkDir,'dir')~=7
   display(['WorkDir = ',WorkDir]);    
   error('Directory does not exist.')
