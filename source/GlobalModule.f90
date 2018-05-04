@@ -1065,9 +1065,9 @@ subroutine InitializeParameters(InputFile)
   ! J     = number of products
   ! K     = rank of demand system
   ErrFlag = GetVal(PropList,'N',cTemp)
-  read(cTemp,'(i5)') HHData%N
+  read(cTemp,'(i7)') HHData%N
   ErrFlag = GetVal(PropList,'NSIM',cTemp)
-  read(cTemp,'(i5)') HHData%NSIM
+  read(cTemp,'(i7)') HHData%NSIM
   ErrFlag = GetVal(PropList,'M',cTemp)
   read(cTemp,'(i5)') HHData%M
 

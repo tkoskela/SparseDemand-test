@@ -1885,6 +1885,19 @@ subroutine UpdateIFree(i1,iFree0,iFreeNew)
   iFreeNew%nBD_beta     = 0
   iFreeNew%nBD_CDiag    = 0
   iFreeNew%nBD_COffDiag = 0
+  
+  iFreeNew%flagD           = 0
+  iFreeNew%flagBC          = 0
+  iFreeNew%flagMUE         = 0
+  iFreeNew%flagInvCDiag    = 0
+  iFreeNew%flagInvCOffDiag = 0
+  iFreeNew%flagBC_beta     = 0
+  iFreeNew%flagBC_CDiag    = 0
+  iFreeNew%flagBC_COffDiag = 0
+  iFreeNew%flagBD_beta     = 0
+  iFreeNew%flagBD_CDiag    = 0
+  iFreeNew%flagBD_COffDiag = 0
+ 
   allocate(iFreeNew%xlabels(1))
   write(iFreeNew%xlabels(1),'(i3.0)') i1
 
@@ -1895,6 +1908,7 @@ subroutine UpdateIFree(i1,iFree0,iFreeNew)
       iFreeNew%xD = 1
       iFreeNew%D  = pack(iFree0%D,iFree0%xD==i1)
       iFreeNew%nD = 1
+      iFreeNew%flagD = 1
     end if
   end if
 
@@ -1905,6 +1919,7 @@ subroutine UpdateIFree(i1,iFree0,iFreeNew)
       iFreeNew%xBC = 1
       iFreeNew%BC  = pack(iFree0%BC,iFree0%xBC==i1)
       iFreeNew%nBC = 1
+      iFreeNew%flagBC = 1
     end if
   end if
 
@@ -1915,6 +1930,7 @@ subroutine UpdateIFree(i1,iFree0,iFreeNew)
       iFreeNew%xMUE = 1
       iFreeNew%MUE  = pack(iFree0%MUE,iFree0%xMUE==i1)
       iFreeNew%nMUE = 1
+      iFreeNew%flagMUE = 1
     end if
   end if
 
@@ -1925,6 +1941,7 @@ subroutine UpdateIFree(i1,iFree0,iFreeNew)
       iFreeNew%xInvCDiag = 1
       iFreeNew%InvCDiag  = pack(iFree0%InvCDiag,iFree0%xInvCDiag==i1)
       iFreeNew%nInvCDiag = 1
+      iFreeNew%flagInvCDiag = 1
     end if
   end if
 
@@ -1935,6 +1952,7 @@ subroutine UpdateIFree(i1,iFree0,iFreeNew)
       iFreeNew%xInvCOffDiag = 1
       iFreeNew%InvCOffDiag  = pack(iFree0%InvCOffDiag,iFree0%xInvCOffDiag==i1)
       iFreeNew%nInvCOffDiag = 1
+      iFreeNew%flagInvCOffDiag = 1
     end if
   end if
 
@@ -1945,6 +1963,7 @@ subroutine UpdateIFree(i1,iFree0,iFreeNew)
       iFreeNew%xBC_beta = 1
       iFreeNew%BC_beta  = pack(iFree0%BC_beta,iFree0%xBC_beta==i1)
       iFreeNew%nBC_beta = 1
+      iFreeNew%flagBC_beta = 1
     end if
   end if
   if (iFree0%nBD_beta>0) then
@@ -1954,6 +1973,7 @@ subroutine UpdateIFree(i1,iFree0,iFreeNew)
       iFreeNew%xBD_beta = 1
       iFreeNew%BD_beta  = pack(iFree0%BD_beta,iFree0%xBD_beta==i1)
       iFreeNew%nBD_beta = 1
+      iFreeNew%flagBD_beta = 1
     end if
   end if
 
@@ -1964,6 +1984,7 @@ subroutine UpdateIFree(i1,iFree0,iFreeNew)
       iFreeNew%xBC_CDiag = 1
       iFreeNew%BC_CDiag  = pack(iFree0%BC_CDiag,iFree0%xBC_CDiag==i1)
       iFreeNew%nBC_CDiag = 1
+      iFreeNew%flagBC_CDiag = 1
     end if
   end if
 
@@ -1974,6 +1995,7 @@ subroutine UpdateIFree(i1,iFree0,iFreeNew)
       iFreeNew%xBD_CDiag = 1
       iFreeNew%BD_CDiag  = pack(iFree0%BD_CDiag,iFree0%xBD_CDiag==i1)
       iFreeNew%nBD_CDiag = 1
+      iFreeNew%flagBD_CDiag = 1
     end if
   end if
 
@@ -1984,6 +2006,7 @@ subroutine UpdateIFree(i1,iFree0,iFreeNew)
       iFreeNew%xBC_COffDiag = 1
       iFreeNew%BC_COffDiag  = pack(iFree0%BC_COffDiag,iFree0%xBC_COffDiag==i1)
       iFreeNew%nBC_COffDiag = 1
+      iFreeNew%flagBC_COffDiag = 1
     end if
   end if
 
@@ -1994,6 +2017,7 @@ subroutine UpdateIFree(i1,iFree0,iFreeNew)
       iFreeNew%xBD_COffDiag = 1
       iFreeNew%BD_COffDiag  = pack(iFree0%BD_COffDiag,iFree0%xBD_COffDiag==i1)
       iFreeNew%nBD_COffDiag = 1
+      iFreeNew%flagBD_COffDiag = 1
     end if
   end if
 
