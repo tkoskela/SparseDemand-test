@@ -5,7 +5,7 @@ Begin
   Function Precision = 1.7e-5
   Major Optimality Tolerance = 1.0e-02
   Iterations Limit = 10000
-  Major Iterations Limit = 10
+  Major Iterations Limit = 5
   Major Print Level = 1
   Major Step Limit = 5.0
   Minimize
