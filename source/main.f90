@@ -61,7 +61,7 @@ program SparseDemand
     call InitializeParameters(InputFile)
     ! Copy input file to output directory 
     NewInputFile    = CopyInputFilename(InputFile)
-    InputFileString = "cp " // InputFile // " " // NewInputFile
+    InputFileString = "cp " // trim(InputFile) // " " // trim(NewInputFile)
     eflag = system(InputFileString)
     call date_and_time(values = DateTime)
     print *, "Parameter initialization complete. (day,hour,sec) = ",DateTime(3),DateTime(5),DateTime(6)
