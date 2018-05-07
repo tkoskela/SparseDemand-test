@@ -9,7 +9,7 @@ program SparseDemand
                                ControlOptions,HHData,ComputeNMC,  &
                                DeallocateGlobalVariables,         &
                                MasterID,nWorkers
-  use OutputModule,     only : DefineFileNames
+  use OutputModule,     only : DefineFileNames,CopyInputFilename
   use LikelihoodModule, only : RunMonteCarlo,AnalyseResults
 
 #if USE_MPI==1
@@ -26,6 +26,8 @@ program SparseDemand
   ! variables used to control command inputs
   integer(i4b), parameter         :: MaxArgLength=200  ! maximum length of command line arguments
   character(len=MaxArgLength)     :: InputFile        ! name of input file
+  character(len=MaxArgLength)     :: InputFileString
+  integer(i4b)                    :: eflag  
 
   ! MPI variables : USE_MPI==1 version
   integer(i4b)            :: ierr  ! mpi error flag
@@ -55,6 +57,10 @@ program SparseDemand
   if (pid==MasterID) then
     call GetInputFile(InputFile)
     call InitializeParameters(InputFile)
+    ! Copy input file to output directory 
+    NewInputFile    = CopyInputFilename(InputFile)
+    InputFileString = "cp " // InputFile // " " // NewInputFile
+    eflag = system(InputFileString)
     call date_and_time(values = DateTime)
     print *, "Parameter initialization complete. (day,hour,sec) = ",DateTime(3),DateTime(5),DateTime(6)
   end if

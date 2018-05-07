@@ -447,6 +447,18 @@ subroutine SavePenaltyOutputs(iter,model,xFree,LValue,Grad,Hess,Stats)
   deallocate(InvHess,StandardErrors)
 end subroutine SavePenaltyOutputs
 
+! Extract short input filename and append it to OutDir
+character(len=200) function CopyInputFilename(InputFile)
+  implicit none
+  character(len=*), intent(in) :: InputFile
+  integer(i4b)                  :: i1,n1
+
+  i1 = index(InputFile,"/",back=.TRUE.)
+  n1 = len_trim(InputFile)
+  CopyInputFilename = MakeFullFileName(InputFile(i1+1:n1))
+
+end function CopyInputFilename
+
 character(LEN=1048) function MakeFullFileName(ShortFileName)
   implicit none
   character(len=*), intent(in) :: ShortFileName
