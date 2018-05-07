@@ -11,6 +11,7 @@ program SparseDemand
                                MasterID,nWorkers
   use OutputModule,     only : DefineFileNames,CopyInputFilename
   use LikelihoodModule, only : RunMonteCarlo,AnalyseResults
+  use IFPORT,           only : system
 
 #if USE_MPI==1
   use GlobalModule,     only : BroadcastParameters
@@ -25,9 +26,10 @@ program SparseDemand
 
   ! variables used to control command inputs
   integer(i4b), parameter         :: MaxArgLength=200  ! maximum length of command line arguments
-  character(len=MaxArgLength)     :: InputFile        ! name of input file
-  character(len=MaxArgLength)     :: InputFileString
-  integer(i4b)                    :: eflag  
+  character(len=MaxArgLength)     :: InputFile         ! name of input file
+  character(len=MaxArgLength)     :: NewInputFile      ! name of copy of input file
+  character(len=MaxArgLength)     :: InputFileString   ! string used to create copy
+  integer(i4b)                    :: eflag             ! error flag for copying
 
   ! MPI variables : USE_MPI==1 version
   integer(i4b)            :: ierr  ! mpi error flag
