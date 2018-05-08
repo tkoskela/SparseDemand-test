@@ -3,18 +3,30 @@
 % 3) plot demand curve for each category
 % 4) Create table of elasticities
 addpath('ImportTools')
-FigDir = 'figures';
 
 %WorkDir = '/SAN/economics/Nesheim-IO/FruitDemand/output/A24_20170629';
 %WorkDir = '/SAN/economics/Nesheim-IO/FruitDemand/output/A24E_20171009';
-WorkDir = '/SAN/economics/Nesheim-IO/FruitDemand/output/A27_20171116';
+%WorkDir = '/SAN/economics/Nesheim-IO/FruitDemand/output/A27_20171116';
+WorkDir = '/SAN/economics/Nesheim-IO/FruitDemand/output/A27_20180101';
+OutDir  = '/home/uctpln0/FruitDemand/code/fortran/output/A27_20180101';
+
+J  = 27;
+K  = 5;
+np = 30;
 
 if exist(WorkDir,'dir')~=7
   display(['WorkDir = ',WorkDir]);    
   error('Directory does not exist.')
 end
+if exist(OutDir,'dir')~=7
+  e=mkdir(OutDir); 
+  if (e~=1) 
+    error(['Failed to create OutDir = ',OutDir]);
+  end
+end
+
 [qdata,qhat,qaverage] = ...
-    ImportDemandData(fullfile(WorkDir,'demand_data.csv'), 1, 24);
+    ImportDemandData(fullfile(WorkDir,'demand_data.csv'), 1, J);
 
 fig1=1;
 FontSize = 16;
@@ -39,13 +51,9 @@ hold on
 plot(log(qhat(i1)+1),log(qhat(i1)+1),'k')
 xlabel('Predicted log demand: actual prices','FontSize',FontSize);
 ylabel('Predicted log demand: average prices','FontSize',FontSize);
-print(fig1,fullfile(FigDir,'fig0_model_fit.eps'),'-depsc');
-
+print(fig1,fullfile(OutDir,'fig1_model_fit.eps'),'-depsc');
 
 % for each product, plot demand
-J = 24;
-K = 5;
-np = 30;
 price = zeros(np,J);
 quantity = zeros(np,K+1,J);
 qtemp    = zeros(np,K+1);
@@ -60,16 +68,19 @@ FruitLabels = {'Apricots'; ...
                'Grapes'; ...
                'Grapefruits'; ...
                'Kiwis'; ...
-               'Lemons and limes'; ...
+               'Lemons'; ...
+               'Limes';       ...
                'Lychees'; ...
                'Mangos'; ...
                'Melons'; ...
+               'Nectarines'; ...
                'Oranges'; ...
                'Passion fruits'; ...
                'Paw-paws'; ...
+               'Peaches';  ...
                'Pears'; ...
                'Pineapples'; ...
-               'Peaches, plums, and nectarines'; ...
+               'Plums'; ...
                'Pomegranates'; ...
                'Rhubarb'; ...
                'Sharon fruits'};
@@ -103,7 +114,7 @@ for j1=1:J
      plot(price(:,j1),reshape(quantity(:,2:K+1,j1),[np K]));
      legend('One item','Two items','Three items','Four items','Five items')
      print(fig1, ...
-         fullfile(WorkDir,['fig',int2str(j1),'_',str2,'.eps']), ...
+         fullfile(OutDir,['fig',int2str(j1),'_',str2,'.eps']), ...
          '-depsc');
    elseif NewPlotFlag==1
      area(price(:,j1),quantity(:,2:K+1,j1))
@@ -112,7 +123,7 @@ for j1=1:J
      ylabel('quantity','FontSize',FontSize)
      legend('One item','Two items','Three items','Four items','Five items')
      print(fig1, ...
-         fullfile(WorkDir,['fig',int2str(j1),'_',str2,'.eps']), ...
+         fullfile(OutDir,['fig',int2str(j1),'_',str2,'.eps']), ...
          '-depsc');
    end
 end
@@ -121,4 +132,5 @@ end
 elas = ImportElasticity(fullfile(WorkDir,'elas.csv'), 1, J);
 %elas = ImportElasticity2(fullfile(WorkDir,'elas.csv'), 1, J);
 
-CreateElasTable(fullfile(WorkDir,'elas1.tex'),elas,FruitLabels);
+CreateElasTable(fullfile(OutDir,'elas1.tex'),elas,FruitLabels);
+close all;
