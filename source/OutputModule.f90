@@ -766,7 +766,7 @@ subroutine WriteTaxResults1(q0,p0,qtax,ptax,filename)
 
   ! write variable names 
   write(taxresults_unit,780) "q0",qstring,"p0",pstring
-780 format(<2*ntax+2>(a25,:,",")
+780 format(<2*ntax+2>(a25,:,","))
 
   ! write (quantity,price)
   do i1=1,J
@@ -806,7 +806,7 @@ subroutine WriteTaxResults2(e0,u0,etax,utax,filename)
 
   ! Write variable names
   write(taxresults_unit,826) "e0",estring,"u0",ustring
-826 format(<2*ntax+2>(a25,:,",")
+826 format(<2*ntax+2>(a25,:,","))
 
   ! write (expenditure,utility)
   do i1=1,n

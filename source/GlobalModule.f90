@@ -2447,7 +2447,6 @@ subroutine LoadTaxParameters(taxid,taxlabel,taxtype,tax)
   ! row 3       tax type
   ! row 4 - J+3 tax rate on product 1 - J
   TaxParmsUnit = 45
-  taxparm_file = "tax_parameters.csv"
   open(unit = TaxParmsUnit, &
        file = ParmFiles%TaxParmsFile, &
        action = "read")
@@ -2462,11 +2461,11 @@ subroutine LoadTaxParameters(taxid,taxlabel,taxtype,tax)
   do while (icomma>0)
     icomma = index(buffer1,",")
     if (icomma>0) then
-      read(buffer1(1:(icomma-1)),'(i2)') itemp(i1) 
+      read(buffer1(1:(icomma-1)),'(i4)') itemp(i1) 
       i1=i1+1
       buffer1=buffer1((icomma+1):len_trim(buffer1))
     else
-      read(buffer1,'(i2)') itemp(i1) 
+      read(buffer1,'(i4)') itemp(i1) 
     end if
   end do
   ntax = i1
@@ -2500,7 +2499,7 @@ subroutine LoadTaxParameters(taxid,taxlabel,taxtype,tax)
   do i1=1,parms%J
     read(TaxParmsUnit,69) tax(i1,:)
   end do
- 69 format(<ntax>g12.4)  
+ 69 format(<ntax>g13.4)  
 
   deallocate(itemp)
 

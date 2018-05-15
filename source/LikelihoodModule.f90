@@ -2062,7 +2062,7 @@ subroutine ComputeElasticities
   use OutputModule, only : WriteElasticities,WriteDemandResults1,WriteDemandResults2, &
                            WriteTaxResults1,WriteTaxResults2
   use ToolsModule, only  : InverseNormal_mkl
-  use IFPORT
+  use IFPORT, only       : system
   implicit none
 
   integer(i4b)              :: i1,i2,i3
@@ -2077,16 +2077,18 @@ subroutine ComputeElasticities
   integer(i4b)              :: np,nProb
 
   ! variables to store results from tax experiments
+  integer(i4b)                    :: ntax
   integer(i4b),       allocatable :: taxid(:)
   character(len=100), allocatable :: taxlabel(:)
   character(len=10),  allocatable :: taxtype(:)
   real(dp),           allocatable :: tax(:,:)
   real(dp),           allocatable :: qtax(:,:),ptax(:,:)
   real(dp),           allocatable :: HHSpending(:,:),HHUtility(:,:)
+  character(len=1000)             :: copyfilecommand
 
   ! initialize random number generator
   integer(i4b)              :: genid,subid,lseed,ifail,lstate
-  integer(i4b), allocatable :: seed(:),state(:)
+  integer(i4b), allocatable :: localseed(:),state(:)
 
   ! variables used by E04RZF: normal random number generator
   integer(i4b)              :: mode,ldc,ldx,LR
@@ -2125,13 +2127,13 @@ subroutine ComputeElasticities
   !lseed = 624 ! number of seeds needed for genid = 3
   !allocate(seed(lseed))
   lseed  = 1
-  allocate(seed(lseed))
+  allocate(localseed(lseed))
   lstate = 1260  ! min value for genid=3
   allocate(state(lstate))
   ifail  = -1
-  seed   = HHData%SimulationSeed
+  localseed   = HHData%SimulationSeed
 
-  call G05KFF(genid,subid,seed,lseed,state,lstate,ifail)
+  call G05KFF(genid,subid,localseed,lseed,state,lstate,ifail)
 
   ! Generate HHDataSim1%e
   mode = 2
@@ -2207,7 +2209,6 @@ subroutine ComputeElasticities
   call ComputeDemand(HHDataSim1)
   call ComputeDemand(SimData1)
   call ComputeAggregateDemand(HHDataSim1%q,HHDataSim1%iNonZero,q0,HHDataSim1%nNonZero,0)
-  deallocate(p0)
 
   ExcessQ = q0-qdata
   call WriteDemandResults1(qdata,qhat,q0)
@@ -2271,7 +2272,7 @@ subroutine ComputeElasticities
 
   call LoadTaxParameters(taxid,taxlabel,taxtype,tax)
   ntax = size(taxid,1)
-  allocate(qtax(J,ntax),ptax(J,ntax))
+  allocate(qtax(parms%J,ntax),ptax(parms%J,ntax))
   allocate(HHSpending(HHDataSim2%n,ntax),HHUtility(HHDataSim2%n,ntax))
 
   qtax       = 0.0d0
@@ -2292,9 +2293,8 @@ subroutine ComputeElasticities
   end do
 
   ! Write description of tax experiments
-  cmdstring = "cp " // trim(ParmFiles%TaxParmsFile) // " " // &
-              OutDir // "/" // "taxparms.csv"
-  system(cmdstring)
+  copyfilecommand = "cp " // trim(ParmFiles%TaxparmsFile) // " " // OutDir // "/taxparms.csv"
+  ifail = system(trim(copyfilecommand))
   
   ! Write aggregate results:  baseline (q0,p0) and alternative (qtax,ptax) (J x ...)
   call WriteTaxResults1(q0,p0,qtax,ptax,filename="taxresults_aggregate.csv")
@@ -2308,12 +2308,12 @@ subroutine ComputeElasticities
   ! deallocate memory for HHData0
   call DeallocateLocalHHData(HHDataSim1)
   call DeallocateLocalHHData(HHDataSim2)
-  deallocate(q0,q1,GradQ,ExcessQ)
+  deallocate(q0,q1,p0,GradQ,ExcessQ)
   deallocate(qdata,qhat)
   deallocate(newq)
-  deallocate(seed,state)
+  deallocate(localseed,state)
   deallocate(eta,prob)
-  deallocate(DeltaP,qtax,ptax)
+  deallocate(tax,qtax,ptax)
   deallocate(taxlabel)
   deallocate(HHSpending,HHUtility)
 
