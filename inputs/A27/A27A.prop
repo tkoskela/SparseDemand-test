@@ -42,7 +42,7 @@ small : 1.0d-50     # small number to prevent log of zero
 # K     = dimension of demand system
 NMC   : 1
 N     : 26514
-NSIM  : 500000
+NSIM  : 10
 M     : 201
 J     : 27
 K     : 5
@@ -171,11 +171,12 @@ BD_COFFDIAG_FILE : rawparms/BD_COffDiag.raw
 SIGP_FILE        : rawparms/sigp.raw
 
 BasePriceFile : rawparms/BasePrice.raw
-nPrices_plot  : 30   # number of prices for demand plotting
+TaxParmsFile  : rawparms/taxparms.csv
+nPrices_plot  : 3   # number of prices for demand plotting
 
 # Determine which blocks of hessian to compute
 # used in ComputeHess2
 # nHess0 = start computation from x(nHess0)
 # nHess1 = stop computation after x(minval(nx,nHess1))
-nHess0 : 316    
+nHess0 : 1    
 nHess1 : 0    # if 0 nHess1 = nx
