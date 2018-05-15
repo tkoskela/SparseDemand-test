@@ -31,15 +31,18 @@ end
 FullQ         = zeros(np*J,J,nhh);
 UniqueNonZero = cell(nhh,1);
 iMaxQ         = zeros(nhh,1);
-nprices=2;
+
 fig=0;
 
 close all
 
+eta = zeros(nhh,2);
+nprices = zeros(nhh,1);
 for ihh=1:nhh
   % Extract demand for current HH
-  iTemp = IndividualDemand(:,1)==ihh;
+  iTemp = IndividualDemand(:,cols.ihh)==ihh;
   demand = IndividualDemand(iTemp,:);
+  eta(ihh,:) = demand(1,cols.eta);
   
   % Find unique product id's of products purchased by ihh
   iNonZero           = demand(:,cols.iNonZero);
@@ -55,25 +58,48 @@ for ihh=1:nhh
     end
   end 
   end
-  
+    
   nq = length(UniqueNonZero{ihh});
-  for j1=1:nprices
+  for j1=1:nq
     % plot demands vs p(j1)
     jp = UniqueNonZero{ihh}(j1);  % index of current price
-
+    i0 = demand(:,cols.jp)==jp;
+    iNonZero = demand(i0,cols.iNonZero);
+    iNonZero = iNonZero(:);
+    SubsetUnique = unique(iNonZero(iNonZero~=0));
+    nq1 = length(SubsetUnique);
+    
     fig=fig+1;
     figure(fig);
     FigFile = fullfile(OutDir,['hh',int2str(ihh),'_p',int2str(jp),'.eps']);
     
-    for j2=1:nq
-      subplot(ceil(nq/2),2,j2)
-      jq = UniqueNonZero{ihh}(j2);
-      i0 = demand(:,cols.jp)==jp;
-      plot(demand(i0,cols.p(jp)),FullQ(i0,jq))
-      xlabel(['p(',int2str(jp),')'])
-      ylabel(['q(',int2str(jq),')'])
+    for j2=1:nq1
+      subplot(ceil(nq1/2),2,j2)
+      jq = SubsetUnique(j2);
+      plot(demand(i0,cols.p(jp)),FullQ(i0,jq,ihh))
+      xlabel([FruitLabels{jp},' price (GBP)']);
+      ylabel(FruitLabels{jq});
+      %xlabel(['p(',int2str(jp),')'])
+      %ylabel(['q(',int2str(jq),')'])
       print(FigFile,'-depsc2')
     end      
   end  
-end        
+end 
+
+% Plot density of nitems for each household type
+fig =fig+1;
+figure(fig)
+FigFile = fullfile(OutDir,'nitems.eps');
+for ihh=1:nhh
+  subplot(3,3,ihh)
+  itemp = IndividualDemand(:,cols.ihh)==ihh;
+  nitems = IndividualDemand(itemp,cols.n);
+  hist(nitems)
+end
+print(FigFile,'-depsc2');
+
+% Create table listing names of products for each consumer
+CreateTableProductNames(eta,UniqueNonZero,FruitLabels, ...
+                        fullfile(OutDir,'baskets.tex'));
+                    
 close all

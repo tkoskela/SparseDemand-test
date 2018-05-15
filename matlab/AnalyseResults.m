@@ -99,7 +99,7 @@ for j1=1:J
    quantity(:,3,j1), ...
    quantity(:,4,j1), ...
    quantity(:,5,j1), ...
-   quantity(:,6,j1)] = ImportDemandData2(str1, 1, np);
+   quantity(:,6,j1)] = ImportDemandData2(str1, 1, np);  
    fig1=fig1+1;
    figure(fig1)
    
@@ -108,8 +108,8 @@ for j1=1:J
      subplot(2,1,1)
      plot(price(:,j1),quantity(:,1,j1))
      title(['Demand for ',FruitLabels{j1}],'FontSize',FontSize);
-     xlabel('price','FontSize',FontSize)
-     ylabel('quantity','FontSize',FontSize)
+     xlabel('price (GBP)','FontSize',FontSize)
+     ylabel('quantity (grams)','FontSize',FontSize)
      subplot(2,1,2)
      plot(price(:,j1),reshape(quantity(:,2:K+1,j1),[np K]));
      legend('One item','Two items','Three items','Four items','Five items')
@@ -117,10 +117,12 @@ for j1=1:J
          fullfile(OutDir,['fig',int2str(j1),'_',str2,'.eps']), ...
          '-depsc');
    elseif NewPlotFlag==1
+     baseprice = (2/3) * min(price(:,j1)) + (1/3)*max(price(:,j1));  
      area(price(:,j1),quantity(:,2:K+1,j1))
      title(['Demand for ',FruitLabels{j1}],'FontSize',FontSize);
-     xlabel('price','FontSize',FontSize)
-     ylabel('quantity','FontSize',FontSize)
+     xlabel(['price (GBP: average market price = ', ...
+             num2str(baseprice,2),' GBP)'],'FontSize',FontSize)
+     ylabel('quantity (grams)','FontSize',FontSize)
      legend('One item','Two items','Three items','Four items','Five items')
      print(fig1, ...
          fullfile(OutDir,['fig',int2str(j1),'_',str2,'.eps']), ...

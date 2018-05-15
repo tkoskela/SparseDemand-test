@@ -177,5 +177,5 @@ nPrices_plot  : 30   # number of prices for demand plotting
 # used in ComputeHess2
 # nHess0 = start computation from x(nHess0)
 # nHess1 = stop computation after x(minval(nx,nHess1))
-nHess0 : 315
+nHess0 : 1  
 nHess1 : 0    # if 0 nHess1 = nx

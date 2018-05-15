@@ -16,7 +16,7 @@ TestLikeFlag : 4     # 0 = maximise likelihood
                      # 6 = analyse results
 BICFlag          : 0 # 1 to minimize BIC
 SimulateDataFlag : 0 # 1 simulate data, 0 = load data from file
-HotStart         : 0 # 1 to do HotStart, from previous saved output
+HotStart         : 1 # 1 to do HotStart, from previous saved output
 
 # Flags
 ComputeHessFlag : 0  # 1 = compute hessian. 2 = load gradLHH and compute hessian
@@ -145,15 +145,15 @@ InvCOffDiag_HI : 0.95d0  # BU = pi * InvCOffDiag_HI
 FreeFlagD           : 0   # 1 to be free, 0 to be fixed
 FreeFlagBC          : 0   # 1 to be free, 0 to be fixed
 FreeFlagMUE         : 1   # 1 to be free, 0 to be fixed
-FreeFlagInvCDiag    : 1   # 1 to be free, 0 to be fixed
-FreeFlagInvCOffDiag : 1   # 1 to be free, 0 to be fixed
+FreeFlagInvCDiag    : 0   # 1 to be free, 0 to be fixed
+FreeFlagInvCOffDiag : 0   # 1 to be free, 0 to be fixed
 
 FreeFlagBD_beta     : 1
 FreeFlagBD_CDiag    : 1
-FreeFlagBD_COffDiag : 1
+FreeFlagBD_COffDiag : 0
 FreeFlagBC_beta     : 1
 FreeFlagBC_CDiag    : 1
-FreeFlagBC_COffDiag : 1
+FreeFlagBC_COffDiag : 0
 OneAtATime          : 0
 
 # Parameter file names
