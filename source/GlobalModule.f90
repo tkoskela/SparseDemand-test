@@ -66,6 +66,7 @@ module GlobalModule
     real(dp), allocatable     :: q(:,:)    ! q(1:d1,i1) = nonzero elements of quantity for i1
     real(dp), allocatable     :: p(:,:)    ! p(:,i1)    = prices for household i1
     real(dp), allocatable     :: expenditure(:)
+    real(dp), allocatable     :: utility(:)
     integer(i4b),   allocatable :: market(:) ! market id
     integer(i4b),   allocatable :: iNonZero(:,:) ! iNonZero(1:d1,i1) = indexes of nonzero elements of q for i1
     integer(i4b),   allocatable :: iZero(:,:)    ! iZero(1:d3,i1)    = indexes of zero elements of q for i1
@@ -440,6 +441,7 @@ contains
     allocate(HHData%p(parms%J,HHData%N))
     allocate(HHData%e(parms%K,HHData%N))
     allocate(HHData%expenditure(HHData%N))
+    allocate(HHData%utility(HHData%N))
     allocate(HHData%market(HHData%N))
     allocate(HHData%iNonZero(parms%K,HHData%N))
     allocate(HHData%iZero(parms%J,HHData%N))
@@ -469,6 +471,7 @@ contains
     allocate(LocalHHData%p(parms%J,LocalHHData%N))
     allocate(LocalHHData%e(parms%K,LocalHHData%N))
     allocate(LocalHHData%expenditure(LocalHHData%N))
+    allocate(LocalHHData%utility(LocalHHData%N))
     allocate(LocalHHData%market(LocalHHData%N))
     allocate(LocalHHData%iNonZero(parms%K,LocalHHData%N))
     allocate(LocalHHData%iZero(parms%J,LocalHHData%N))
@@ -761,6 +764,7 @@ subroutine DeallocateGlobalVariables
   deallocate(HHData%fascia,HHData%internet,HHData%SmallStore)
   deallocate(HHData%market,HHData%e)
   deallocate(HHData%expenditure)
+  deallocate(HHData%utility)
   deallocate(HHData%ColumnLabels)
   if (allocated(HHData%eta)) then
     deallocate(HHData%eta)

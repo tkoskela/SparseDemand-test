@@ -2056,9 +2056,11 @@ subroutine ComputeElasticities
   use nrtype
   use GlobalModule, only : parms,HHData,ControlOptions,InputDir, &
                            DataStructure,AllocateLocalHHData,    &
-                           DeallocateLocalHHData,LoadBasePrice
+                           DeallocateLocalHHData,LoadBasePrice,  &
+                           LoadTaxParameters
   use nag_library, only  : G05KFF,G05RZF,G05SAF
-  use OutputModule, only : WriteElasticities,WriteDemandResults1,WriteDemandResults2
+  use OutputModule, only : WriteElasticities,WriteDemandResults1,WriteDemandResults2, &
+                           WriteTaxResults1,WriteTaxResults2
   use ToolsModule, only  : InverseNormal_mkl
   implicit none
 
@@ -2072,6 +2074,12 @@ subroutine ComputeElasticities
   real(dp), allocatable     :: elas(:,:)
   real(dp), allocatable     :: newQ(:,:),p(:),p0(:)
   integer(i4b)              :: np,nProb
+
+  ! variables to store results from tax experiments
+  real(dp), allocatable :: DeltaP(:,:)
+  real(dp), allocatable :: qtax(:,:),ptax(:,:)
+  real(dp), allocatable :: HHSpending(:,:),HHUtility(:,:)
+  character(len=100), allocatable :: taxlabel(:)
 
   ! initialize random number generator
   integer(i4b)              :: genid,subid,lseed,ifail,lstate
@@ -2182,16 +2190,17 @@ subroutine ComputeElasticities
     end do
     deallocate(e2)
   end if
-  ! predicted demand at prices in data
+  ! predicted demand and welfare at prices in data
   call ComputeDemand(HHDataSim1)
   call ComputeAggregateDemand(HHDataSim1%q,HHDataSim1%iNonZero,qhat,HHDataSim1%nNonZero,0)
 
   ! set price = average price
   call LoadBasePrice(p0)
-  HHDataSim1%p = spread(sum(HHDataSim1%p,2)/real(HHDataSim1%n,dp)+p0,2,HHDataSim1%N)
+  p0 = sum(HHDataSim1%p,2)/real(HHDataSim1%n,dp) + p0
+  HHDataSim1%p = spread(p0,2,HHDataSim1%N)
   SimData1%p = spread(sum(HHDataSim1%p,2)/real(HHDataSim1%n,dp),2,SimData1%N)
 
-  ! Compute baseline demand
+  ! Compute baseline demand and welfare
   call ComputeDemand(HHDataSim1)
   call ComputeDemand(SimData1)
   call ComputeAggregateDemand(HHDataSim1%q,HHDataSim1%iNonZero,q0,HHDataSim1%nNonZero,0)
@@ -2251,6 +2260,41 @@ subroutine ComputeElasticities
   ! write output to file
   call ComputeIndividualDemand(SimData1)
 
+  ! Compute tax and other counterfactuals
+  !  1) raise price of 1 good to a very large number
+  !  2) raise price of foreign goods due to Brexit
+  !  3) subsidy to fruit consumption
+  ! set price = average price
+
+  call LoadTaxParameters(ntax,taxlabel,DeltaP)
+  allocate(qtax(J,ntax),ptax(J,ntax))
+  allocate(HHSpending(HHDataSim2%n,ntax),HHUtility(HHDataSim2%n,ntax))
+
+  qtax       = 0.0d0
+  ptax       = 0.0d0  
+  HHSpending = 0.0d0
+  HHUtility  = 0.0d0
+  do i1=1,ntax
+    ptax(:,i1)   = (sum(HHDataSim1%p,2)/real(HHDataSim1%n)) * DeltaP(:,i1)
+    HHDataSim2%p = spread(ptax(:,i1),2,HHDataSim2%N)
+    call ComputeDemand(HHDataSim2)
+    HHSpending(:,i1) = HHDataSim2%expenditure
+    HHUtility(:,i1)  = HHDataSim2%utility
+    call ComputeAggregateDemand(HHDataSim2%q,HHDataSim2%iNonZero,qtax(:,i1),HHDataSim2%nNonZero,0)
+  end do
+
+  ! Write description of tax experiments
+  call WriteTaxLabel(taxlabel,filename="taxlabel.txt")
+  
+  ! Write aggregate results:  baseline (q0,p0) and alternative (qtax,ptax) (J x ...)
+  call WriteTaxResults1(q0,p0,qtax,ptax,filename="taxresults_aggregate.csv")
+
+  ! Write HH results on (expenditure,utility)
+  !    HHDataSim1%expenditure,HHDataSim1%utility = baseline results
+  !    (HHSpending,HHUtility) = alternative results
+  call WriteTaxResults2(HHDataSim1%expenditure,HHDataSim1%utility, &
+                        HHSpending,HHUtility,filename="taxresults_hh.csv")
+
   ! deallocate memory for HHData0
   call DeallocateLocalHHData(HHDataSim1)
   call DeallocateLocalHHData(HHDataSim2)
@@ -2259,6 +2303,8 @@ subroutine ComputeElasticities
   deallocate(newq)
   deallocate(seed,state)
   deallocate(eta,prob)
+  deallocate(DeltaP,qtax,ptax)
+  deallocate(HHSpending,HHUtility)
 
 end subroutine ComputeElasticities
 
@@ -2337,9 +2383,9 @@ end subroutine ComputeAggregateDemand
 
 subroutine ComputeDemand(HHData1)
   use GlobalModule, only : parms,DataStructure,InputDir
-  use DataModule, only : ComputeCurrentB
-  use nag_library, only : X04ABF,X04ACF,X04ADF, &
-                          E04WBF,E04NCA,E04NDA
+  use DataModule,   only : ComputeCurrentB
+  use nag_library,  only : X04ABF,X04ACF,X04ADF, &
+                           E04WBF,E04NCA,E04NDA
   use nrtype
   implicit none
   type(DataStructure), intent(inout) :: HHData1
@@ -2458,7 +2504,7 @@ subroutine ComputeDemand(HHData1)
     A = matmul(transpose(parms%B),parms%B)
     call E04NCA(M,N,NCLIN,LDC,LDA,C,BL,BU,CVEC,ISTATE,KX,X,A,B,iter,OBJ,CLAMDA, &
                 IWORK,LIWORK,WORK,LWORK,LWSAV,IWSAV,RWSAV,ifail)
-
+    HHData1%utility(i1)  = OBJ
     HHData1%nNonZero(i1) = count(x>=crit)
     HHData1%iNonZero(1:HHData1%nNonZero(i1),i1) = pack((/1:parms%J/),x>=crit)
     HHData1%iZero(1:parms%J-HHData1%nNonZero(i1),i1) = pack((/1:parms%J/),x<crit)
