@@ -42,7 +42,7 @@ small : 1.0d-50     # small number to prevent log of zero
 # K     = dimension of demand system
 NMC   : 1
 N     : 26514
-NSIM  : 10
+NSIM  : 60000
 M     : 201
 J     : 27
 K     : 5
@@ -172,7 +172,7 @@ SIGP_FILE        : rawparms/sigp.raw
 
 BasePriceFile : rawparms/BasePrice.raw
 TaxParmsFile  : rawparms/taxparms.csv
-nPrices_plot  : 3   # number of prices for demand plotting
+nPrices_plot  : 30   # number of prices for demand plotting
 
 # Determine which blocks of hessian to compute
 # used in ComputeHess2
