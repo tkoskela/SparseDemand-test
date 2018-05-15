@@ -171,6 +171,7 @@ BD_COFFDIAG_FILE : rawparms/BD_COffDiag.raw
 SIGP_FILE        : rawparms/sigp.raw
 
 BasePriceFile : rawparms/BasePrice.raw
+TaxParmsFile  : rawparms/taxparms.csv
 nPrices_plot  : 30   # number of prices for demand plotting
 
 # Determine which blocks of hessian to compute
