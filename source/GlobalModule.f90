@@ -15,10 +15,10 @@ module GlobalModule
     character(len=99) :: BC_beta,BC_CDiag,BC_COffDiag
     character(len=99) :: BD_beta,BD_CDiag,BD_COffDiag
     character(len=99) :: sigp
+    character(len=99) :: BasePriceFile
+    character(len=99) :: TaxParmsFile
   end type
   type(FilenameStructure) :: ParmFiles
-
-  character(len=99)       :: BasePriceFile
  
   type ResultStructure
     real(dp)     :: BIC
@@ -954,8 +954,12 @@ subroutine InitializeParameters(InputFile)
    read(cTemp,'(i4)') HHData%SimulationSeed
 
    ! file containing base price information to use in analysis
-   ErrFlag = GetVal(PropList,'BasePriceFile',BasePriceFile)
-   BasePriceFile = trim(InputDir) // '/' // trim(BasePriceFile)
+   ErrFlag = GetVal(PropList,'BasePriceFile',cTemp)
+   ParmFiles%BasePriceFile = trim(InputDir) // '/' // trim(cTemp)
+
+   ! file containing parameters for tax experiments
+   ErrFlag = GetVal(PropList,'TaxParmsFile',cTemp)
+   ParmFiles%TaxParmsFile = trim(InputDir) // '/' // trim(cTemp)
 
    ! number of prices to plot when plotting demand
    ErrFlag = GetVal(PropList,'nPrices_plot',cTemp)
@@ -2409,7 +2413,7 @@ subroutine LoadBasePrice(p0)
   BasePriceUnit = 100
  
   open(unit = BasePriceUnit, &
-       file = BasePriceFile, &
+       file = ParmFiles%BasePriceFile, &
        action = 'read')
 
   do i1=1,parms%J
@@ -2418,5 +2422,89 @@ subroutine LoadBasePrice(p0)
 
   close(BasePriceUnit)
 end subroutine LoadBasePrice
+
+! Load tax parameters from file
+! taxid    = id number for tax experiment
+! taxlabel = description of tax experiment
+! taxtype  = "ad valorem" or "excise"
+! tax      = (J x ntax) for each tax vector of tax rates
+subroutine LoadTaxParameters(taxid,taxlabel,taxtype,tax)
+  implicit none
+  integer(i4b),       allocatable,intent(out) :: taxid(:)
+  character(len=100), allocatable,intent(out) :: taxlabel(:)
+  character(len=10),  allocatable,intent(out) :: taxtype(:)
+  real(dp),           allocatable,intent(out) :: tax(:,:) 
+
+  integer(i4b)       :: TaxParmsUnit
+
+  character(len=1024)       :: buffer1,buffer2
+  integer(i4b), allocatable :: itemp(:)
+  integer(i4b)              :: i1,icomma,ntax
+
+  ! tax parameter file: (J+3 x ntax)  csv file
+  ! row 1       taxid
+  ! row 2       taxlabel
+  ! row 3       tax type
+  ! row 4 - J+3 tax rate on product 1 - J
+  TaxParmsUnit = 45
+  taxparm_file = "tax_parameters.csv"
+  open(unit = TaxParmsUnit, &
+       file = ParmFiles%TaxParmsFile, &
+       action = "read")
+
+  ! read in row 1: taxid (integers) and determine number of columns
+  read(TaxParmsUnit,'(a)') buffer1
+
+  i1 = 1
+  icomma = 1
+  allocate(itemp(20))
+  itemp = 0
+  do while (icomma>0)
+    icomma = index(buffer1,",")
+    if (icomma>0) then
+      read(buffer1(1:(icomma-1)),'(i2)') itemp(i1) 
+      i1=i1+1
+      buffer1=buffer1((icomma+1):len_trim(buffer1))
+    else
+      read(buffer1,'(i2)') itemp(i1) 
+    end if
+  end do
+  ntax = i1
+  allocate(taxid(ntax))
+  taxid = itemp(1:i1)
+
+  ! Read in rows 2-3
+  allocate(taxlabel(ntax),taxtype(ntax))
+
+  read(TaxParmsUnit,'(a)') buffer1
+  read(TaxParmsUnit,'(a)') buffer2
+
+  do i1=1,ntax
+    if (i1<ntax) then
+      icomma       = index(buffer1,",")
+      taxlabel(i1) = buffer1(1:(icomma-1))
+      buffer1      = buffer1((icomma+1):len_trim(buffer1))
+
+      icomma       = index(buffer2,",")
+      taxtype(i1)  = buffer2(1:(icomma-1))
+      buffer2      = buffer2((icomma+1):len_trim(buffer2))
+    else
+      taxlabel(i1) = buffer1
+      taxtype(i1)  = buffer2
+    end if
+  end do
+
+  ! read in (J x n1) tax rates
+  allocate(tax(parms%J,ntax))
+  tax = 1.0d0
+  do i1=1,parms%J
+    read(TaxParmsUnit,69) tax(i1,:)
+  end do
+ 69 format(<ntax>g12.4)  
+
+  deallocate(itemp)
+
+  close(TaxParmsUnit)
+end subroutine LoadTaxParameters
 
 end module GlobalModule

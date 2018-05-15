@@ -2057,11 +2057,12 @@ subroutine ComputeElasticities
   use GlobalModule, only : parms,HHData,ControlOptions,InputDir, &
                            DataStructure,AllocateLocalHHData,    &
                            DeallocateLocalHHData,LoadBasePrice,  &
-                           LoadTaxParameters
+                           LoadTaxParameters,OutDir,ParmFiles
   use nag_library, only  : G05KFF,G05RZF,G05SAF
   use OutputModule, only : WriteElasticities,WriteDemandResults1,WriteDemandResults2, &
                            WriteTaxResults1,WriteTaxResults2
   use ToolsModule, only  : InverseNormal_mkl
+  use IFPORT
   implicit none
 
   integer(i4b)              :: i1,i2,i3
@@ -2076,10 +2077,12 @@ subroutine ComputeElasticities
   integer(i4b)              :: np,nProb
 
   ! variables to store results from tax experiments
-  real(dp), allocatable :: DeltaP(:,:)
-  real(dp), allocatable :: qtax(:,:),ptax(:,:)
-  real(dp), allocatable :: HHSpending(:,:),HHUtility(:,:)
+  integer(i4b),       allocatable :: taxid(:)
   character(len=100), allocatable :: taxlabel(:)
+  character(len=10),  allocatable :: taxtype(:)
+  real(dp),           allocatable :: tax(:,:)
+  real(dp),           allocatable :: qtax(:,:),ptax(:,:)
+  real(dp),           allocatable :: HHSpending(:,:),HHUtility(:,:)
 
   ! initialize random number generator
   integer(i4b)              :: genid,subid,lseed,ifail,lstate
@@ -2266,7 +2269,8 @@ subroutine ComputeElasticities
   !  3) subsidy to fruit consumption
   ! set price = average price
 
-  call LoadTaxParameters(ntax,taxlabel,DeltaP)
+  call LoadTaxParameters(taxid,taxlabel,taxtype,tax)
+  ntax = size(taxid,1)
   allocate(qtax(J,ntax),ptax(J,ntax))
   allocate(HHSpending(HHDataSim2%n,ntax),HHUtility(HHDataSim2%n,ntax))
 
@@ -2275,7 +2279,11 @@ subroutine ComputeElasticities
   HHSpending = 0.0d0
   HHUtility  = 0.0d0
   do i1=1,ntax
-    ptax(:,i1)   = (sum(HHDataSim1%p,2)/real(HHDataSim1%n)) * DeltaP(:,i1)
+    if (taxtype(i1)=="ad valorem") then
+      ptax(:,i1)   = (sum(HHDataSim1%p,2)/real(HHDataSim1%n)) * tax(:,i1)
+    else if (taxtype(i1)=="excise") then
+      ptax(:,i1)   = (sum(HHDataSim1%p,2)/real(HHDataSim1%n)) + tax(:,i1)
+    end if
     HHDataSim2%p = spread(ptax(:,i1),2,HHDataSim2%N)
     call ComputeDemand(HHDataSim2)
     HHSpending(:,i1) = HHDataSim2%expenditure
@@ -2284,7 +2292,9 @@ subroutine ComputeElasticities
   end do
 
   ! Write description of tax experiments
-  call WriteTaxLabel(taxlabel,filename="taxlabel.txt")
+  cmdstring = "cp " // trim(ParmFiles%TaxParmsFile) // " " // &
+              OutDir // "/" // "taxparms.csv"
+  system(cmdstring)
   
   ! Write aggregate results:  baseline (q0,p0) and alternative (qtax,ptax) (J x ...)
   call WriteTaxResults1(q0,p0,qtax,ptax,filename="taxresults_aggregate.csv")
@@ -2304,6 +2314,7 @@ subroutine ComputeElasticities
   deallocate(seed,state)
   deallocate(eta,prob)
   deallocate(DeltaP,qtax,ptax)
+  deallocate(taxlabel)
   deallocate(HHSpending,HHUtility)
 
 end subroutine ComputeElasticities

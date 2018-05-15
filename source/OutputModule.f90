@@ -737,27 +737,6 @@ subroutine WriteDemandResults2(p,NewQ,j1)
 
 end subroutine WriteDemandResults2
 
-! Write description of tax experiments
-subroutine WriteTaxLabel(taxlabel,filename)
-  implicit none
-  character(len=*), intent(in) :: taxlabel(:)
-  character(len=*),  intent(in) :: filename
-  integer(i4b) :: ntax,i1
-  character(len=200)            :: taxlabelfile
-
-  TaxLabelFile = MakeFullFileName(trim(filename))
-
-  open(unit = taxresults_UNIT, &
-       File = TaxLabelFile,    &
-       Action = 'WRITE')
-
-  ntax = size(taxlabel,1)
-  do i1=1,ntax
-    write(taxresults_unit,*) trim(taxlabel(i1))
-  end do
-  close(taxresults_unit)
-end subroutine WriteTaxLabel
-
 ! Write tax results: aggregate results:  baseline (q0,p0) and alternative (qtax,ptax) (J x ...)
 !  (q0,p0)     baseline quantities and prices
 !  (qtax,ptax) counterfactual quantitites and prices
@@ -778,22 +757,25 @@ subroutine WriteTaxResults1(q0,p0,qtax,ptax,filename)
   J    = size(q0,1)
   ntax = size(qtax,2)
 
+  ! Create variable names
   allocate(qstring(ntax),pstring(ntax))
   do i1=1,ntax
     write(qstring(i1),'(a1,i2.2)') "q",i1
     write(pstring(i1),'(a1,i2.2)') "p",i1
   end do
- 
+
+  ! write variable names 
   write(taxresults_unit,780) "q0",qstring,"p0",pstring
 780 format(<2*ntax+2>(a25,:,",")
 
+  ! write (quantity,price)
   do i1=1,J
     write(taxresults_unit,781) q0(i1),qtax(i1,:),p0(i1),ptax(i1,:)
   end do
 781 format(<2*ntax+2>(g25.16,:,","))
 
   close(taxresults_unit)
-  
+  deallocate(qstring,pstring) 
 end subroutine WriteTaxResults1
 
 ! Write tax results: household (expenditure,utility)
@@ -805,20 +787,34 @@ subroutine WriteTaxResults2(e0,u0,etax,utax,filename)
   character(len=*), intent(in) :: filename
   character(len=200)           :: resultsfile
   integer(i4b)                 :: i1,n,ntax
+  character(len=4), allocatable :: estring(:),ustring(:)
 
   resultsfile = MakeFullFileName(trim(filename))
 
   n    = size(e0,1)
   ntax = size(etax,2)
+  ! create variable labels
+  allocate(estring(ntax),ustring(ntax))
+  do i1=1,ntax
+    write(estring(i1),'(a1,i2.2)') "e",i1
+    write(ustring(i1),'(a1,i2.2)') "u",i1
+  end do
 
   open(unit = taxresults_UNIT, &
        File = resultsfile,    &
        Action = 'WRITE')
 
+  ! Write variable names
+  write(taxresults_unit,826) "e0",estring,"u0",ustring
+826 format(<2*ntax+2>(a25,:,",")
+
+  ! write (expenditure,utility)
   do i1=1,n
-    write(taxresults_unit,817) e0(i1),etax(i1,:)
+    write(taxresults_unit,830) e0(i1),etax(i1,:),u0(i1),utax(i1,:)
   end do
+830 format(<2*ntax+2>(g25.16,:,","))
   close(taxresults_unit)
+  deallocate(ustring,estring)
 end subroutine WriteTaxResults2
 
 end module OutputModule
