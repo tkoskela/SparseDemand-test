@@ -494,6 +494,7 @@ subroutine LoadData
   integer(i4b)  :: DataUnit,iComma,i1
   character(400) :: AllLabels
   real(dp),     allocatable :: qp(:,:),err(:,:),tiering(:,:),expenditure(:)
+  character(len=100), allocatable :: RawDataLabels(:)
 
   DataUnit = 20
   open(unit = DataUnit, &
@@ -505,15 +506,15 @@ subroutine LoadData
 371 format(a)
 
   ! copy variable labels to a vector of characters
-  allocate(HHData%RawDataLabels(HHData%nRawVars))
+  allocate(RawDataLabels(HHData%nRawVars))
   do i1=1,HHData%nRawVars
-    ! iCOmma = end of current data field
+    ! iComma = end of current data field
     iComma = index(AllLabels,',')
     if (iComma>0) then
-      HHData%RawDataLabels(i1) = AllLabels(1:iComma-1)
+      RawDataLabels(i1) = AllLabels(1:iComma-1)
       AllLabels = AllLabels(iComma+1:400)
     else 
-      HHData%RawDataLabels(i1) = AllLabels
+      RawDataLabels(i1) = AllLabels
       exit
     end if
   end do
@@ -564,6 +565,7 @@ subroutine LoadData
   end select
   deallocate(qp,err)
   close(DataUnit)
+  deallocate(RawDataLabels)
 
 end subroutine LoadData
 

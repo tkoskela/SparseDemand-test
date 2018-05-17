@@ -58,15 +58,15 @@ module GlobalModule
   end type
 
   type DataStructure
-    integer(i4b)              :: NMC       ! number of MC replications
-    integer(i4b)              :: N         ! number of households
-    integer(i4b)              :: NSim      ! number of households in simulation
-    integer(i4b)              :: M         ! number of markets
-    real(dp), allocatable     :: e(:,:)    ! bliss points
-    real(dp), allocatable     :: q(:,:)    ! q(1:d1,i1) = nonzero elements of quantity for i1
-    real(dp), allocatable     :: p(:,:)    ! p(:,i1)    = prices for household i1
-    real(dp), allocatable     :: expenditure(:)
-    real(dp), allocatable     :: utility(:)
+    integer(i4b)                :: NMC       ! number of MC replications
+    integer(i4b)                :: N         ! number of households
+    integer(i4b)                :: NSim      ! number of households in simulation
+    integer(i4b)                :: M         ! number of markets
+    real(dp), allocatable       :: e(:,:)    ! bliss points
+    real(dp), allocatable       :: q(:,:)    ! q(1:d1,i1) = nonzero elements of quantity for i1
+    real(dp), allocatable       :: p(:,:)    ! p(:,i1)    = prices for household i1
+    real(dp), allocatable       :: expenditure(:)
+    real(dp), allocatable       :: utility(:)
     integer(i4b),   allocatable :: market(:) ! market id
     integer(i4b),   allocatable :: iNonZero(:,:) ! iNonZero(1:d1,i1) = indexes of nonzero elements of q for i1
     integer(i4b),   allocatable :: iZero(:,:)    ! iZero(1:d3,i1)    = indexes of zero elements of q for i1
@@ -75,7 +75,6 @@ module GlobalModule
     real(dp),       allocatable :: eta(:,:)
     character(200)              :: RawDataFile
     character(8)                :: RawDataFormat
-    character(100), allocatable :: RawDataLabels(:)
     integer(i4b),   allocatable :: HHID(:)
     integer(i4b),   allocatable :: shopid(:)
     integer(i4b),   allocatable :: fascia(:)
@@ -465,7 +464,7 @@ contains
   ! allocate memory for data
   subroutine AllocateLocalHHData(LocalHHData)
     implicit none
-    type(DataStructure), intent(inout) :: LocalHHData
+    type(DataStructure), allocatable,intent(inout) :: LocalHHData
 
     allocate(LocalHHData%q(parms%K,LocalHHData%N))
     allocate(LocalHHData%p(parms%J,LocalHHData%N))
@@ -734,7 +733,7 @@ subroutine DeallocateLocalHHData(LocalHHData)
   type(DataStructure), intent(inout) :: LocalHHData
 
   deallocate(LocalHHData%q,LocalHHData%p,LocalHHData%iNonZero,LocalHHData%iZero,LocalHHData%nNonZero)
-  deallocate(LocalHHData%expenditure)
+  deallocate(LocalHHData%expenditure,LocalHHData%utility)
   deallocate(LocalHHData%HHID,LocalHHData%shopid,LocalHHData%date,LocalHHData%day)
   deallocate(LocalHHData%month,LocalHHData%week)
   deallocate(LocalHHData%fascia,LocalHHData%internet,LocalHHData%SmallStore)

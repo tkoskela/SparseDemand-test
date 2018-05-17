@@ -110,12 +110,14 @@ program SparseDemand
     IMC1 = 1
     if (pid==MasterID) then
       call AnalyseResults(IMC1)
+      print *,"AnalyseResults complete."
     end if
   end if
   call DeallocateGlobalVariables
-
+  print *,"DeallocateGlobalVariables complete."
 #if USE_MPI==1
   call mpi_finalize(ierr)
+  print *,"mpi_finalize complete."
 #endif
 end program SparseDemand
 

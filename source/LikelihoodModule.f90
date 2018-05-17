@@ -2293,7 +2293,7 @@ subroutine ComputeElasticities
   end do
 
   ! Write description of tax experiments
-  copyfilecommand = "cp " // trim(ParmFiles%TaxparmsFile) // " " // OutDir // "/taxparms.csv"
+  copyfilecommand = "cp " // trim(ParmFiles%TaxparmsFile) // " " // trim(OutDir) // "/taxparms.csv"
   ifail = system(trim(copyfilecommand))
   
   ! Write aggregate results:  baseline (q0,p0) and alternative (qtax,ptax) (J x ...)
