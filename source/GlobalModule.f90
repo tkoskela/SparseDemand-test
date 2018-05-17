@@ -464,7 +464,7 @@ contains
   ! allocate memory for data
   subroutine AllocateLocalHHData(LocalHHData)
     implicit none
-    type(DataStructure), allocatable,intent(inout) :: LocalHHData
+    type(DataStructure), intent(inout) :: LocalHHData
 
     allocate(LocalHHData%q(parms%K,LocalHHData%N))
     allocate(LocalHHData%p(parms%J,LocalHHData%N))
