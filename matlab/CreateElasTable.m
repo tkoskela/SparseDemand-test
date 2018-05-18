@@ -1,7 +1,8 @@
 function CreateElasTable(filename,elas,q_labels)
 system(['rm ',filename]);
-J = size(elas,1);
-prec = 2;  % precision
+J     = size(elas,1);
+ncol0 = 7;
+prec  = 2;  % precision
 
 diary(filename);
 
@@ -21,26 +22,40 @@ disp('\begin{document}');
 disp('\maketitle');
 
 
-for j1=1:6
+for j1=1:ceil(J/ncol0)
+
+c1 = ncol0*(j1-1)+1;
+c2 = min(ncol0*j1,J);
+ncol = (c2-c1)+1;
 
 disp('');
 disp('\begin{table}[h]');
 disp(['\caption{Elasticities (',int2str(j1),')}']);
 disp(['\label{Table: elasticities ',int2str(j1),'}']);
 disp('\begin{center}');
-disp('\begin{tabular}{ccccc}');
 
-disp(['Price & ',q_labels{4*(j1-1)+1},' & ', ...
-                 q_labels{4*(j1-1)+2},' & ', ...
-                 q_labels{4*(j1-1)+3},' & ', ...
-                 q_labels{4*(j1-1)+4},' \\ \hline']);
+% Number of columns = ncol+1
+str1 = '\begin{tabular}{l';
+for i1=1:ncol
+  str1 = strcat(str1,'c');
+end
+str1 = strcat(str1,'} \hline \hline');
+disp(str1);
+
+str1 = 'Price';
+for i1=1:ncol
+    str1 = strcat(str1,' & ',q_labels{ncol*(j1-1)+i1});
+end
+str1 = strcat(str1,' \\ \hline');
+disp(str1);
+
 for i1=1:J
-  disp(['p$_{',q_labels{i1},'}$ & ', ...
-        num2str(elas(i1,4*(j1-1)+1),prec),' & ', ...
-        num2str(elas(i1,4*(j1-1)+2),prec),' & ', ...
-        num2str(elas(i1,4*(j1-1)+3),prec),' & ', ...
-        num2str(elas(i1,4*(j1-1)+4),prec), ...
-        ' \\ ']);
+  str1 = ['p$_{',q_labels{i1},'}$ & '];
+  for i2=1:ncol
+    str1=strcat(str1,' & ',num2str(elas(i1,ncol*(j1-1)+i2),prec));
+  end
+  str1 = strcat(str1,' \\');
+  disp(str1);
 end
 disp('\end{tabular}');
 disp('\end{center}');
@@ -49,7 +64,7 @@ disp('');
 disp('');
 disp('');
 
-end % for j1=1:6
+end % for j1=1:
 
 disp('\end{document}');  
 diary off;
