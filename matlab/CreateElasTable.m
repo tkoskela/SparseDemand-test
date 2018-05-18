@@ -50,7 +50,7 @@ str1 = strcat(str1,' \\ \hline');
 disp(str1);
 
 for i1=1:J
-  str1 = ['p$_{',q_labels{i1},'}$ & '];
+  str1 = ['p$_{',q_labels{i1},'}$ '];
   for i2=1:ncol
     str1=strcat(str1,' & ',num2str(elas(i1,ncol*(j1-1)+i2),prec));
   end
