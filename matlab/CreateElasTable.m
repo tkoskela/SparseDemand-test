@@ -2,7 +2,7 @@ function CreateElasTable(filename,elas,q_labels)
 system(['rm ',filename]);
 J     = size(elas,1);
 ncol0 = 7;
-prec  = 2;  % precision
+prec  = 3;  % precision
 
 diary(filename);
 
@@ -45,7 +45,14 @@ disp(str1);
 for i1=1:J
   str1 = ['p$_{',q_labels{i1},'}$ '];
   for i2=1:ncol
-    str1=strcat(str1,' & ',num2str(elas(i1,ncol0*(j1-1)+i2),prec));
+    icol = ncol0*(j1-1)+i2;
+    if icol==i1
+      % Own price elasticity: boldface
+      str1 = strcat(str1,'\textbf{',num2str(elas(i1,icol),prec),'}');
+    else
+      % Cross price elasticity: normal font
+      str1=strcat(str1,' & ',num2str(elas(i1,icol),prec));
+    end
   end
   str1 = strcat(str1,' \\');
   disp(str1);
