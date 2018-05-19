@@ -4,15 +4,13 @@
 % 4) Create table of elasticities
 addpath('ImportTools')
 
-%WorkDir = '/SAN/economics/Nesheim-IO/FruitDemand/output/A24_20170629';
-%WorkDir = '/SAN/economics/Nesheim-IO/FruitDemand/output/A24E_20171009';
 %WorkDir = '/SAN/economics/Nesheim-IO/FruitDemand/output/A27_20171116';
 WorkDir = '/SAN/economics/Nesheim-IO/FruitDemand/output/A27_20180101';
 OutDir  = '/home/uctpln0/FruitDemand/code/fortran/output/A27_20180101';
-
-J  = 27;
-K  = 5;
-np = 30;
+N       = 26514;
+J       = 27;
+K       = 5;
+np      = 30;
 
 if exist(WorkDir,'dir')~=7
   display(['WorkDir = ',WorkDir]);    
@@ -106,10 +104,10 @@ for j1=1:J
    NewPlotFlag=1;
    if NewPlotFlag==0   
      subplot(2,1,1)
-     plot(price(:,j1),quantity(:,1,j1))
+     plot(price(:,j1),quantity(:,1,j1)/N)
      title(['Demand for ',FruitLabels{j1}],'FontSize',FontSize);
      xlabel('price (GBP)','FontSize',FontSize)
-     ylabel('quantity (grams)','FontSize',FontSize)
+     ylabel('quantity (kilograms)','FontSize',FontSize)
      subplot(2,1,2)
      plot(price(:,j1),reshape(quantity(:,2:K+1,j1),[np K]));
      legend('One item','Two items','Three items','Four items','Five items')
@@ -118,11 +116,11 @@ for j1=1:J
          '-depsc');
    elseif NewPlotFlag==1
      baseprice = (2/3) * min(price(:,j1)) + (1/3)*max(price(:,j1));  
-     area(price(:,j1),quantity(:,2:K+1,j1))
+     area(price(:,j1),quantity(:,2:K+1,j1)/N)
      title(['Demand for ',FruitLabels{j1}],'FontSize',FontSize);
      xlabel(['price (GBP: average market price = ', ...
              num2str(baseprice,2),' GBP)'],'FontSize',FontSize)
-     ylabel('quantity (grams)','FontSize',FontSize)
+     ylabel('quantity (kilograms)','FontSize',FontSize)
      legend('One item','Two items','Three items','Four items','Five items')
      print(fig1, ...
          fullfile(OutDir,['fig',int2str(j1),'_',str2,'.eps']), ...
@@ -131,7 +129,7 @@ for j1=1:J
 end
 
 % Load elasticities
-elas = ImportElasticity(fullfile(WorkDir,'elas.csv'), 1, J);
+elas = ImportElasticity(fullfile(WorkDir,'elas.csv'),J, 1, J);
 %elas = ImportElasticity2(fullfile(WorkDir,'elas.csv'), 1, J);
 
 CreateElasTable(fullfile(OutDir,'elas1.tex'),elas,FruitLabels);
