@@ -39,8 +39,6 @@ str1 = [str1,'} \hline \hline'];
 disp(str1);
 
 % column labels
-str1 = strcat('& & \multicolumn{',int2str(ntax),'}{c}{percentage change} \\');
-disp(str1)
 str1 = 'Fruit & Baseline (kg)';
 for i1=1:ntax
   str1 = strcat(str1,' & ',TaxLabel{i1},' scenario');
@@ -51,11 +49,11 @@ disp(str1);
 irow = 0;
 for j1=1:J
     
-  str1 = strcat(productlabels{j1},' & ',num2str(q0(j1)/N,prec),'\%');
+  str1 = strcat(productlabels{j1},' & ',num2str(q0(j1)/N,prec));
   for i1=1:ntax
     % percent change in demand
     x1 = 100*(qtax(j1,i1)/q0(j1)-1)  ;
-    str1 = strcat(str1,' & ',num2str(x1,prec));
+    str1 = strcat(str1,' & ',num2str(x1,prec),'\%');
   end
   str1 = strcat(str1,' \\');
   disp(str1);
