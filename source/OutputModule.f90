@@ -690,9 +690,9 @@ subroutine WriteElasticities(elas)
   close(Elas_UNIT)
 end subroutine WriteElasticities
 
-subroutine WriteDemandResults1(qdata,qhat,qaverage)
+subroutine WriteDemandResults1(qdata,qhat,qaverage,p0)
   implicit none
-  real(dp), intent(in) :: qdata(:),qhat(:),qaverage(:)
+  real(dp), intent(in) :: qdata(:),qhat(:),qaverage(:),p0(:)
 
 !  character(len=200)       :: ShortFileName
   integer(i4b)             :: J,i1
@@ -705,9 +705,9 @@ subroutine WriteDemandResults1(qdata,qhat,qaverage)
        Action = 'WRITE')
   J = size(qdata)
   do i1=1,J
-    write(Demand_UNIT,562) qdata(i1),qhat(i1),qaverage(i1)
+    write(Demand_UNIT,562) qdata(i1),qhat(i1),qaverage(i1),p0(i1)
   end do
-562 format(3(g25.16,','))
+562 format(4(g25.16,','))
   close(Demand_Unit)
 
 end subroutine WriteDemandResults1

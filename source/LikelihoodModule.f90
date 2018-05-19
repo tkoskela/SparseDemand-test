@@ -2211,7 +2211,7 @@ subroutine ComputeElasticities
   call ComputeAggregateDemand(HHDataSim1%q,HHDataSim1%iNonZero,q0,HHDataSim1%nNonZero,0)
 
   ExcessQ = q0-qdata
-  call WriteDemandResults1(qdata,qhat,q0)
+  call WriteDemandResults1(qdata,qhat,q0,p0)
 
   ! copy exogenous variables from HHDataSim1 to HHDataSim2
   HHDataSim2%N = HHDataSim1%N
@@ -2411,7 +2411,7 @@ subroutine ComputeDemand(HHData1)
   integer(i4b)               :: M,N,NCLIN,LDA
   integer(i4b), allocatable  :: istate(:),kx(:),iwork(:)
   integer(i4b)               :: iter,liwork,lwork,ifail,mode,i1
-  real(dp), allocatable      :: C(:,:),BL(:),BU(:),CVEC(:),x(:),A(:,:),B(:)
+  real(dp), allocatable      :: C(:,:),BL(:),BU(:),CVEC(:),q(:),A(:,:),B(:)
   real(dp), allocatable      :: clamda(:),work(:)
   real(dp)                   :: obj
   real(dp)                   :: crit
@@ -2487,7 +2487,7 @@ subroutine ComputeDemand(HHData1)
   allocate(CVEC(N))
   allocate(istate(n))
   allocate(KX(N))
-  allocate(x(N))
+  allocate(q(N))
   allocate(A(parms%J,parms%J))
   allocate(B(1))
   B = 0.0d0
@@ -2506,26 +2506,32 @@ subroutine ComputeDemand(HHData1)
     end if
 
     CVEC = HHData1%p(:,i1) - matmul(transpose(parms%B),HHData1%e(:,i1))
-    x = 0.0d0
+    q = 0.0d0
     ifail = -1
-    ! compute X to solve
+    ! Compute solution to 
     !    min 0.5 * q'*A*q + cvec'*q   subject to q>=0
+    !        0.5 * q' * (B'*B) * q + (p - B'*e)' * q
+    !  = max  - 0.5 * (Bq-e)' * (Bq-e) - p'*q + 0.5 * e'*e
     ! E04NCA transforms A: so A needs to be reset to initial value
 
     A = matmul(transpose(parms%B),parms%B)
-    call E04NCA(M,N,NCLIN,LDC,LDA,C,BL,BU,CVEC,ISTATE,KX,X,A,B,iter,OBJ,CLAMDA, &
+    ! minimise quadratic program
+    call E04NCA(M,N,NCLIN,LDC,LDA,C,BL,BU,CVEC,ISTATE,KX,q,A,B,iter,OBJ,CLAMDA, &
                 IWORK,LIWORK,WORK,LWORK,LWSAV,IWSAV,RWSAV,ifail)
-    HHData1%utility(i1)  = OBJ
-    HHData1%nNonZero(i1) = count(x>=crit)
-    HHData1%iNonZero(1:HHData1%nNonZero(i1),i1) = pack((/1:parms%J/),x>=crit)
-    HHData1%iZero(1:parms%J-HHData1%nNonZero(i1),i1) = pack((/1:parms%J/),x<crit)
+
+    ! utility = -OBJ + constant
+    HHData1%utility(i1)     = -OBJ
+    HHData1%expenditure(i1) = dot_product(HHData1%p(:,i1),q)
+    HHData1%nNonZero(i1)    = count(q>=crit)
+    HHData1%iNonZero(1:HHData1%nNonZero(i1),i1) = pack((/1:parms%J/),q>=crit)
+    HHData1%iZero(1:parms%J-HHData1%nNonZero(i1),i1) = pack((/1:parms%J/),q<crit)
     if (HHData1%nNonZero(i1)>0) then
-      HHData1%q(1:HHData1%nNonZero(i1),i1) = pack(x,x>=crit)
+      HHData1%q(1:HHData1%nNonZero(i1),i1) = pack(q,q>=crit)
     end if
   end do
 
   deallocate(IWSAV,RWSAV,LWSAV,CWSAV)
-  deallocate(C,BL,BU,CVEC,istate,kx,x,A,B,clamda)
+  deallocate(C,BL,BU,CVEC,istate,kx,q,A,B,clamda)
   deallocate(WORK,IWORK)
 
 end subroutine ComputeDemand
