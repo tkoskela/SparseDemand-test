@@ -42,7 +42,7 @@ small : 1.0d-50     # small number to prevent log of zero
 # K     = dimension of demand system
 NMC   : 1
 N     : 26514
-NSIM  : 60000
+NSIM  : 26514
 M     : 201
 J     : 27
 K     : 5

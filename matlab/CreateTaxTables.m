@@ -20,14 +20,8 @@ disp('\geometry{a4paper}');
 disp('\usepackage{graphicx}');
 disp('\usepackage{amssymb}');
 disp('\usepackage{epstopdf}');
-disp('\DeclareGraphicsRule{.tif}{png}{.png}{`convert #1 `dirname #1`/`basename #1 .tif`.png}');
-disp('');
-disp('\title{Aggregate tax results}');
-disp('\author{Lars Nesheim}');
-disp('\date{}');
 disp('');
 disp('\begin{document}');
-disp('\maketitle');
 
 %% Table 1: results on quantities
 disp('');
@@ -46,17 +40,19 @@ disp(str1);
 % column labels
 str1 = 'Fruit & Baseline';
 for i1=1:ntax
-  str1 = strcat(str1,' & Case ',int2str(i1));
+  str1 = strcat(str1,' & Policy ',int2str(i1));
 end
-str1 = [str1,' \\'];
+str1 = [str1,' \\ \hline'];
 disp(str1);
 
 irow = 0;
 for j1=1:J
     
-  str1 = strcat(productlabels{j1},' & ',num2str(q0(j1),prec));
+  str1 = strcat(productlabels{j1},' & ',num2str(q0(j1)/N,prec));
   for i1=1:ntax
-    str1 = strcat(str1,' & ',num2str(qtax(j1,i1),prec));
+      % percent change in demand
+    x1 = 100*(qtax(j1,i1)/q0(j1)-1)  ;
+    str1 = strcat(str1,' & ',num2str(x1,prec));
   end
   str1 = strcat(str1,' \\');
   disp(str1);
@@ -67,6 +63,11 @@ for j1=1:J
   end
 end
 disp(' \hline \hline')
+str1 = ['\multicolumn{',int2str(2+ntax),'}{p{0.8 \textwidth}}{',...
+        'Note: The first column shows baseline demand for each fruit ', ...
+        '(grams per household per shopping trip). The remaining ',...
+        'columns show the percentage impact of the policies.}'];
+disp(str1)
 disp('\end{tabular}');
 disp('\end{center}');
 disp('\end{table}');
@@ -88,17 +89,17 @@ disp(str1);
 % column labels
 str1 = 'Fruit & Baseline';
 for i1=1:ntax
-  str1 = strcat(str1,' & Case ',int2str(i1));
+  str1 = strcat(str1,' & Policy ',int2str(i1));
 end
-str1 = [str1,' \\'];
+str1 = [str1,' \\ \hline'];
 disp(str1);
 
 irow = 0;
 for j1=1:J
-    
   str1 = strcat(productlabels{j1},' & ',num2str(p0(j1),prec));
   for i1=1:ntax
-    str1 = strcat(str1,' & ',num2str(ptax(j1,i1),prec));
+    x1 = 100*(ptax(j1,i1)/p0(j1)-1);
+    str1 = strcat(str1,' & ',num2str(x1,prec));
   end
   str1 = strcat(str1,' \\');
   disp(str1);
@@ -109,6 +110,11 @@ for j1=1:J
   end
 end
 disp(' \hline \hline')
+str1 = ['\multicolumn{',int2str(2+ntax),'}{p{0.8 \textwidth}}{',...
+        'Note: The first column shows the baseline price for each fruit ', ...
+        '(GBP per gram). The remaining ',...
+        'columns show the percentage impact of the policies.}'];
+disp(str1);     
 disp('\end{tabular}');
 disp('\end{center}');
 disp('\end{table}');
@@ -130,9 +136,9 @@ disp(str1);
 % column labels
 str1 = ' & Baseline';
 for i1=1:ntax
-  str1 = strcat(str1,' & Case ',int2str(i1));
+  str1 = strcat(str1,' & Policy ',int2str(i1));
 end
-str1 = [str1,' \\'];
+str1 = [str1,' \\ \hline'];
 disp(str1);
 
 str1 = 'Consumer expenditure & ';
@@ -180,7 +186,7 @@ disp(str1);
 
 str1 = ['Welfare & ',num2str(u0(ntau+1),prec)];
 for i1=1:ntax
-  str1 = strcat(str1,' 7 ',num2str(utax(ntau+1,i1),prec));    
+  str1 = strcat(str1,' & ',num2str(utax(ntau+1,i1),prec));    
 end
 str1 = strcat(str1,' \\');
 disp(str1)
@@ -199,7 +205,15 @@ end
 str1 = strcat(str1,' \\');
 disp(str1);
 
-disp(' \hline \hline')
+disp(' \hline \hline');
+str1 = ['\multicolumn{',int2str(2+ntax),'}{p{0.8 \textwidth}}{',...
+        'Note: The first column shows the baseline values for ',...
+        'expenditure, consumer surplus, firm revenue and ',...
+        'tax revenue. The remaining columns show the change ', ...
+        'due to the policies. All amounts are measured in pounds per ',...
+        'household per shopping trip. Because of quasilinear utility ',...
+        'the change in consumer surplus equals compensating variation.}']; 
+    disp(str1);
 disp('\end{tabular}');
 disp('\end{center}');
 disp('\end{table}');
