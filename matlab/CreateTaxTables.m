@@ -152,7 +152,8 @@ ntau = length(tau);
 for i1=1:ntau
   str1 = [num2str(100*tau(i1),2),'th percentile &',num2str(e0(i1),prec) ];
   for i2=1:ntax
-    str1 = strcat(str1,' & ',num2str(etax(i1,i2),prec));
+    x1 = 100*(etax(i1,i2)/e0(i1)-1);  
+    str1 = strcat(str1,' & ',num2str(x1,prec));
   end
   str1 = strcat(str1,' \\');
   disp(str1);
@@ -170,7 +171,7 @@ ntau = length(tau);
 for i1=1:ntau
   str1 = [num2str(100*tau(i1)),'th percentile &',num2str(u0(i1),prec) ];
   for i2=1:ntax
-    str1 = strcat(str1,' & ',num2str(utax(i1,i2),prec));
+    str1 = strcat(str1,' & ',num2str(utax(i1,i2)-u0(i1),prec));
   end
   str1 = strcat(str1,' \\');
   disp(str1);
@@ -186,7 +187,7 @@ disp(str1);
 
 str1 = ['Welfare & ',num2str(u0(ntau+1),prec)];
 for i1=1:ntax
-  str1 = strcat(str1,' & ',num2str(utax(ntau+1,i1),prec));    
+  str1 = strcat(str1,' & ',num2str(utax(ntau+1,i1)-u0(ntau+1),prec));    
 end
 str1 = strcat(str1,' \\');
 disp(str1)
@@ -200,7 +201,8 @@ disp(str1);
 
 str1 = ['Firm Revenue & ',num2str((p0'*q0)/N,prec)];
 for i1=1:ntax
-  str1 = strcat(str1,' & ',num2str((p0'*qtax(:,i1))/N,prec));    
+  x1 = 100*( (p0'*qtax(:,i1))/(p0'*q0)-1);
+  str1 = strcat(str1,' & ',num2str(x1,prec));    
 end
 str1 = strcat(str1,' \\');
 disp(str1);
@@ -209,11 +211,14 @@ disp(' \hline \hline');
 str1 = ['\multicolumn{',int2str(2+ntax),'}{p{0.8 \textwidth}}{',...
         'Note: The first column shows the baseline values for ',...
         'expenditure, consumer surplus, firm revenue and ',...
-        'tax revenue. The remaining columns show the change ', ...
-        'due to the policies. All amounts are measured in pounds per ',...
-        'household per shopping trip. Because of quasilinear utility ',...
+        'tax revenue. All amounts are measured in pounds per ',...
+        'household per shopping trip. Columns 2 - 7 show the ', ...
+        'percentage change in expenditure, the absolute change in ',...
+        'consumer surplus, the percentage change in firm revenue ', ...
+        'and the absolute change in tax revenue due to each policy. ', ...
+        'Because of quasilinear utility ',...
         'the change in consumer surplus equals compensating variation.}']; 
-    disp(str1);
+disp(str1);
 disp('\end{tabular}');
 disp('\end{center}');
 disp('\end{table}');
