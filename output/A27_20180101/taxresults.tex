@@ -4,51 +4,47 @@
 \usepackage{graphicx}
 \usepackage{amssymb}
 \usepackage{epstopdf}
-\DeclareGraphicsRule{.tif}{png}{.png}{`convert #1 `dirname #1`/`basename #1 .tif`.png}
-\title{Aggregate tax results}
-\author{Lars Nesheim}
-\date{}
 \begin{document}
-\maketitle
 \begin{table}[h]
 \caption{Tax impact on demand}
 \label{table:tax impact 1}
 \begin{center}
 \begin{tabular}{lcccccc} \hline \hline
-Fruit & Baseline & Case1 & Case2 & Case3 & Case4 & Case5 \\
-Apricots &0 &0 &0 &0 &0 &0 \\
-Avocados &24.7 &17.8 &24.1 &25.6 &29.2 &23.9 \\
-Bananas &4.07e+04 &3.87e+04 &4.1e+04 &4.08e+04 &4.18e+04 &4.06e+04 \\
-Berries &374 &298 &354 &346 &425 &366 \\
-Cherries &1.64 &1.34 &1.56 &1.45 &1.74 &1.63 \\
+Fruit & Baseline & Policy1 & Policy2 & Policy3 & Policy4 & Policy5 \\ \hline
+Apricots &0.000108 &-48.2 &-19 &-0.228 &15.7 &-3.28 \\
+Avocados &0.000499 &-22.6 &-2.93 &4.65 &15.2 &-2.59 \\
+Bananas &0.641 &-7.43 &1.13 &0.0428 &3.77 &-0.522 \\
+Berries &0.0074 &-19.5 &-4.81 &-6.97 &13.9 &-1.98 \\
+Cherries &0.000125 &-20.7 &-3.74 &-6.43 &11.9 &-0.784 \\
 \hline
-Dates &0 &0 &0 &0 &0 &0 \\
-Apples &3.19e+04 &3.16e+04 &3.23e+04 &3.12e+04 &3.19e+04 &3.18e+04 \\
-Easy Peelers &1.55e+04 &1.4e+04 &1.47e+04 &1.57e+04 &1.63e+04 &1.53e+04 \\
-Grapes &5.18e+03 &4.12e+03 &5.02e+03 &5.23e+03 &5.8e+03 &5.11e+03 \\
-Grapefruits &350 &198 &346 &348 &477 &332 \\
+Dates &0.000601 &-15.7 &5.02 &2.29e-10 &24.3 &-0.523 \\
+Apples &0.442 &-4.72 &2.22 &-3.17 &2.01 &-0.456 \\
+Easy Peelers &0.343 &-9.03 &-4.74 &1.55 &5.55 &-1.02 \\
+Grapes &0.0916 &-17 &-2.74 &1.42 &9.86 &-0.974 \\
+Grapefruits &0.00337 &-54.9 &1.74 &-0.428 &55.8 &-7.31 \\
 \hline
-Kiwis &1.65e+04 &1.32e+04 &1.45e+04 &1.69e+04 &1.84e+04 &1.62e+04 \\
-Lemons &637 &578 &604 &653 &667 &632 \\
-Limes &0 &0 &0 &0 &2.25 &0 \\
-Lychees &0 &0 &0 &0 &0 &0 \\
-Mangos &888 &443 &913 &891 &1.22e+03 &851 \\
+Kiwis &0.34 &-15.1 &-11 &2.89 &9.02 &-0.929 \\
+Lemons &0.0227 &-3.49 &-4.8 &3.01 &1.59 &-0.401 \\
+Limes &0.000172 &-31.3 &-0.549 &1.51 &19.1 &-1.82 \\
+Lychees &0.000135 &-45.1 &27.7 &0.844 &18 &-3.19 \\
+Mangos &0.0236 &-43.5 &5.28 &0.616 &33.1 &-3.62 \\
 \hline
-Melons &4.81e+04 &4.18e+04 &4.86e+04 &4.85e+04 &5.16e+04 &4.77e+04 \\
-Nectarines &1.43e+04 &1.18e+04 &1.32e+04 &1.43e+04 &1.57e+04 &1.4e+04 \\
-Oranges &1.71e+04 &1.52e+04 &1.7e+04 &1.73e+04 &1.81e+04 &1.69e+04 \\
-Passion fruits &0.792 &0 &0.87 &0.849 &2.02 &0.675 \\
-Paw-paws &0 &0 &0 &0 &0 &0 \\
+Melons &0.257 &-26.4 &0.314 &0.694 &16.9 &-2.03 \\
+Nectarines &0.296 &-15.8 &-7 &1.19 &8.68 &-2.1 \\
+Oranges &0.319 &-10.3 &0.687 &1.66 &5.28 &-1.05 \\
+Passion fruits &0.000187 &-43.4 &10.7 &3.53 &26.2 &-5.77 \\
+Paw-paws &0.000567 &-20.3 &57.7 &2.37 &12.2 &-1.32 \\
 \hline
-Peaches &275 &61.5 &136 &275 &558 &247 \\
-Pears &4.25e+04 &4.37e+04 &4.26e+04 &4.2e+04 &4.16e+04 &4.26e+04 \\
-Pineapples &3.11e+03 &2.65e+03 &3.39e+03 &3.16e+03 &3.41e+03 &3.11e+03 \\
-Plums &5.7e+03 &4.55e+03 &5.48e+03 &5.66e+03 &6.46e+03 &5.59e+03 \\
-Pomegranates &0 &0 &0 &0 &0 &0 \\
+Peaches &0.00895 &-71.2 &-44.9 &0.203 &73.6 &-8.71 \\
+Pears &0.581 &0.492 &-0.223 &-1.97 &-0.951 &0.193 \\
+Pineapples &0.0801 &-11.2 &10.9 &1.81 &7.3 &0.0302 \\
+Plums &0.133 &-18.8 &-3.02 &-0.546 &11.6 &-1.85 \\
+Pomegranates &7.83e-05 &-100 &-58.7 &4.98 &69.2 &0.867 \\
 \hline
-Rhubarb &1.36 &0.979 &1.58 &0.652 &1.9 &1.24 \\
-Sharon fruits &0.00362 &0 &0.0064 &0.00463 &0.126 &0.00263 \\
+Rhubarb &1.42e-05 &-29 &102 &-100 &11.9 &-2.8 \\
+Sharon fruits &2.86e-05 &-54.6 &-4.63 &0.0192 &34.1 &-5.39 \\
  \hline \hline
+\multicolumn{7}{p{0.8 \textwidth}}{Note: The first column shows baseline demand for each fruit (grams per household per shopping trip). The remaining columns show the percentage impact of the policies.}
 \end{tabular}
 \end{center}
 \end{table}
@@ -57,40 +53,41 @@ Sharon fruits &0.00362 &0 &0.0064 &0.00463 &0.126 &0.00263 \\
 \label{table:tax impact 2}
 \begin{center}
 \begin{tabular}{lcccccc} \hline \hline
-Fruit & Baseline & Case1 & Case2 & Case3 & Case4 & Case5 \\
-Apricots &3.64 &4.37 &3.88 &3.64 &3.28 &3.72 \\
-Avocados &4.4 &5.29 &4.49 &4.4 &3.96 &4.48 \\
-Bananas &1.05 &1.26 &1.05 &1.05 &0.948 &1.07 \\
-Berries &5.98 &7.18 &6.2 &6.24 &5.39 &6.09 \\
-Cherries &7.1 &8.52 &7.35 &7.23 &6.39 &7.2 \\
+Fruit & Baseline & Policy1 & Policy2 & Policy3 & Policy4 & Policy5 \\ \hline
+Apricots &0.837 &20 &6.52 &-1.44e-13 &-10 &2.21 \\
+Avocados &4.4 &20 &1.93 &2.62e-11 &-10 &1.73 \\
+Bananas &1.45 &20 &-2.1e-11 &-2.1e-11 &-10 &1.56 \\
+Berries &5.79 &20 &3.54 &4.3 &-10 &1.75 \\
+Cherries &7.1 &20 &3.47 &1.9 &-10 &1.45 \\
 \hline
-Dates &1.55 &1.86 &1.55 &1.55 &1.39 &1.56 \\
-Apples &1.42 &1.7 &1.46 &1.44 &1.28 &1.44 \\
-Easy Peelers &1.78 &2.13 &1.85 &1.78 &1.6 &1.81 \\
-Grapes &2.34 &2.81 &2.42 &2.35 &2.11 &2.38 \\
-Grapefruits &0.887 &1.06 &0.895 &0.887 &0.798 &0.903 \\
+Dates &0.742 &20 &0.05 &-4.71e-11 &-10 &1.08 \\
+Apples &1.71 &20 &2.86 &1.54 &-10 &1.66 \\
+Easy Peelers &1.78 &20 &4.24 &5.55e-11 &-10 &1.71 \\
+Grapes &2.34 &20 &3.39 &0.08 &-10 &1.46 \\
+Grapefruits &0.887 &20 &0.87 &-2.1e-11 &-10 &1.75 \\
 \hline
-Kiwis &1.34 &1.61 &1.43 &1.34 &1.21 &1.36 \\
-Lemons &1.91 &2.29 &2.01 &1.91 &1.72 &1.94 \\
-Limes &0.893 &1.07 &0.913 &0.893 &0.804 &0.91 \\
-Lychees &5.37 &6.44 &5.37 &5.37 &4.83 &5.44 \\
-Mangos &1.37 &1.64 &1.37 &1.37 &1.23 &1.38 \\
+Kiwis &1.54 &20 &6.65 &-1.23e-11 &-10 &1.55 \\
+Lemons &1.91 &20 &5.21 &-2.88e-11 &-10 &1.7 \\
+Limes &0.893 &20 &2.27 &-9.31e-12 &-10 &1.91 \\
+Lychees &1.87 &20 &-3.55e-11 &-3.55e-11 &-10 &1.4 \\
+Mangos &1.37 &20 &-3.81e-12 &-3.81e-12 &-10 &1.38 \\
 \hline
-Melons &1.1 &1.31 &1.12 &1.1 &0.986 &1.11 \\
-Nectarines &2.18 &2.61 &2.31 &2.18 &1.96 &2.22 \\
-Oranges &1.44 &1.73 &1.48 &1.44 &1.29 &1.46 \\
-Passion fruits &3.8 &4.56 &3.8 &3.8 &3.42 &3.86 \\
-Paw-paws &3.22 &3.86 &3.22 &3.22 &2.9 &3.27 \\
+Melons &1.9 &20 &1.81 &-4.76e-11 &-10 &1.51 \\
+Nectarines &2.57 &20 &5.96 &-5.3e-11 &-10 &1.91 \\
+Oranges &1.84 &20 &2.88 &-2.86e-11 &-10 &1.66 \\
+Passion fruits &3 &20 &4.32e-11 &4.32e-11 &-10 &1.51 \\
+Paw-paws &1.22 &20 &2.09e-11 &2.09e-11 &-10 &1.48 \\
 \hline
-Peaches &2.07 &2.48 &2.25 &2.07 &1.86 &2.1 \\
-Pears &1.49 &1.78 &1.56 &1.51 &1.34 &1.51 \\
-Pineapples &0.985 &1.18 &0.985 &0.985 &0.887 &0.997 \\
-Plums &2.15 &2.58 &2.22 &2.15 &1.93 &2.18 \\
-Pomegranates &3.27 &3.93 &3.39 &3.27 &2.95 &3.31 \\
+Peaches &2.07 &20 &8.97 &3.03e-11 &-10 &1.54 \\
+Pears &2.49 &20 &5.15 &1.54 &-10 &1.59 \\
+Pineapples &0.985 &20 &-3.81e-11 &-3.81e-11 &-10 &1.22 \\
+Plums &2.15 &20 &3.19 &0.26 &-10 &1.61 \\
+Pomegranates &2.07 &20 &3.71 &-4.84e-11 &-10 &1.14 \\
 \hline
-Rhubarb &4.51 &5.41 &4.51 &4.95 &4.06 &4.59 \\
-Sharon fruits &9.76 &11.7 &9.81 &9.76 &8.79 &9.93 \\
+Rhubarb &3.92 &20 &0.11 &9.87 &-10 &1.78 \\
+Sharon fruits &8.56 &20 &0.5 &6.1e-11 &-10 &1.7 \\
  \hline \hline
+\multicolumn{7}{p{0.8 \textwidth}}{Note: The first column shows the baseline price for each fruit (GBP per gram). The remaining columns show the percentage impact of the policies.}
 \end{tabular}
 \end{center}
 \end{table}
@@ -99,26 +96,27 @@ Sharon fruits &9.76 &11.7 &9.81 &9.76 &8.79 &9.93 \\
 \label{table:tax impact welfare}
 \begin{center}
 \begin{tabular}{lcccccc} \hline \hline
- & Baseline & Case1 & Case2 & Case3 & Case4 & Case5 \\
+ & Baseline & Policy1 & Policy2 & Policy3 & Policy4 & Policy5 \\ \hline
 Consumer expenditure & & & & & & \\
-10th percentile &0 &0 &0 &0 &0 &0 \\
-25th percentile &0 &0 &0 &0 &0 &0 \\
-50th percentile &0 &0 &0 &0 &0 &0 \\
-75th percentile &0 &0 &0 &0 &0 &0 \\
-90th percentile &0 &0 &0 &0 &0 &0 \\
+10th percentile &0 &NaN &NaN &NaN &NaN &NaN \\
+25th percentile &0 &NaN &NaN &NaN &NaN &NaN \\
+50th percentile &0 &NaN &NaN &NaN &NaN &NaN \\
+75th percentile &0 &NaN &NaN &NaN &NaN &NaN \\
+90th percentile &0 &NaN &NaN &NaN &NaN &NaN \\
 \hline 
 Consumer welfare & & & & & & \\
-10th percentile &-26.3 &-24.7 &-26 &-26.3 &-27.1 &-26.2 \\
-25th percentile &-19.2 &-17.9 &-19 &-19.2 &-20 &-19.1 \\
-50th percentile &-13 &-11.9 &-12.8 &-12.9 &-13.5 &-12.9 \\
-75th percentile &-8.03 &-7.21 &-7.9 &-8.01 &-8.48 &-7.96 \\
-90th percentile &-4.79 &-4.16 &-4.69 &-4.77 &-5.13 &-4.73 \\
+10th percentile &-23.9 &1.93 &0.399 &0.0483 &-1.04 &0.164 \\
+25th percentile &-17.2 &1.6 &0.321 &0.046 &-0.849 &0.139 \\
+50th percentile &-11.3 &1.25 &0.243 &0.034 &-0.695 &0.11 \\
+75th percentile &-6.85 &0.976 &0.18 &0.0259 &-0.514 &0.089 \\
+90th percentile &-3.89 &0.706 &0.125 &0.0191 &-0.402 &0.062 \\
 \hline 
 Per capita effects & & & & & & \\
-Welfare & -14.5 7-13.4 7-14.3 7-14.5 7-15.1 7-14.4 \\
-Tax revenue & 0.0 &1.04 &0.188 &0.0295 &-0.599 &0.0916 \\
-Firm Revenue & 5.7 &5.21 &5.61 &5.7 &5.99 &5.66 \\
+Welfare & -12.9 &1.3 &0.245 &0.0362 &-0.702 &0.111 \\
+Tax revenue & 0.0 &1.23 &0.241 &0.0357 &-0.722 &0.11 \\
+Firm Revenue & 6.83 &-9.98 &-1.85 &-0.0564 &5.73 &-0.881 \\
  \hline \hline
+\multicolumn{7}{p{0.8 \textwidth}}{Note: The first column shows the baseline values for expenditure, consumer surplus, firm revenue and tax revenue. All amounts are measured in pounds per household per shopping trip. Columns 2 - 7 show the percentage change in expenditure, the absolute change in consumer surplus, the percentage change in firm revenue and the absolute change in tax revenue due to each policy. Because of quasilinear utility the change in consumer surplus equals compensating variation.}
 \end{tabular}
 \end{center}
 \end{table}
