@@ -39,10 +39,19 @@ for i1=1:ntax
   utax_summary(:,i1) = [quant(utax(:,i1),tau);mean(utax(:,i1))];
 end
 
-CreateTaxTables(taxfile_tables,FruitLabels,tau,N, ...
-                q0,qtax,p0,ptax,            ...
-                e0_summary,etax_summary,    ...
-                u0_summary,utax_summary);
+% tax labels
+% tax order
+% 1 = 20% VAT
+% 2 = 10% EU
+% 3 = 10% UK
+% 4 = 10% subsidy
+% 5 = 5%  merger
+TaxLabel = {'VAT','EU Tariff','UK Cost Shock','Subsidy','Merger'};
+TaxOrder = [2 3 5 4 1]';
+CreateTaxTables(taxfile_tables,FruitLabels,tau,N,TaxLabel(TaxOrder), ...
+                q0,qtax(:,TaxOrder),p0,ptax(:,TaxOrder), ...
+                e0_summary,etax_summary(:,TaxOrder),    ...
+                u0_summary,utax_summary(:,TaxOrder));
 
 
 
