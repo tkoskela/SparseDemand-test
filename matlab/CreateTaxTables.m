@@ -40,12 +40,17 @@ str1 = [str1,'} \hline \hline'];
 disp(str1);
 
 % column labels
-str1 = 'Fruit & Baseline (kg)';
+str1 = ' & ';
+str2 = 'Fruit & Baseline (kg)';
 for i1=1:ntax
-  str1 = strcat(str1,' & ',TaxLabel{i1},' scenario');
+  % use cell array to keep trailing white space  
+  str1 = strcat(str1,{' & Scenario '},int2str(i1));
+  str2 = strcat(str2,' & ',TaxLabel{i1});
 end
-str1 = [str1,' \\ \hline'];
+str1 = [str1,' \\ '];
+str2 = [str2,' \\ \hline'];
 disp(str1);
+disp(str2);
 
 irow = 0;
 for j1=1:J
@@ -91,12 +96,17 @@ str1 = [str1,'} \hline \hline'];
 disp(str1);
 
 % column labels
-str1 = 'Fruit & Baseline';
+str1 = ' & ';
+str2 = 'Fruit & Baseline';
 for i1=1:ntax
-  str1 = strcat(str1,' & ',TaxLabel{i1},' scenario');
+  % use cell array with strcat to keep trailing white space  
+  str1 = strcat(str1,' & ',{' Scenario '},int2str(i1));
+  str2 = strcat(str2,' & ',TaxLabel{i1});
 end
-str1 = [str1,' \\ \hline'];
+str1 = [str1,' \\ '];
+str2 = [str2,' \\ \hline'];
 disp(str1);
+disp(str2);
 
 irow = 0;
 for j1=1:J
@@ -139,12 +149,16 @@ str1 = [str1,'} \hline \hline'];
 disp(str1);
 
 % column labels
-str1 = ' & Baseline';
+str1 = ' & ';
+str2 = ' & Baseline';
 for i1=1:ntax
-  str1 = strcat(str1,' & ',TaxLabel{i1},' scenario');
+  str1 = strcat(str1,{' & Scenario '},int2str(i1));
+  str2 = strcat(str1,{' & '},TaxLabel{i1});
 end
-str1 = [str1,' \\ \hline'];
+str1 = [str1,' \\'];
+str2 = [str2,' \\ \hline'];
 disp(str1);
+disp(str2);
 
 str1 = 'Consumer expenditure & ';
 for i1=1:ntax
