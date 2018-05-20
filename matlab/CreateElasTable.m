@@ -48,7 +48,7 @@ for i1=1:J
     icol = ncol0*(j1-1)+i2;
     if icol==i1
       % Own price elasticity: boldface
-      str1 = strcat(str1,'\textbf{',num2str(elas(i1,icol),prec),'}');
+      str1 = strcat(str1,' & ','\textbf{',num2str(elas(i1,icol),prec),'}');
     else
       % Cross price elasticity: normal font
       str1=strcat(str1,' & ',num2str(elas(i1,icol),prec));
