@@ -43,8 +43,7 @@ disp(str1);
 str1 = ' & ';
 str2 = 'Fruit & Baseline (kg)';
 for i1=1:ntax
-  % use cell array to keep trailing white space  
-  str1 = strcat(str1,{' & Scenario '},int2str(i1));
+  str1 = [str1, ' & Scenario ',int2str(i1)];
   str2 = strcat(str2,' & ',TaxLabel{i1});
 end
 str1 = [str1,' \\ '];
@@ -100,7 +99,7 @@ str1 = ' & ';
 str2 = 'Fruit & Baseline';
 for i1=1:ntax
   % use cell array with strcat to keep trailing white space  
-  str1 = strcat(str1,' & ',{' Scenario '},int2str(i1));
+  str1 = [str1,' & Scenario ',int2str(i1)];
   str2 = strcat(str2,' & ',TaxLabel{i1});
 end
 str1 = [str1,' \\ '];
@@ -152,7 +151,7 @@ disp(str1);
 str1 = ' & ';
 str2 = ' & Baseline';
 for i1=1:ntax
-  str1 = strcat(str1,{' & Scenario '},int2str(i1));
+  str1 = [str1,' & Scenario ',int2str(i1)];
   str2 = strcat(str1,{' & '},TaxLabel{i1});
 end
 str1 = [str1,' \\'];
