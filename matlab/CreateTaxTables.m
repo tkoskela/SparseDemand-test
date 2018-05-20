@@ -219,8 +219,8 @@ disp(str1);
 
 str1 = ['Firm Revenue & ',num2str((p0'*q0)/N,prec)];
 for i1=1:ntax
-  x1 = 100*( (p0'*qtax(:,i1))/(p0'*q0)-1);
-  str1 = strcat(str1,' & ',num2str(x1,prec),'\%');    
+  x1 = p0'*qtax(:,i1) - (p0'*q0);
+  str1 = strcat(str1,' & ',num2str(x1,prec));    
 end
 str1 = strcat(str1,' \\');
 disp(str1);
