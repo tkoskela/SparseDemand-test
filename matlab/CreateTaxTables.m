@@ -152,7 +152,7 @@ str1 = ' & ';
 str2 = ' & Baseline';
 for i1=1:ntax
   str1 = [str1,' & Scenario ',int2str(i1)];
-  str2 = strcat(str1,' & ',TaxLabel{i1});
+  str2 = strcat(str2,' & ',TaxLabel{i1});
 end
 str1 = [str1,' \\'];
 str2 = [str2,' \\ \hline'];
