@@ -46,7 +46,7 @@ end
 % 3 = 10% UK
 % 4 = 10% subsidy
 % 5 = 5%  merger
-TaxLabel = {'VAT','EU Tariff','UK Cost Shock','Subsidy','Merger'};
+TaxLabel = {'VAT','EU tariff','UK cost shock','Subsidy','Merger'};
 TaxOrder = [2 3 5 4 1]';
 CreateTaxTables(taxfile_tables,FruitLabels,tau,N,TaxLabel(TaxOrder), ...
                 q0,qtax(:,TaxOrder),p0,ptax(:,TaxOrder), ...
