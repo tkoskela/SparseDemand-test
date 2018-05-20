@@ -31,6 +31,7 @@ disp('\caption{Percentage change in demand due to tax/price change}');
 disp('\label{table:tax impact 1}');
 disp('\begin{center}');
 % Number of columns = 2 + ntax
+disp('\resizebox{1 \textwidth}{!}{')
 str1 = '\begin{tabular}{lc';
 for t1=1:ntax
   str1 = strcat(str1,'c');
@@ -70,7 +71,7 @@ str1 = ['\multicolumn{',int2str(2+ntax),'}{p{0.8 \textwidth}}{',...
         'columns show the percentage change in demand resulting from the ',...
         'change in tax or prices.}'];
 disp(str1)
-disp('\end{tabular}');
+disp('\end{tabular}}');
 disp('\end{center}');
 disp('\end{table}');
 disp('');
@@ -80,6 +81,7 @@ disp('\begin{table}[h]');
 disp('\caption{Percentage change in price due to tax/price change}');
 disp('\label{table:tax impact 2}');
 disp('\begin{center}');
+disp('\resizebox{1 \textwidth}{!}{');
 % Number of columns = 2 + ntax
 str1 = '\begin{tabular}{lc';
 for t1=1:ntax
@@ -117,7 +119,7 @@ str1 = ['\multicolumn{',int2str(2+ntax),'}{p{0.8 \textwidth}}{',...
         '(GBP per kilogram). The remaining ',...
         'columns show the percentage impact of the change in tax or prices.}'];
 disp(str1);     
-disp('\end{tabular}');
+disp('\end{tabular}}');
 disp('\end{center}');
 disp('\end{table}');
 disp('');
@@ -127,6 +129,7 @@ disp('\begin{table}[h]');
 disp('\caption{Tax impact on expenditure and welfare}');
 disp('\label{table:tax impact welfare}');
 disp('\begin{center}');
+disp('\resizebox{1 \textwidth}{!}{');
 % Number of columns = 2 + ntax
 str1 = '\begin{tabular}{lc';
 for t1=1:ntax
@@ -221,7 +224,7 @@ str1 = ['\multicolumn{',int2str(2+ntax),'}{p{0.8 \textwidth}}{',...
         'Because of quasilinear utility ',...
         'the change in consumer surplus equals compensating variation.}']; 
 disp(str1);
-disp('\end{tabular}');
+disp('\end{tabular}}');
 disp('\end{center}');
 disp('\end{table}');
 disp('');
