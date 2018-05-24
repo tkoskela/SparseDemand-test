@@ -24,7 +24,7 @@ OutputFlag   : 1     # 0 don't print output and 1 to print output
 SaveDataFlag : 0     # 1 to save data, 0 otherwise
 TestIntegrationFlag : 0 # 1 to test accuracy of integration
 SimulateDataFlag    : 0 # 1 simulate data, 0 = load data from file
-RawDataFormat       : 1 # 1 original data format, 2 = 20161225 data format
+RawDataFormat       : 1 # 1 original data format, 2 = 20161225 data format,3=20171109
 BICFlag             : 0 # 1 to minimize BIC
 MPIFlag             : 1 # 1 = each processor, subset of data
                         # 2 = each processor, subset of MC replications

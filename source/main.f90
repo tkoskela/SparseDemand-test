@@ -34,6 +34,7 @@ program SparseDemand
   ! MPI variables : USE_MPI==1 version
   integer(i4b)            :: ierr  ! mpi error flag
   integer(i4b)            :: pid   ! process id number
+  integer(i4b)            :: nprocs ! number of processes
 
   ! Data and time
   integer(i4b)            :: DateTime(8)
@@ -42,11 +43,12 @@ program SparseDemand
 #if USE_MPI==1
   call mpi_init(ierr)
   call mpi_comm_rank(MPI_COMM_WORLD,pid,ierr)
-  call mpi_comm_size(MPI_COMM_WORLD,nWorkers,ierr)
-  nWorkers = nWorkers - 1
+  call mpi_comm_size(MPI_COMM_WORLD,nprocs,ierr)
+  nWorkers = nprocs - 1
 #else
   pid=0
   nWorkers=1
+  nprocs = 1
 #endif
 
   ! find input file name and initialize parameters
@@ -72,12 +74,10 @@ program SparseDemand
   call date_and_time(values = DateTime)
   print 101,'Process ',pid,': start BroadcastParameters: ',DateTime((/3,5,6/))
 101 format(a8,i4,a30,3i4)
-  call BroadcastParameters(pid)
-  print 101,'Process ',pid,': finish BroadcastParameters: ',DateTime((/3,5,6/))
-  if (pid==MasterID) then
-    !call date_and_time(values = DateTime)
-    !print *, "Broadcast parameters complete. (day,hour,sec) = ",DateTime(3),DateTime(5),DateTime(6)
+  if (nprocs>1) then
+    call BroadcastParameters(pid)
   end if
+  print 101,'Process ',pid,': finish BroadcastParameters: ',DateTime((/3,5,6/))
 #endif
 
   if (CONTROLOPTIONS%MPIFLAG==1) then
@@ -99,11 +99,20 @@ program SparseDemand
     ! compute IMC1 and IMC2 for current pid
     ! IMC1 = first random number seed for current processor
     ! IMC2 = final random number seed
-    call ComputeNMC(pid,HHData%NMC,IMC1,IMC2)
+    if (nWorkers==0) then
+      IMC1 = 1
+      IMC2 = HHData%NMC
+    else 
+      call ComputeNMC(pid,HHData%NMC,IMC1,IMC2)
+    end if
   end if
 
   if (ControlOptions%TestLikeFlag<=5) then 
     ! Estimate model
+    if (nWorkers==0) then
+      print *,'Error. RunMontecarlo only works when nWorkers>0'
+      stop
+    end if
     call RunMonteCarlo(IMC1,IMC2,pid)
   elseif (ControlOptions%TestLikeFlag==6) then
     ! analyse results

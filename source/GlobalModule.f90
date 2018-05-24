@@ -14,6 +14,7 @@ module GlobalModule
     character(len=99) :: InvCDiag,InvCOffDiag
     character(len=99) :: BC_beta,BC_CDiag,BC_COffDiag
     character(len=99) :: BD_beta,BD_CDiag,BD_COffDiag
+    character(len=99) :: BD_Z,BC_Z
     character(len=99) :: sigp
     character(len=99) :: BasePriceFile
     character(len=99) :: TaxParmsFile
@@ -100,6 +101,7 @@ module GlobalModule
     real(dp), allocatable :: BC(:)     ! off-diagonal elements of B
 
     real(dp), allocatable :: MuE(:)      ! mean of e
+    real(dp), allocatable :: mue_month(:,:) ! seasonal variation in mue
     real(dp), allocatable :: SIG(:,:)    ! variance of e
     real(dp), allocatable :: CSig(:,:)   ! cholesky decomp of SIG
     real(dp), allocatable :: InvC(:,:)   ! inverse of C
@@ -150,6 +152,9 @@ module GlobalModule
 
     real(dp), allocatable :: SigP(:,:)
 
+    ! Month dummies
+    real(dp), allocatable :: BD_month(:,:)
+
     ! (lower,upper) bounds on parameters
     real(dp), allocatable :: D_L(:),D_H(:)
     real(dp), allocatable :: BC_L(:),BC_H(:)
@@ -167,8 +172,11 @@ module GlobalModule
     real(dp)              :: BC_beta_hi   ! upper bound
     real(dp)              :: BD_beta_lo   ! lower bound
     real(dp)              :: BD_beta_hi   ! upper bound
-    
-    ! parameters used to determine details of analysisof results
+   
+    real(dp)              :: BD_month_lo  ! lower bound
+    real(dp)              :: BD_month_hi  ! upper bound
+ 
+    ! parameters used to determine details of analysis of results
     integer(i4b) :: nPrices_plot  ! number of prices to plot when demand plotting
   end type
 
@@ -182,6 +190,8 @@ module GlobalModule
     integer(i4b), allocatable :: xBC(:)
     integer(i4b), allocatable :: MuE(:)
     integer(i4b), allocatable :: xMuE(:)
+    integer(i4b), allocatable :: mue_month(:)
+    integer(i4b), allocatable :: xmue_month(:)
     integer(i4b), allocatable :: InvCDiag(:)
     integer(i4b), allocatable :: xInvCDiag(:)
     integer(i4b), allocatable :: InvCOffDiag(:)
@@ -200,16 +210,22 @@ module GlobalModule
     integer(i4b), allocatable :: BC_COffDiag(:)
     integer(i4b), allocatable :: xBC_COffDiag(:)
 
+    integer(i4b), allocatable :: BD_month(:)
+    integer(i4b), allocatable :: xBD_month(:)
+
     integer(i4b)              :: nD 
     integer(i4b)              :: nBC
     integer(i4b)              :: nMuE
+    integer(i4b)              :: nMue_month
     integer(i4b)              :: nInvCDiag
     integer(i4b)              :: nInvCOffDiag
 
     integer(i4b)              :: nBD_beta
     integer(i4b)              :: nBD_CDiag
     integer(i4b)              :: nBD_COffDiag
-    
+   
+    integer(i4b)              :: nBD_month
+ 
     integer(i4b)              :: nBC_beta
     integer(i4b)              :: nBC_CDiag
     integer(i4b)              :: nBC_COffDiag
@@ -219,6 +235,7 @@ module GlobalModule
     integer(i4b)              :: flagD
     integer(i4b)              :: flagBC
     integer(i4b)              :: flagMUE
+    integer(i4b)              :: flagMUE_month
     integer(i4b)              :: flagInvCDiag
     integer(i4b)              :: flagInvCOffDiag
 
@@ -228,6 +245,8 @@ module GlobalModule
     integer(i4b)              :: flagBD_beta
     integer(i4b)              :: flagBD_CDiag
     integer(i4b)              :: flagBD_COffDiag
+    integer(i4b)              :: flagBD_month
+
     integer(i4b)              :: OneAtATime
 
     character(len=20), allocatable :: xlabels(:)
@@ -279,6 +298,7 @@ module GlobalModule
     real(dp), allocatable :: prior(:) ! prior evaluated at x(:,i1)
 
     real(dp)              :: BD_beta_lo,BD_beta_hi
+    real(dp)              :: BD_month_lo,BD_month_hi
     real(dp)              :: BD_CDiag_lo,BD_CDiag_hi
     real(dp)              :: BD_COffDiag_lo,BD_COffDiag_hi
 
@@ -287,6 +307,7 @@ module GlobalModule
     real(dp)              :: BC_COffDiag_lo,BC_COffDiag_hi
 
     real(dp)              :: MUE_lo,MUE_hi
+    real(dp)              :: MUE_month_lo,MUE_month_hi
     real(dp)              :: InvCDiag_lo,InvCDiag_hi
     real(dp)              :: InvCOffDiag_lo,InvCOffDiag_hi
   end type
@@ -386,6 +407,7 @@ contains
 
     ! mean and variance of e
     allocate(LocalParms%MuE(K))
+    allocate(LocalParms%mue_month(K,12))
     allocate(LocalParms%SIG(K,K))
     allocate(LocalParms%CSig(K,K))
     allocate(LocalParms%InvC(K,K))
@@ -421,6 +443,7 @@ contains
       ! size(GradBD_C_CDiag)    = dim_eta x J   (tranpose to get BD_C)
       ! size(GradBD_C_COffDiag) = dim_eta x nBD_COffDiag
       allocate(LocalParms%BD_beta(LocalParms%BD_z_dim))
+      allocate(LocalParms%BD_month(LocalParms%J,12))
       allocate(LocalParms%BD_CDiag(LocalParms%J))
       allocate(LocalParms%BD_COffDiag(LocalParms%nBD_COffDiag))
       allocate(LocalParms%GradBD_C_CDiag(LocalParms%dim_eta,LocalParms%J))
@@ -550,7 +573,8 @@ end subroutine AllocateLocalHHData
     else if  (parms%model==2) then
       nx = iFree%nBC_beta + iFree%nBC_CDiag + iFree%nBC_COffDiag &
          + iFree%nBD_beta + iFree%nBD_CDiag + iFree%nBD_COffDiag &
-         + iFree%nMuE + iFree%nInvCDiag + iFree%nInvCOffDiag
+         + iFree%nMuE + iFree%nMue_month + iFree%nInvCDiag + iFree%nInvCOffDiag     &
+         + iFree%nBD_month
     end if
 
     nx2 = nx-nx1
@@ -643,6 +667,10 @@ subroutine DeallocateParms(LocalParms)
   if (allocated(LocalParms%MUE)) then
     deallocate(LocalParms%MUE)
   end if
+  
+  if (allocated(LocalParms%MUE_month)) then
+    deallocate(LocalParms%MUE_month)
+  end if
 
   if (allocated(LocalParms%SIG)) then
     deallocate(LocalParms%SIG)
@@ -703,6 +731,9 @@ subroutine DeallocateParms(LocalParms)
   end if
   if (allocated(LocalParms%BD_beta)) then
     deallocate(LocalParms%BD_beta)
+  end if
+  if (allocated(LocalParms%BD_month)) then
+    deallocate(LocalParms%BD_month)
   end if
   if (allocated(LocalParms%BD_CDiag)) then
     deallocate(LocalParms%BD_CDiag)
@@ -807,6 +838,9 @@ subroutine DeallocateIFree(LocalIFree)
   if (allocated(LocalIFree%MuE)) then
     deallocate(LocalIFree%MuE,LocalIFree%xMuE)
   end if
+  if (allocated(LocalIFree%MuE_month)) then
+    deallocate(LocalIFree%MuE_month,LocalIFree%xMuE_month)
+  end if
   if (allocated(LocalIFree%InvCDiag)) then
     deallocate(LocalIFree%InvCDiag,LocalIFree%xInvCDiag)
   end if
@@ -848,6 +882,10 @@ subroutine DeallocateIFree(LocalIFree)
     deallocate(LocalIFree%xlabels)
   end if
 
+  if (allocated(LocalIFree%BD_month)) then
+    deallocate(LocalIFree%BD_month)
+    deallocate(LocalIFree%xBD_month)
+  end if
 end subroutine DeallocateIFree
 
 !------------------------------------------------------------------------------
@@ -977,6 +1015,8 @@ subroutine InitializeParameters(InputFile)
    ErrFlag = GetVal(PropList,'BD_CDIAG_FILE',ParmFiles%BD_CDiag)
    ErrFlag = GetVal(PropList,'BD_COFFDIAG_FILE',ParmFiles%BD_COffDiag)
    ErrFlag = GetVal(PropList,'SIGP_FILE',ParmFiles%sigp)
+   ErrFlag = GetVal(PropList,'BD_Z_FILE',ParmFiles%BD_Z)
+   ErrFlag = GetVal(PropList,'BC_Z_FILE',ParmFiles%BC_Z)
    
    ! outputFlag: 0 do not save output
    !             1 save output
@@ -1144,6 +1184,13 @@ subroutine InitializeParameters(InputFile)
     ! RandomB parameters: dimension of random elements of C and D
     ErrFlag = GetVal(PropList,'dim_eta',cTemp)
     read(cTemp,'(i3)') parms%dim_eta
+
+    ! Month dummy parameters: upper and lower bounds
+    ErrFlag = GetVal(PropList,'BD_month_lo',cTemp)
+    read(cTemp,'(f12.0)') parms%BD_month_lo
+    ErrFlag = GetVal(PropList,'BD_month_hi',cTemp)
+    read(cTemp,'(f12.0)') parms%BD_month_hi
+
   end if
 
   ! allocate memory for (parms,QuadRule,iFree) and HHData
@@ -1171,6 +1218,9 @@ subroutine InitializeParameters(InputFile)
   end if
   ErrFlag = GetVal(PropList,'FreeFlagMUE',cTemp)
   read(cTemp,'(i2)') iFree%flagMUE
+  ErrFlag = GetVal(PropList,'FreeFlagMUE_month',cTemp)
+  read(cTemp,'(i2)') iFree%flagMUE_month
+
   ErrFlag = GetVal(PropList,'FreeFlagInvCDiag',cTemp)
   read(cTemp,'(i2)') iFree%flagInvCDiag
   ErrFlag = GetVal(PropList,'FreeFlagInvCOffDiag',cTemp)
@@ -1194,6 +1244,9 @@ subroutine InitializeParameters(InputFile)
 
     ErrFlag = GetVal(PropList,'FreeFlagBD_COffDiag',cTemp)
     read(cTemp,'(i2)') iFree%flagBD_COffDiag
+    
+    ErrFlag = GetVal(PropList,'FreeFlagBD_month',cTemp)
+    read(cTemp,'(i2)') iFree%flagBD_month
   end if
 
   ErrFlag = GetVal(PropList,'OneAtATime',cTemp)
@@ -1216,87 +1269,77 @@ end subroutine InitializeParameters
   subroutine ReadParameters
     use NewTools, only : SphereToMatrix,MatrixInverse
     implicit none
-    integer(i4b)       :: unit_D,unit_C,unit_MUE,unit_invCDiag,unit_INVCOffDiag
-    character(len=200) :: file_D,file_C,file_MUE,file_INVCDiag,file_INVCOffDiag
-    integer(i4b)       :: unit_BC_beta,unit_BC_CDiag,unit_BC_COffDiag
-    integer(i4b)       :: unit_BD_beta,unit_BD_CDiag,unit_BD_COffDiag
-    character(len=200) :: file_BC_beta,file_BC_CDiag,file_BC_COffDiag
-    character(len=200) :: file_BD_beta,file_BD_CDiag,file_BD_COffDiag
-    integer(i4b)       :: unit_sigp
-    character(len=200) :: file_sigp
+    integer(i4b)       :: tempunit
+    character(len=200) :: tempfile
 
     integer(i4b), allocatable :: index(:)
     integer(i4b)              :: row,col
     real(dp),     allocatable :: temp2(:,:)
     integer(i4b)              :: i1,n
 
+    tempunit = 65
+
     if (parms%model==1) then
       ! D: norm of columns of B
-      unit_D = 471
-      file_D = trim(InputDir) // '/D.raw'
-      open(UNIT = unit_D, &
-           FILE = file_D, &
+      tempfile = trim(InputDir) // '/D.raw'
+      open(UNIT = tempunit, &
+           FILE = tempfile, &
            ACTION = 'read')
       parms%D = 0.0d0
 
       do i1=1,parms%J
-        read(unit_D,'(g25.16)') parms%D(i1)
+        read(tempunit,'(g25.16)') parms%D(i1)
       end do
-      close(unit_D)
+      close(tempunit)
 
       ! C : off-diagonal elements of B
-      unit_C = 484
-      file_C = trim(InputDir) // '/C.raw'
-      open(UNIT = unit_C,  &
-           FILE = file_C,  &
+      tempfile = trim(InputDir) // '/C.raw'
+      open(UNIT = tempunit,  &
+           FILE = tempfile,  &
            ACTION = 'read')
        parms%BC = 0.0d0
       do i1=1,parms%nBC
-        read(unit_C,'(g25.16)') parms%BC(i1)
+        read(tempunit,'(g25.16)') parms%BC(i1)
       end do
-      close(unit_C)
+      close(tempunit)
 
       call SphereToMatrix(parms%BC,parms%D,parms%K,parms%J,parms%B)
     end if ! if (model==1)
 
     ! parms%MuE : mean of e
-    unit_MUE = 496
-    !file_MUE = trim(InputDir) // '/MUE.raw'
-    file_MUE = trim(InputDir) // '/' // trim(ParmFiles%MUE)
-    open(UNIT = unit_MUE,  &
-         FILE = file_MUE,  &
+    tempfile = trim(InputDir) // '/' // trim(ParmFiles%MUE)
+    open(UNIT = tempunit,  &
+         FILE = tempfile,  &
          ACTION = 'read')
     parms%MUE = 0.0d0
     do i1=1,parms%K
-      read(unit_MUE,'(g25.16)') parms%MUE(i1)
+      read(tempunit,'(g25.16)') parms%MUE(i1)
     end do
-    close(unit_MUE)
+    close(tempunit)
+
+    parms%mue_month = 0.0d0
 
     ! parms%InvCDiag : diagonal elements of inverse of C = chol(sig)
-    unit_InvCDiag = 508
-    !file_InvCDiag = trim(InputDir) // '/INVCDiag.raw'
-    file_InvCDiag = trim(InputDir) // '/' // trim(ParmFiles%InvCDiag)
-    open(UNIT = unit_InvCDiag,  &
-         FILE = file_InvCDiag,  &
+    tempfile = trim(InputDir) // '/' // trim(ParmFiles%InvCDiag)
+    open(UNIT = tempunit,  &
+         FILE = tempfile,  &
          ACTION = 'read')
     parms%InvCDiag = 0.0d0
     do i1=1,parms%K
-      read(unit_InvCDiag,'(g25.16)') parms%InvCDiag(i1)
+      read(tempunit,'(g25.16)') parms%InvCDiag(i1)
     end do
-    close(unit_InvCDiag)
+    close(tempunit)
 
     ! parms%InvCOffDiag : off-diagonal elements of inverse of C = chol(sig)
-    unit_InvCOffDiag = 520
-    !file_InvCOffDiag = trim(InputDir) // '/INVCOffDiag.raw'
-    file_InvCOffDiag = trim(InputDir) // '/' // trim(ParmFiles%InvCOffDiag)
-    open(UNIT = unit_InvCOffDiag,  &
-         FILE = file_InvCOffDiag,  &
+    tempfile = trim(InputDir) // '/' // trim(ParmFiles%InvCOffDiag)
+    open(UNIT = tempunit,  &
+         FILE = tempfile,  &
          ACTION = 'read')
     parms%InvCOffDiag = 0.0d0
     do i1=1,parms%K*(parms%K-1)/2
-      read(unit_InvCOffDiag,'(g25.16)') parms%InvCOffDiag(i1)
+      read(tempunit,'(g25.16)') parms%InvCOffDiag(i1)
     end do
-    close(unit_InvCOffDiag)
+    close(tempunit)
     call SphereToMatrix(parms%InvCOffDiag,parms%InvCDiag,parms%K,parms%K,parms%InvC)
     ! compute CSig = inv(InvC)
     parms%InvC = transpose(parms%InvC)
@@ -1305,79 +1348,70 @@ end subroutine InitializeParameters
 
     if (parms%model==2) then
       ! read in (BC_beta,BD_beta)
-      unit_BC_beta = 618
-      !file_BC_beta = trim(InputDir) // '/BC_beta.raw'
-      file_BC_beta = trim(InputDir) // '/' // trim(ParmFiles%BC_Beta)
-      open(UNIT = unit_BC_beta,  &
-           FILE = file_BC_beta,  &
+      tempfile = trim(InputDir) // '/' // trim(ParmFiles%BC_Beta)
+      open(UNIT = tempunit,  &
+           FILE = tempfile,  &
            ACTION = 'read')
       parms%BC_beta = 0.0d0
       do i1=1,parms%BC_z_dim
-        read(unit_BC_beta,'(g25.16)') parms%BC_beta(i1)
+        read(tempunit,'(g25.16)') parms%BC_beta(i1)
       end do
-      close(unit_BC_beta)
+      close(tempunit)
     
-      unit_BD_beta = 749
-      !file_BD_beta = trim(InputDir) //  '/BD_beta.raw'
-      file_BD_beta = trim(InputDir) //  '/' // trim(ParmFiles%BD_Beta)
-      open(UNIT = unit_BD_beta,  &
-           FILE = file_BD_beta,  &
+      tempfile = trim(InputDir) //  '/' // trim(ParmFiles%BD_Beta)
+      open(UNIT = tempunit,  &
+           FILE = tempfile,  &
            ACTION = 'read')
       parms%BD_beta = 0.0d0
       do i1=1,parms%BD_z_dim
-        read(unit_BD_beta,'(g25.16)') parms%BD_beta(i1)
+        read(tempunit,'(g25.16)') parms%BD_beta(i1)
       end do
-      close(unit_BD_beta)
+      close(tempunit)
    
       ! read (BC_CDiag,BD_CDiag)
-      unit_BC_CDiag = 761
-      !file_BC_CDiag = trim(InputDir) // '/BC_CDiag.raw'
-      file_BC_CDiag = trim(InputDir) // '/' // trim(ParmFiles%BC_CDiag)
-      open(UNIT = unit_BC_CDiag,  &
-           FILE = file_BC_CDiag,  &
+      tempfile = trim(InputDir) // '/' // trim(ParmFiles%BC_CDiag)
+      open(UNIT = tempunit,  &
+           FILE = tempfile,  &
            ACTION = 'read')
       parms%BC_CDiag = 0.0d0
       do i1=1,parms%nBC
-        read(unit_BC_CDiag,'(g25.16)') parms%BC_CDiag(i1)
+        read(tempunit,'(g25.16)') parms%BC_CDiag(i1)
       end do
-      close(unit_BC_CDiag)
+      close(tempunit)
 
-      unit_BD_CDiag = 771
-      !file_BD_CDiag = trim(InputDir) // '/BD_CDiag.raw'
-      file_BD_CDiag = trim(InputDir) // '/' // trim(ParmFiles%BD_CDiag)
-      open(UNIT = unit_BD_CDiag,  &
-           FILE = file_BD_CDiag,  &
+      tempfile = trim(InputDir) // '/' // trim(ParmFiles%BD_CDiag)
+      open(UNIT = tempunit,  &
+           FILE = tempfile,  &
            ACTION = 'read')
       parms%BD_CDiag = 0.0d0
       do i1=1,parms%J
-        read(unit_BD_CDiag,'(g25.16)') parms%BD_CDiag(i1)
+        read(tempunit,'(g25.16)') parms%BD_CDiag(i1)
       end do
-      close(unit_BD_CDiag)
+      close(tempunit)
 
+      ! BD_month: default = 0.0
+      parms%BD_month = 0.0d0
+ 
       ! read (BC_COffDiag,BD_COffDiag)
-      unit_BC_COffDiag = 782
-      !file_BC_COffDiag = trim(InputDir) // '/BC_COffDiag.raw'
-      file_BC_COffDiag = trim(InputDir) // '/' // trim(ParmFiles%BC_COffDiag)
-      open(UNIT = unit_BC_COffDiag,  &
-           FILE = file_BC_COffDiag,  &
+      tempfile = trim(InputDir) // '/' // trim(ParmFiles%BC_COffDiag)
+      open(UNIT = tempunit,  &
+           FILE = tempfile,  &
            ACTION = 'read')
       parms%BC_COffDiag = 0.0d0
       do i1=1,parms%nBC_COffDiag
-        read(unit_BC_COffDiag,'(g25.16)') parms%BC_COffDiag(i1)
+        read(tempunit,'(g25.16)') parms%BC_COffDiag(i1)
       end do
-      close(unit_BC_COffDiag)
+      close(tempunit)
 
-      unit_BD_COffDiag = 792
-      !file_BD_COffDiag = trim(InputDir) // '/BD_COffDiag.raw'
-      file_BD_COffDiag = trim(InputDir) // '/' // trim(ParmFiles%BD_COffDiag)
-      open(UNIT = unit_BD_COffDiag,  &
-           FILE = file_BD_COffDiag,  &
+      tempfile = trim(InputDir) // '/' // trim(ParmFiles%BD_COffDiag)
+      open(UNIT = tempunit,  &
+           FILE = tempfile,  &
            ACTION = 'read')
       parms%BD_COffDiag = 0.0d0
       do i1=1,parms%nBD_COffDiag
-        read(unit_BD_COffDiag,'(g25.16)') parms%BD_COffDiag(i1)
+        read(tempunit,'(g25.16)') parms%BD_COffDiag(i1)
       end do
-      close(unit_BD_COffDiag)
+      close(tempunit)
 
       ! Compute parms%BD_C
       ! size(BD_C) = (J x dim_eta)
@@ -1405,49 +1439,45 @@ end subroutine InitializeParameters
       parms%BC_C = transpose(temp2)
       deallocate(temp2)
 
-      ! Compute parms%BD_z  (J x BD_z_dim) matrix
-      !  default = identity matrix
-      if ((size(parms%BD_Z,1) .ne. parms%J) .or. (size(parms%BD_Z,2) .ne. parms%J)) then
-        print *,'Parms%BD is wrong size: ',size(parms%BD_Z,1),size(parms%BD_Z,2)
-        stop
-      end if
-      parms%BD_z = 0.0d0
+      ! Load BD_Z (J x BD_Z_DIM) matrix
+      tempfile = trim(InputDir) // "/" // trim(ParmFiles%BD_Z)
+      open(unit=tempunit, &
+           file=tempfile, &
+           action='read')
+      parms%BD_Z = 0.0d0
       do i1=1,parms%J
-        parms%BD_z(i1,i1) = 1.0d0
+        read(tempunit,1390) parms%BD_Z(i1,:)
       end do
+1390 format(<parms%BD_Z_DIM>f25.16)
+      close(tempunit)
 
-      ! Compute parms%BC_Z   (nBC x BC_z_dim)
+      ! Load parms%BC_Z   (nBC x BC_z_dim)
+      !   c(j,k) = BC_Z * BC_beta + eta * BC_C
       parms%BC_z = 0.0d0
-      allocate(index(parms%K-1))
-      do i1=2,parms%J
-        ! define BC_z so that y(i1) = BC_z(i1,:)*BC_beta = BC_beta(j) if row i1 of
-        ! y  corresponds to product j
-
-        if (i1 <= parms%K) then
-          index(1:i1-1) = (i1-1)*(i1-2)/2+(/1:i1-1/)
-          parms%BC_z(index(1:i1-1),i1-1) = 1.0d0
-        else
-          index = parms%K*(parms%K-1)/2 + (parms%K-1)*(i1-parms%K-1)+(/1:parms%K-1/)
-          parms%BC_z(index,i1-1) = 1.0d0
-        end if
+      tempfile = trim(InputDir) // "/" // trim(ParmFiles%BC_Z)
+      open(unit=tempunit, &
+           file=tempfile, &
+           action='read')
+      do i1=1,parms%nBC
+        read(tempunit,1420) parms%BC_Z(i1,:)
       end do
-      deallocate(index)
+1420 format(<parms%BC_Z_DIM>f25.16)
+      close(tempunit)
     end if ! if (model==2) then
    
-    unit_sigp = 471
-    file_sigp = trim(InputDir) // '/' // trim(ParmFiles%sigp)
-    open(UNIT = unit_sigp, &
-         FILE = file_sigp, &
+    tempfile = trim(InputDir) // '/' // trim(ParmFiles%sigp)
+    open(UNIT = tempunit, &
+         FILE = tempfile, &
          ACTION = 'read')
 
     parms%sigp = 0.0d0
     do i1=1,parms%J*parms%J
       row = (i1-1)/parms%J + 1
       col = i1-parms%J*(row-1)  
-      read(unit_sigp,897) parms%sigp(row,col)
+      read(tempunit,897) parms%sigp(row,col)
     end do
     897 format(f25.0)
-    close(unit_sigp)
+    close(tempunit)
     
   end subroutine ReadParameters
 
@@ -1749,6 +1779,8 @@ subroutine BroadcastParameters(pid)
     call mpi_bcast(parms%InvCDiag_HI,1,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(21))
     call mpi_bcast(parms%InvCOffDiag_LO,1,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(21))
     call mpi_bcast(parms%InvCOffDiag_HI,1,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(21))
+    call mpi_bcast(parms%BD_month_hi,1,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(21))
+    call mpi_bcast(parms%BD_month_lo,1,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(21))
   end if
 
   ! parameters defining counterfactuals for analysis of results
@@ -1855,6 +1887,9 @@ subroutine BroadcastParms(LocalParms,pid)
 
   nerr = 2+LocalParms%J
   call mpi_bcast(LocalParms%mue,LocalParms%K,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(nerr+1))
+  do i1=1,12
+    call mpi_bcast(LocalParms%mue_month(:,i1),LocalParms%K,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(nerr+1))
+  end do
 
   call mpi_bcast(LocalParms%InvCDiag,LocalParms%K,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(nerr+2))
   call mpi_bcast(LocalParms%InvCOffDiag,LocalParms%K*(LocalParms%K-1)/2,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(nerr+3))
@@ -1872,6 +1907,9 @@ subroutine BroadcastParms(LocalParms,pid)
     call mpi_bcast(LocalParms%BD_beta,LocalParms%BD_z_dim,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(nerr+1))
     call mpi_bcast(LocalParms%BD_CDiag,LocalParms%J,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(nerr+2))
     call mpi_bcast(LocalParms%BD_COffDiag,LocalParms%nBD_COffDiag,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(nerr+3))
+    do i1=1,LocalParms%J
+      call mpi_bcast(LocalParms%BD_month(i1,:),12,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(nerr+3))
+    end do
     nerr = nerr+3
     do i1=1,LocalParms%dim_eta
       call mpi_barrier(MPI_COMM_WORLD,ierr_barrier)
@@ -1914,6 +1952,7 @@ subroutine BroadcastIFree(pid)
   call mpi_bcast(iFree%flagD,1,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
   call mpi_bcast(iFree%flagBC,1,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
   call mpi_bcast(iFree%flagMUE,1,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
+  call mpi_bcast(iFree%flagMUE_month,1,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
   call mpi_bcast(iFree%flagInvCDiag,1,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
   call mpi_bcast(iFree%flagInvCOffDiag,1,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
 
@@ -1923,6 +1962,7 @@ subroutine BroadcastIFree(pid)
   call mpi_bcast(iFree%flagBD_beta,1,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
   call mpi_bcast(iFree%flagBD_CDiag,1,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
   call mpi_bcast(iFree%flagBD_COffDiag,1,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
+  call mpi_bcast(iFree%flagBD_month,1,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
   call mpi_bcast(iFree%OneAtATime,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr)
 
   call mpi_bcast(iFree%nD,1,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
@@ -1930,10 +1970,12 @@ subroutine BroadcastIFree(pid)
   call mpi_bcast(iFree%nInvCDiag,1,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
   call mpi_bcast(iFree%nInvCOffDiag,1,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
   call mpi_bcast(iFree%nMuE,1,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
+  call mpi_bcast(iFree%nMuE_month,1,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
 
   call mpi_bcast(iFree%nBD_beta,1,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
   call mpi_bcast(iFree%nBD_CDiag,1,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
   call mpi_bcast(iFree%nBD_COffDiag,1,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
+  call mpi_bcast(iFree%nBD_month,1,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
 
   call mpi_bcast(iFree%nBC_beta,1,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
   call mpi_bcast(iFree%nBC_CDiag,1,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
@@ -1999,6 +2041,25 @@ subroutine BroadcastIFree(pid)
     deallocate(temp1,temp2)
   end if
 
+  if (iFree%nMuE_month>0) then
+    allocate(temp1(iFree%nMUE_month))
+    allocate(temp2(iFree%nMUE_month))
+    if (pid>MasterID .and. .not. allocated(iFree%MUE_month)) then
+      allocate(iFree%MuE_month(iFree%nMuE_month))
+      allocate(iFree%xMuE_month(iFree%nMuE_month))
+    end if
+    if (pid==MasterID) then
+      temp1 = iFree%MUE_month
+      temp2 = iFree%xMUE_month
+    end if
+    call mpi_barrier(MPI_COMM_WORLD,ierr)
+    call mpi_bcast(temp1,iFree%nMuE_month,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(temp2,iFree%nMuE_month,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
+    iFree%MUE_month = temp1
+    iFree%xMUE_month = temp2
+    deallocate(temp1,temp2)
+  end if
+
   if (iFree%nInvCDiag>0) then
     allocate(temp1(iFree%nInvCDiag))
     allocate(temp2(iFree%nInvCDiag))
@@ -2055,6 +2116,26 @@ subroutine BroadcastIFree(pid)
     call mpi_bcast(temp2,iFree%nBD_beta,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
     iFree%BD_beta = temp1
     iFree%xBD_beta = temp2
+    deallocate(temp1,temp2)
+  end if
+
+  if (iFree%nBD_month>0) then
+    allocate(temp1(iFree%nBD_month))
+    allocate(temp2(iFree%nBD_month))
+
+    if (pid>MasterID .and. .not. allocated(iFree%BD_month)) then
+      allocate(iFree%BD_month(iFree%nBD_month))
+      allocate(iFree%xBD_month(iFree%nBD_month))
+    end if
+    if (pid==MasterID) then
+      temp1 = iFree%BD_month
+      temp2 = iFree%xBD_month
+    end if
+    call mpi_barrier(MPI_COMM_WORLD,ierr)
+    call mpi_bcast(temp1,iFree%nBD_month,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(temp2,iFree%nBD_month,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
+    iFree%BD_month = temp1
+    iFree%xBD_month = temp2
     deallocate(temp1,temp2)
   end if
 
@@ -2201,6 +2282,13 @@ subroutine ReadWriteParameters(LocalParms,LocalAction)
     print *, TempString
     read(LocalParms%unit,103) LocalParms%MUE
 
+    ! MUE_month   (K x 12)
+    read(LocalParms%unit,120) TempString
+    print *, TempString
+    do i1=1,LocalParms%K
+      read(LocalParms%unit,121) LocalParms%MUE_month(i1,:)
+    end do
+
     ! CSIG  (K x K)  Cholesky decomposition of sig
     read(LocalParms%unit,114) TempString
     print *,TempString
@@ -2249,6 +2337,13 @@ subroutine ReadWriteParameters(LocalParms,LocalAction)
       read(LocalParms%unit,109) LocalParms%BD_C(i1,:)
     end do
 
+   ! BD_month (J x 12)
+   read(LocalParms%unit,119) TempString
+   print *,TempString
+   do i1=1,localparms%J
+     read(LocalParms%unit,110) LocalParms%BD_month(i1,:)
+   end do
+
     ! compute spherical coordinate representation of (BC_C,BD_C)
     ! BC_C = lower triangular. MatrixToSphere requires upper triangular
     ! BC_D = lower triangular. MatrixToSphere requires upper triangular
@@ -2273,6 +2368,11 @@ subroutine ReadWriteParameters(LocalParms,LocalAction)
     ! MUE
     write(LocalParms%unit,113) 'MUE(K x 1)'
     write(LocalParms%unit,103) LocalParms%MUE
+
+    write(LocalParms%unit,120) 'mue_month(K x 12)'
+    do i1=1,12
+      write(LocalParms%unit,121) LocalParms%mue_month(i1,:)
+    end do
 
     ! CSIG  (K x K)  Cholesky decomposition of sig
     write(LocalParms%unit,114) 'CSIG(K x K)'
@@ -2309,6 +2409,11 @@ subroutine ReadWriteParameters(LocalParms,LocalAction)
       write(LocalParms%unit,109) LocalParms%BD_C(i1,:)
     end do
 
+   ! BD_month (J x 12)
+   write(LocalParms%unit,119) 'BD_month(J x 12)'
+   do i1=1,localparms%J
+     write(LocalParms%unit,110) LocalParms%BD_month(i1,:)
+   end do
   end select
 
   close(LocalParms%unit)
@@ -2334,7 +2439,10 @@ subroutine ReadWriteParameters(LocalParms,LocalAction)
   107 format(<LocalParms%BC_Z_DIM-1>(f25.16,','),f25.16) ! BC_BETA
   108 format(<LocalParms%BD_Z_DIM-1>(f25.16,','),f25.16) ! BD_BETA
   109 format(<LocalParms%dim_eta-1>(f25.16,','),f25.16)  ! BC_C
+  110 format(12(f25.16,:,','))                           ! BD_month
 
+  120 format(a17)      ! mue_month(K x 12)
+  121 format(12f25.16)
 end subroutine ReadWriteParameters
 
 subroutine CopyParameters(parms_in,parms_out)
@@ -2363,6 +2471,7 @@ subroutine CopyParameters(parms_in,parms_out)
   parms_out%D = parms_in%D
   parms_out%BC = parms_in%BC
   parms_out%MUE = parms_in%MUE
+  parms_out%MUE_month = parms_in%MUE_month
   parms_out%sig = parms_in%sig
   parms_out%CSIG = parms_in%CSIG
   parms_out%invc = parms_in%invc
@@ -2383,6 +2492,7 @@ subroutine CopyParameters(parms_in,parms_out)
     parms_out%BD_z        = parms_in%BD_z
     parms_out%BD_CDiag    = parms_in%BD_CDiag
     parms_out%BD_COffDiag = parms_in%BD_COffDiag
+    parms_out%BD_month    = parms_in%BD_month
     parms_out%GradBD_C_CDiag    = parms_in%GradBD_C_CDiag
     parms_out%GradBD_C_COffDiag = parms_in%GradBD_C_COffDiag
 
@@ -2400,6 +2510,8 @@ subroutine CopyParameters(parms_in,parms_out)
   parms_out%BC_beta_hi  = parms_in%BC_beta_hi
   parms_out%BD_beta_lo  = parms_in%BD_beta_lo
   parms_out%BD_beta_hi  = parms_in%BD_beta_hi
+  parms_out%BD_month_lo = parms_in%BD_month_lo
+  parms_out%BD_month_hi = parms_in%BD_month_hi
 
 end subroutine CopyParameters
 

@@ -251,15 +251,16 @@ subroutine CreateData(IMC)
   deallocate(seed,state)
 end subroutine CreateData
 
-subroutine ComputeCurrentB(eta,parms)
+subroutine ComputeCurrentB(eta,parms,month)
   use nrtype
   use GlobalModule, only : ParmsStructure   ! data type for parms
   use NewTools,     only : SphereToMatrix   ! map spherical coordinates to B
   use nag_library,  only : S15ABF           ! normal CDF
   
   implicit none
-  real(dp),             intent(in)  :: eta(:)
-  type(ParmsStructure), intent(inout) :: parms
+  real(dp),             intent(in)          :: eta(:)
+  type(ParmsStructure), intent(inout)       :: parms
+  integer(i4b),         intent(in),optional :: month
   
   real(dp), allocatable :: GradBC(:,:),GradBD(:,:)
   real(dp), allocatable :: BC(:),D(:)
@@ -273,8 +274,14 @@ subroutine ComputeCurrentB(eta,parms)
   ! eta = random coefficients in (BC,BD)
 
   parms%B = 0.0d0
-  D = exp(matmul(parms%BD_z,parms%BD_beta)    &
-          +matmul(parms%BD_C,eta))
+  if (present(month)) then
+    D = exp(matmul(parms%BD_z,parms%BD_beta)    &
+            +matmul(parms%BD_C,eta)             &
+            +parms%BD_month(:,month))
+  else 
+    D = exp(matmul(parms%BD_z,parms%BD_beta)    &
+            +matmul(parms%BD_C,eta))
+  end if
 
   ! S15ABF = normcdf(x,ifail)
   do i1=1,parms%nBC
@@ -491,10 +498,11 @@ subroutine LoadData
   use nrtype
   use GlobalModule, only : HHData,parms
   implicit none
-  integer(i4b)  :: DataUnit,iComma,i1
-  character(400) :: AllLabels
-  real(dp),     allocatable :: qp(:,:),err(:,:),tiering(:,:),expenditure(:)
+  integer(i4b)                    :: DataUnit,iComma,i1
+  character(400)                  :: AllLabels
+  real(dp),           allocatable :: qp(:,:),err(:,:),tiering(:,:),expenditure(:)
   character(len=100), allocatable :: RawDataLabels(:)
+  integer(i4b),       allocatable :: year(:)
 
   DataUnit = 20
   open(unit = DataUnit, &
@@ -527,6 +535,7 @@ subroutine LoadData
   select case (HHData%RawDataFormat)
 
   case('1')
+    ! Pre-2016 data format
     do i1=1,HHData%N
       read(DataUnit,389) HHData%HHID(i1),HHData%date(i1),HHData%shopid(i1),  &
                          qp(i1,:),HHData%nNonZero(i1),HHData%day(i1),err(i1,:)
@@ -536,7 +545,8 @@ subroutine LoadData
       HHData%iZero(1:parms%J-HHData%nNonZero(i1),i1) = pack((/1:parms%J/),qp(i1,1:2*parms%J:2)==0.0d0)
     end do
 389 format(3i10,<2*parms%J>f25.0,2i10,<parms%J>f25.0)
-  case('3')
+  case('2')
+    ! 2016 format
     do i1=1,HHData%N
       read(DataUnit,390) HHData%HHID(i1),HHData%date(i1),HHData%shopid(i1),  &
                          qp(i1,:),HHData%nNonZero(i1),         &
@@ -547,7 +557,8 @@ subroutine LoadData
       HHData%iZero(1:parms%J-HHData%nNonZero(i1),i1) = pack((/1:parms%J/),qp(i1,1:2*parms%J:2)==0.0d0)
     end do
 390 format(3i10,<2*parms%J>f25.0,2i10,f25.0,i10,<parms%J>f25.0)
-  case('20111109')
+  case('20171109')
+    ! 20171109 Data Format
     do i1=1,HHData%N
       read(DataUnit,522) HHData%HHID(i1),HHData%date(i1),HHData%shopid(i1),  &
                          qp(i1,:),HHData%nNonZero(i1),              &
@@ -560,8 +571,11 @@ subroutine LoadData
     end do
 522 format(3i10,<2*parms%J>f25.0,4i10,f25.0,i10,<parms%J>f25.0)
     ! Create month and week
-    HHData%month = HHData%day/12
-    HHData%week  = HHData%day/52
+    allocate(year(HHData%N))
+    year = HHData%date/10000
+    HHData%month = (HHData%date - 10000 * year) / 100
+    HHData%week  = min(HHData%day/7 +1,52)
+    deallocate(year)
   end select
   deallocate(qp,err)
   close(DataUnit)

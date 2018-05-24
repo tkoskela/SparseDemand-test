@@ -4,8 +4,8 @@ function CreateParameters2(J,K,OutDir)
 % 3) MUE.raw         (K x 1)
 % 4) InvCDiag.raw    (K x 1)
 % 5) InvCOffDiag.raw (nInvC x 1)  K*(K-1)/2 
-% 6A) BC_Z  (nBC x BC_z_dim)
-% 6B) BC_beta        (BC_z_dim x 1)
+% 6A) BC_Z           (nBC x nBC)
+% 6B) BC_beta        (nBC x 1)
 % 7A  BD_Z           (J x BD_z_dim)
 % 7B) BD_beta        (BD_z_dim x 1)
 % 8) BC_CDiag        (nBC x 1)
@@ -23,9 +23,8 @@ if nargin<3
   OutDir='.';
 end
 
-
 nBC = K*(K-1)/2 + (J-K)*(K-1);
-BC_z_dim = J-1;
+BC_z_dim = nBC;
 BD_z_dim = J;
 BC_eta_dim = 2;
 BD_eta_dim = 2;
@@ -63,16 +62,8 @@ fid = fopen(fullfile(OutDir,'INVCOffDiag.raw'),'w');
 fprintf(fid,'%25.16f \n',InvCOffDiag);
 fclose(fid);
 
-% 6A) BC_Z  (nBC x BC_z_dim)
-BC_Z = zeros(nBC,BC_z_dim);
-for i1=2:J
-  if i1<=K
-    index = (i1-1)*(i1-2)/2 + (1:i1-1)';
-  else 
-    index = K*(K-1)/2 + (K-1)*(i1-K-1) + (1:K-1)';
-  end
-  BC_Z(index,i1) = 1;
-end
+% 6A) BC_Z  (nBC x nBC)
+BC_Z = eye(nBC);
 
 fid = fopen(fullfile(OutDir,'BC_Z.raw'),'w');
 fprintf(fid,'%25.16f \n',BC_Z);
@@ -133,7 +124,7 @@ fclose(fid);
 SigP = 2*rand(J,J);
 SigP = SigP'*SigP;
 
-fid = fopen(fullfile(OutDir,'sigp.raw)','w');
+fid = fopen(fullfile(OutDir,'sigp.raw)','w'));
 fprintf(fid,'%25.16f \n',SigP);
 fclose(fid);
 

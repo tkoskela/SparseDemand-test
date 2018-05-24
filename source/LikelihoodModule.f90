@@ -199,7 +199,7 @@ subroutine Like2(mode,nx,x,L,GradL,nstate,iuser,ruser)
 
     do iq=1,RandomB%nall
       ! update parms%B
-      call ComputeCurrentB(RandomB%nodes(iq,:),parms)
+      call ComputeCurrentB(RandomB%nodes(iq,:),parms,HHData%month(iHH))
       call Like1_wrapper(iHH,d1,d2,d3,parms,mode,L1,GradL1)
       if (L1>0.0d0) then
         L0 = L0 + RandomB%weights(iq)*L1
@@ -259,7 +259,7 @@ subroutine Like2Hess(nx,x,L)
 
     do iq=1,RandomB%nall
       ! update parms%B
-      call ComputeCurrentB(RandomB%nodes(iq,:),parms)
+      call ComputeCurrentB(RandomB%nodes(iq,:),parms,HHData%month(iHH))
       call Like1_wrapper(iHH,d1,d2,d3,parms,mode,L1,GradL1)
       if (L1>0.0d0) then
         L(iHH) = L(iHH) + RandomB%weights(iq)*L1
@@ -336,7 +336,7 @@ subroutine Like1C(i1,parms,mode,L,GradL)
   ! M1 = LL*Q
   !      LL = (J x K) lower triangular
   call ComputeLQ(parms%J,parms%K,M1,R,Q,ifail)
-  DTilde = HHData%p(:,i1) - matmul(transpose(parms%B),parms%MuE)
+  DTilde = HHData%p(:,i1) - matmul(transpose(parms%B),parms%MuE+parms%mue_month(:,HHData%month(i1)))
 
   ! Prob = integral of DensityFunc over region of x satisfying R*x<=M2_tilda
   ! 
@@ -437,7 +437,7 @@ subroutine Like1B(iHH,d1,d2,d3,parms,mode,L,GradL)
 
   ! Compute nu = U.' * MuE
   allocate(nu(parms%K))
-  nu = matmul(transpose(U),parms%MuE)
+  nu = matmul(transpose(U),parms%MuE+parms%mue_month(:,HHData%month(ihh)))
 
   ! Omega = U' * C * C' * U
   allocate(Omega(parms%K,parms%K))
@@ -586,6 +586,7 @@ subroutine Like1A(i1,parms,mode,L,GradL)
   real(dp), allocatable     :: B1(:,:),B1T(:,:)
   real(dp), allocatable     :: B2(:,:)
   real(dp), allocatable     :: e(:)
+  real(dp), allocatable     :: mue_month(:)
   real(dp)                  :: F
   real(dp), allocatable     :: GradF_e(:),GradF_MuE(:)
   real(dp), allocatable     :: GradF_InvC(:,:)
@@ -602,6 +603,7 @@ subroutine Like1A(i1,parms,mode,L,GradL)
   allocate(B1(parms%K,parms%K),B1T(parms%K,parms%K))
   allocate(B2(parms%K,parms%J-parms%K))
   allocate(e(parms%K))
+  allocate(mue_month(parms%K))
   allocate(GradF_e(parms%K),GradF_MuE(parms%K))
   allocate(GradF_InvC(parms%K,parms%K))
   allocate(iPivot(parms%K))
@@ -637,8 +639,11 @@ subroutine Like1A(i1,parms,mode,L,GradL)
     end if
   else
     e = e + matmul(B1,HHData%q(1:parms%K,i1))
-    
-    call LogDensityFunc(e,parms,F,GradF_e,GradF_MuE,GradF_InvC)
+   
+    ! mue_month = seasonal adjustment to mue
+    mue_month = parms%mue_month(:,HHData%month(i1))
+    call LogDensityFunc(e,parms,mue_month, &
+                        F,GradF_e,GradF_MuE,GradF_InvC)
 
     ! F07ADF:  compute LU factorization of B1
     ! B1 is changed
@@ -660,6 +665,7 @@ subroutine Like1A(i1,parms,mode,L,GradL)
   deallocate(GradF_e,GradF_MuE)
   deallocate(GradF_InvC)
   deallocate(e)
+  deallocate(mue_month)
   deallocate(temp1)
 end subroutine Like1A
 
@@ -819,10 +825,11 @@ end subroutine UpdateParms
 !
 ! Revision history
 !
+! 2018MAY23 LN  add seasonality to model 
 ! 10JUN2014 LN  adapted from matlab file UpdateParms_RC.m
 !
 ! Utility parameters
-!     log(BD) = BD_z * BD_beta + BD_C * eta
+!     log(BD) = BD_z * BD_beta + BD_C * eta + BD_month(month)
 !     BC      = pi * normcdf(Y)
 !     Y      = BC_z * BC_beta + BC_C * eta
 ! 
@@ -843,7 +850,7 @@ subroutine UpdateParms2(x,iFree,parms)
   type(ParmsStructure), intent(inout) :: parms
 
   integer(i4b)                        :: ifail
-  real(dp), allocatable               :: temp(:,:)
+  real(dp), allocatable               :: temp1(:),temp2(:,:)
 
   ! log(BD)      = BD_beta * BD_z + BD_C * BD_eta
   ! size(BD_eta) = parms%dim_eta
@@ -866,18 +873,27 @@ subroutine UpdateParms2(x,iFree,parms)
     parms%BD_COffDiag(iFree%BD_COffDiag) = x(iFree%xBD_COffDiag)
   end if
 
+  ! BD_month: month dummy
+  if (iFree%nBD_month>0) then
+    allocate(temp1(11*parms%J))
+    temp1 = reshape(parms%BD_month(:,2:12),(/11*parms%J/))
+    temp1(ifree%bd_month) = x(ifree%xbd_month)
+    parms%BD_month(:,2:12) = reshape(temp1,(/parms%J,11/))
+    deallocate(temp1)
+  end if
+
   if (iFree%nBD_CDiag>0 .or. iFree%nBD_COffDiag>0) then
     ! Compute parms%BD_C
     ! size(BD_C) = (J x dim_eta)
     ! SphereToMatrix creates upper triagular matrix of size
     !    (dim_eta x J)
     ! BD_C is lower triangular:  we need the transpose as below.
-    allocate(temp(parms%dim_eta,parms%J))
+    allocate(temp2(parms%dim_eta,parms%J))
     call SphereToMatrix(parms%BD_COffDiag,parms%BD_CDiag,  &
-                        parms%dim_eta,parms%J,temp,     &
+                        parms%dim_eta,parms%J,temp2,     &
                         parms%GradBD_C_COffDiag,parms%GradBD_C_CDiag)
-    parms%BD_C = transpose(temp)
-    deallocate(temp)
+    parms%BD_C = transpose(temp2)
+    deallocate(temp2)
   end if
 
   ! norminv(BC) = BC_beta * BC_z + BC_C * eta
@@ -905,18 +921,31 @@ subroutine UpdateParms2(x,iFree,parms)
     ! SphereToMatrix creates upper triangular matrix of size
     !   (dim_eta x nBC)
     ! after call, compute transpose to create lower triangular matrix
-    allocate(temp(parms%dim_eta,parms%nBC))
+    allocate(temp2(parms%dim_eta,parms%nBC))
     call SphereToMatrix(parms%BC_COffDiag,parms%BC_CDiag,  &
-                        parms%dim_eta,parms%nBC,temp,   &
+                        parms%dim_eta,parms%nBC,temp2,   &
                         parms%GradBC_C_COffDiag,parms%GradBC_C_CDiag)
-    parms%BC_C = transpose(temp)
+    parms%BC_C = transpose(temp2)
+    deallocate(temp2)
   end if
 
   ! MuE
-  ! iFree%MuE  = elements of xFree corresponding to MuE
-  ! iFree%xmue = elements of MuE that are free
+  ! iFree%xmue  = elements of xFree corresponding to MuE
+  ! iFree%mue = elements of MuE that are free
   if (iFree%nMuE>0) then
     parms%MuE(iFree%MuE) = x(iFree%xmue)    
+  end if
+
+  ! MuE_month
+  ! Month 1 is baseline
+  ! iFree%mue_month = elements of mue_month that are free
+  ! iFree%xmue_month  = elements of xFree corresponding to MuE_month
+  if (iFree%nmue_month>0) then
+    allocate(temp1(11*parms%K))
+    temp1 = reshape(parms%mue_month(:,2:12),(/parms%K*11/))
+    temp1(iFree%mue_month) = x(iFree%xmue_month)
+    parms%mue_month(:,2:12) = reshape(temp1,(/parms%K,11/))
+    deallocate(temp1)
   end if
 
   ! sig = covariance matrix of e
@@ -958,9 +987,10 @@ subroutine UpdateParms2(x,iFree,parms)
   !print *, 'Warning: gradients of SphereToMatrix need to be adjusted for transpose.'
 end subroutine UpdateParms2
 
-
-subroutine LogDensityFunc(e,parms,F,GradF_e,GradF_MuE,GradF_InvC)
+subroutine LogDensityFunc(e,parms,mue_month,F,GradF_e,GradF_MuE,GradF_InvC)
 ! e          = (K x 1)
+! parms      = parameter structure
+! mue_month  = (K x 1) seasonal adjustment
 ! F          = (1 x 1) log density evaluated at e
 ! GradF_e    = (K x 1) gradient of log density w.r.t. e
 ! GradF_MuE  = (K x 1) gradient of log density w.r.t. MuE
@@ -974,6 +1004,7 @@ subroutine LogDensityFunc(e,parms,F,GradF_e,GradF_MuE,GradF_InvC)
   implicit none
   real(dp),             intent(in)  :: e(:)
   type(ParmsStructure), intent(in)  :: parms
+  real(dp),             intent(in)  :: mue_month(:)
   real(dp),             intent(out) :: F
   real(dp),             intent(out) :: GradF_e(:)
   real(dp),             intent(out) :: GradF_MuE(:)
@@ -983,7 +1014,6 @@ subroutine LogDensityFunc(e,parms,F,GradF_e,GradF_MuE,GradF_InvC)
   integer(i4b)             :: i1,i2
   real(dp), allocatable    :: temp1(:),temp2(:,:)
   real(dp)                 :: DetInvC
-
 
   ! workspace to compute determinant and matrix inverse
   integer(i4b)              :: ifail
@@ -996,7 +1026,7 @@ subroutine LogDensityFunc(e,parms,F,GradF_e,GradF_MuE,GradF_InvC)
   allocate(z(parms%K),TempInvC(parms%K,parms%K))
   allocate(temp1(parms%K))
 
-  z = matmul(parms%InvC,e - parms%MuE)
+  z = matmul(parms%InvC,e - parms%MuE-mue_month)
 
   ! determinant of InvC
   DetInvC = 1.0d0
@@ -1017,8 +1047,8 @@ subroutine LogDensityFunc(e,parms,F,GradF_e,GradF_MuE,GradF_InvC)
     temp2 = 0.0d0
     temp2(:,i2) = temp2(:,i2) + parms%InvC(i1,:)
     temp2(i1,:) = temp2(i1,:) + parms%InvC(i2,:)
-    temp1       = matmul(temp2,e-parms%MuE)
-    GradF_InvC(i2,i1) = -0.5d0*dot_product(e-parms%MuE,temp1)
+    temp1       = matmul(temp2,e-parms%MuE-mue_month)
+    GradF_InvC(i2,i1) = -0.5d0*dot_product(e-parms%MuE-mue_month,temp1)
   end do
   end do
   
@@ -1537,6 +1567,11 @@ function ChangeX(x0,nx,model) result(x1)
       x1(iFree%xMUE) = bayes%MUE_lo + (bayes%MUE_hi-bayes%MUE_lo) * x0(iFree%xMUE)
     end if
 
+    ! MUE_month
+    if (iFree%nMUE_month>0) then
+      x1(iFree%xMUE_month) = bayes%MUE_month_lo + (bayes%MUE_month_hi-bayes%MUE_month_lo) * x0(iFree%xmue_month)
+    end if
+
     ! InvCDiag
     if (iFree%nInvCDiag>0) then
       x1(iFree%xInvCDiag) = bayes%InvCDiag_lo +(bayes%InvCDiag_hi - bayes%InvCDiag_lo)* x0(iFree%xInvCDiag)
@@ -1758,12 +1793,14 @@ subroutine CopyIFree(iFree,iFreeCopy)
   iFreeCopy%ND           = iFree%ND
   iFreeCopy%NBC          = iFree%NBC
   iFreeCopy%NMUE         = iFree%NMUE
+  iFreeCopy%NMUE_month   = iFree%NMUE_month
   iFreeCopy%NINVCDIAG    = iFree%NINVCDIAG
   iFreeCopy%NINVCOFFDIAG = iFree%NINVCOffDiag
 
   iFreeCopy%NBD_beta     = iFree%NBD_beta
   iFreeCopy%NBD_CDIAG    = iFree%NBD_CDIAG
   iFreeCopy%NBD_COFFDIAG = iFree%NBD_COFFDIAG
+  iFreeCopy%nBD_month    = iFree%nBD_month
 
   iFreeCopy%NBC_CDiag     = iFree%NBC_beta
   iFreeCopy%NBC_CDIAG    = iFree%NBC_CDIAG
@@ -1774,12 +1811,14 @@ subroutine CopyIFree(iFree,iFreeCopy)
   iFreeCopy%flagD           = iFree%flagD
   iFreeCopy%flagBC          = iFree%flagBC
   iFreeCopy%flagMUE         = iFree%flagMUE
+  iFreeCopy%flagMUE_month   = iFree%flagMUE_month
   iFreeCopy%flagInvCDiag    = iFree%flagInvCDiag
   iFreeCopy%flagInvCOffDiag = iFree%flagInvCOffDiag
 
   iFreeCopy%flagBC_beta     = iFree%flagBC_beta
   iFreeCopy%flagBC_CDiag    = iFree%flagBC_CDiag
   iFreeCopy%flagBC_COffDiag = iFree%flagBC_COffDiag
+  iFreeCopy%flagBD_month    = iFree%flagBD_month
 
   iFreeCopy%flagBD_beta     = iFree%flagBD_beta
   iFreeCopy%flagBD_CDiag    = iFree%flagBD_CDiag
@@ -1805,6 +1844,13 @@ subroutine CopyIFree(iFree,iFreeCopy)
     allocate(iFreeCopy%xMUE(iFree%NMUE))
     iFreeCopy%MUE = iFree%MUE
     iFreeCopy%xMUE = iFree%xMUE
+  end if
+
+  if (iFree%flagMUE_month>0) then
+    allocate(iFreeCopy%MUE_month(iFree%NMUE_month))
+    allocate(iFreeCopy%xMUE_month(iFree%NMUE_month))
+    iFreeCopy%MUE_month = iFree%MUE_month
+    iFreeCopy%xMUE_month = iFree%xMUE_month
   end if
 
   if (iFree%flagInvCDiag>0) then
@@ -1848,6 +1894,13 @@ subroutine CopyIFree(iFree,iFreeCopy)
     iFreeCopy%BD_beta = iFree%BD_beta
     iFreeCopy%xBD_beta = iFree%xBD_beta
   end if
+  
+  if (iFree%flagBD_month>0) then
+    allocate(iFreeCopy%BD_month(iFree%NBD_month))
+    allocate(iFreeCopy%xBD_month(iFree%NBD_month))
+    iFreeCopy%BD_month = iFree%BD_month
+    iFreeCopy%xBD_month = iFree%xBD_month
+  end if
 
   if (iFree%flagBD_CDiag>0) then
     allocate(iFreeCopy%BD_CDiag(iFree%NBD_CDiag))
@@ -1877,6 +1930,7 @@ subroutine UpdateIFree(i1,iFree0,iFreeNew)
   iFreeNew%nD           = 0
   iFreeNew%nBC          = 0
   iFreeNew%nMUE         = 0
+  iFreeNew%nMUE_month   = 0
   iFreeNew%nInvCDiag    = 0
   iFreeNew%nInvCOffDiag = 0
   iFreeNew%nBC_beta     = 0
@@ -1885,10 +1939,12 @@ subroutine UpdateIFree(i1,iFree0,iFreeNew)
   iFreeNew%nBD_beta     = 0
   iFreeNew%nBD_CDiag    = 0
   iFreeNew%nBD_COffDiag = 0
+  iFreeNew%nBD_month    = 0
   
   iFreeNew%flagD           = 0
   iFreeNew%flagBC          = 0
   iFreeNew%flagMUE         = 0
+  iFreeNew%flagMUE_month   = 0
   iFreeNew%flagInvCDiag    = 0
   iFreeNew%flagInvCOffDiag = 0
   iFreeNew%flagBC_beta     = 0
@@ -1897,6 +1953,7 @@ subroutine UpdateIFree(i1,iFree0,iFreeNew)
   iFreeNew%flagBD_beta     = 0
   iFreeNew%flagBD_CDiag    = 0
   iFreeNew%flagBD_COffDiag = 0
+  iFreeNew%flagBD_month    = 0
  
   allocate(iFreeNew%xlabels(1))
   write(iFreeNew%xlabels(1),'(i3.0)') i1
@@ -1934,6 +1991,17 @@ subroutine UpdateIFree(i1,iFree0,iFreeNew)
     end if
   end if
 
+  if (iFree0%nMUE_month>0) then
+    if (any(iFree0%xMUE_month==i1)) then
+      allocate(iFreeNew%MUE_month(1))
+      allocate(IFreeNew%xMUE_month(1))
+      iFreeNew%xMUE_month = 1
+      iFreeNew%MUE_month  = pack(iFree0%MUE_month,iFree0%xMUE_month==i1)
+      iFreeNew%nMUE_month = 1
+      iFreeNew%flagMUE_month = 1
+    end if
+  end if
+
   if (iFree0%nInvCDiag>0) then
     if (any(iFree0%xInvCDiag==i1)) then
       allocate(iFreeNew%InvCDiag(1))
@@ -1966,6 +2034,7 @@ subroutine UpdateIFree(i1,iFree0,iFreeNew)
       iFreeNew%flagBC_beta = 1
     end if
   end if
+
   if (iFree0%nBD_beta>0) then
     if (any(iFree0%xBD_beta==i1)) then
       allocate(iFreeNew%BD_beta(1))
@@ -1974,6 +2043,17 @@ subroutine UpdateIFree(i1,iFree0,iFreeNew)
       iFreeNew%BD_beta  = pack(iFree0%BD_beta,iFree0%xBD_beta==i1)
       iFreeNew%nBD_beta = 1
       iFreeNew%flagBD_beta = 1
+    end if
+  end if
+
+  if (iFree0%nBD_month>0) then
+    if (any(iFree0%xBD_month==i1)) then
+      allocate(iFreeNew%BD_month(1))
+      allocate(IFreeNew%xBD_month(1))
+      iFreeNew%xBD_month = 1
+      iFreeNew%BD_month  = pack(iFree0%BD_month,iFree0%xBD_month==i1)
+      iFreeNew%nBD_month = 1
+      iFreeNew%flagBD_month = 1
     end if
   end if
 
@@ -2145,6 +2225,10 @@ subroutine ComputeElasticities
   allocate(e(HHDataSim1%N,parms%K))
   ! generate normal random numbers
   call G05RZF(mode,HHDataSim1%N,parms%K,parms%MuE,parms%sig,parms%K,R,LR,state,e,HHDataSim1%N,ifail)
+  ! add seasonal shift to mue
+  do i1=1,12
+    e = e + merge(spread(parms%mue_month(:,i1),1,HHDataSim1%N),0.0d0,spread(HHDataSim1%month,2,12)==i1)
+  end do
   HHDataSim1%e = transpose(e)
 
   deallocate(R,e)
@@ -2502,7 +2586,7 @@ subroutine ComputeDemand(HHData1)
   do i1=1,HHData1%N
     if (parms%model==2) then
       ! if model==2, each HH TempB is a random coefficient
-      call ComputeCurrentB(HHData1%eta(:,i1),parms)
+      call ComputeCurrentB(HHData1%eta(:,i1),parms,HHData1%month(i1))
     end if
 
     CVEC = HHData1%p(:,i1) - matmul(transpose(parms%B),HHData1%e(:,i1))
@@ -2545,6 +2629,7 @@ subroutine ComputeInitialGuess(parms,iFree,x)
   type(ParmsStructure), intent(in) :: parms
   type(SelectFreeType), intent(in) :: iFree
   real(dp),             intent(out) :: x(:)
+  real(dp), allocatable             :: temp1(:)
 
   x = 0.0d0
   if (parms%model==1) then
@@ -2558,6 +2643,13 @@ subroutine ComputeInitialGuess(parms,iFree,x)
 
   if (allocated(iFree%MuE)) then
     x(iFree%xMUE) = parms%MuE(iFree%MUE)
+  end if
+
+  if (allocated(iFree%MuE_month)) then
+    allocate(temp1(12*parms%K))
+    temp1 = reshape(parms%mue_month,(/12*parms%K/))
+    x(iFree%xMUE_month) = temp1(iFree%MUE_month)
+    deallocate(temp1)
   end if
   if (allocated(iFree%InvCDiag)) then
     x(iFree%xInvCDiag) = parms%InvCDiag(iFree%InvCDiag)
@@ -2580,6 +2672,11 @@ subroutine ComputeInitialGuess(parms,iFree,x)
     if (allocated(iFree%BD_beta)) then
       x(iFree%xBD_beta) = parms%BD_beta(iFree%BD_beta)
     end if
+    if (allocated(iFree%BD_month)) then
+      allocate(temp1(11*parms%J))
+      temp1 = reshape(parms%BD_month(:,2:12),(/parms%J*11/))
+      x(iFree%xBD_month) = temp1(iFree%BD_month)
+    end if
     if (allocated(iFree%BD_CDiag)) then
       x(iFree%xBD_CDiag) = parms%BD_CDiag(iFree%BD_CDiag)
     end if
@@ -2598,7 +2695,7 @@ subroutine SelectFreeParameters(parms,iFree)
   type(ParmsStructure), intent(in)    :: parms
   type(SelectFreeType), intent(inout) :: iFree
 
-  integer(i4b) :: i1
+  integer(i4b) :: i1,fruit,month
 
   !  FreeFlags.D           = 1;
   !  FreeFlags.C           = 1;
@@ -2655,6 +2752,20 @@ subroutine SelectFreeParameters(parms,iFree)
   end if
   iFree%nall = iFree%nall + iFree%nMUE
 
+  ! parms%mue_month  = (K x 12) mean of e.   mue_month(:,1)=0.0d
+  ! iFree%xMuE_month = elements of xFree corresponding to MuE_month
+  ! iFree%MuE_month  = elements of MuE_month that are free
+  if (iFree%flagMUE_month==1) then
+    allocate(iFree%MuE_month(11*parms%K))
+    allocate(iFree%xMuE(11*parms%K))
+    iFree%nmue_month = 11*parms%K
+    iFree%MuE_month  = (/1:iFree%nmue_month/)
+    iFree%xMuE_month = iFree%nall + (/1:iFree%nmue_month/)
+  else
+    iFree%nMUE_month = 0
+  end if
+  iFree%nall = iFree%nall + iFree%nMUE_month
+
   ! parms%InvCDiag  = (K x 1)  inverse of standard deviation Sig
   ! iFree%xInvCDiag = elements of xFree corresponding to InvCDiag
   ! iFree%InvCDiag  = elements of InvCDiag that are free
@@ -2691,6 +2802,7 @@ subroutine SelectFreeParameters(parms,iFree)
     iFree%nBC_beta     = 0
     iFree%nBC_CDiag    = 0
     iFree%nBC_COffDiag = 0
+    iFree%nBD_month    = 0 
 
     if (iFree%flagBD_beta==1) then
       iFree%nBD_beta = parms%BD_z_dim
@@ -2746,6 +2858,15 @@ subroutine SelectFreeParameters(parms,iFree)
       iFree%nall = iFree%nall + iFree%nBC_COffDiag
     end if
 
+    ! MONTH 1 is ALWAYS BASE CATEGORY
+    if (iFree%flagBD_month==1) then
+      iFree%nBD_month = 11* parms%J 
+      allocate(iFree%BD_month(iFree%nBD_month))
+      allocate(iFree%xBD_month(iFree%nBD_month))
+      iFree%BD_month  = (/1:iFree%nBD_month/)
+      iFree%xBD_month = iFree%nAll + iFree%BD_month
+      iFree%nall = iFree%nall + iFree%nBD_month
+    end if
   end if ! if (parms%model==2)
 
   !  create labels for x variables
@@ -2794,6 +2915,19 @@ subroutine SelectFreeParameters(parms,iFree)
     write(iFree%xlabels(iFree%xBC_COffDiag(i1)),'(a12,i2.2,a1)') 'BC_COffDiag(', iFree%BC_COffDiag(i1), ')'
   end do
 
+  do i1=1,iFree%nmue_month
+    !                                             'mue_month(fruit,month)'
+    fruit = (i1-1)/11 + 1
+    month = i1 - 11* ((i1-1)/11)
+    write(iFree%xLabels(iFree%xmue_month(i1)),'(a10,i2.2,",",i2.2,a1)') 'mue_month(',fruit,month,')'
+  end do
+
+  do i1=1,iFree%nBD_month
+    !                                             'BD_month(fruit,month)'
+    fruit = (i1-1)/11 + 1
+    month = i1 - 11* ((i1-1)/11)
+    write(iFree%xLabels(iFree%xBD_month(i1)),'(a9,i2.2,",",i2.2,a1)') 'BD_month(',fruit,month,')'
+  end do
 end subroutine SelectFreeParameters
 
 subroutine MaximizeLikelihood(x,LValue,Grad,Hess,ierr)
@@ -3927,6 +4061,11 @@ subroutine SetBounds(x,BL,BU)
     BU(iFree%xmue) = x(iFree%xmue)+10.0d0
   end if
 
+  if (iFree%nMUE_month>0) then
+    BL(iFree%xMUE_month) = x(iFree%xmue_month)-10.0d0
+    BU(iFree%xmue_month) = x(iFree%xmue_month)+10.0d0
+  end if
+
   if (iFree%nInvCDiag>0) then
     BL(iFree%xInvCDiag) = parms%InvCDiag_LO
     BU(iFree%xInvCDiag) = x(iFree%xInvCDiag)+parms%InvCDiag_HI
@@ -3940,6 +4079,11 @@ subroutine SetBounds(x,BL,BU)
   if (iFree%nBD_beta>0) then
     BL(iFree%xBD_beta) = max(x(iFree%xBD_beta)-2.0d0,parms%BD_beta_lo)
     BU(iFree%xBD_beta) = min(x(iFree%xBD_beta)+1.0d0,parms%BD_beta_hi)
+  end if
+
+  if (iFree%nBD_month>0) then
+    BL(iFree%xBD_month) = max(x(iFree%xBD_month)-2.0d0,parms%BD_month_lo)
+    BU(iFree%xBD_month) = max(x(iFree%xBD_month)+1.0d0,parms%BD_month_hi)
   end if
 
   if (iFree%nBC_beta>0) then
@@ -3973,6 +4117,8 @@ subroutine SetBounds(x,BL,BU)
   if (MaxOptions%Algorithm==6) then
     bayes%BD_beta_lo = -2.0d0
     bayes%BD_beta_hi = 3.0d0
+    bayes%BD_month_lo = -2.0d0
+    bayes%BD_month_hi = 3.0d0
     bayes%BD_CDiag_lo = -1.0d0
     bayes%BD_CDiag_hi = 1.0d0
     bayes%BD_COffDiag_lo = 0.10d0*pi
@@ -3984,6 +4130,8 @@ subroutine SetBounds(x,BL,BU)
     bayes%BC_CDiag_hi = 1.0d0
     bayes%BC_COffDiag_lo = -.90d0 * pi
     bayes%BC_COffDiag_hi = 0.90d0 * pi
+    bayes%MUE_month_lo  = 10.0d0
+    bayes%MUE_month_hi  = 30.0d0
     bayes%MUE_lo      = 10.0d0
     bayes%MUE_hi      = 30.0d0
     bayes%InvCDiag_lo = 0.1d0
