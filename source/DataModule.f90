@@ -265,6 +265,8 @@ subroutine ComputeCurrentB(eta,parms,month)
   real(dp), allocatable :: GradBC(:,:),GradBD(:,:)
   real(dp), allocatable :: BC(:),D(:)
   integer(i4b)          :: ifail,i1
+  integer(i4b)          :: j1,k1,kmax
+  real(dp)              :: lam
   
   allocate(GradBC(parms%K,parms%nBC))
   allocate(GradBD(parms%K,parms%J))
@@ -283,12 +285,36 @@ subroutine ComputeCurrentB(eta,parms,month)
             +matmul(parms%BD_C,eta))
   end if
 
+  ! Convert (BC_beta*BC_Z + BC_C*eta) into BC_C
+  ! BC_C(i1) = lam * pi_d * normcdf( BC_beta*z + BC_C * eta)
+  ! lam = pi_d or lam = 2*pi_d
   ! S15ABF = normcdf(x,ifail)
-  do i1=1,parms%nBC
-    BC(i1) = parms%BC_lo + (parms%BC_hi - parms%BC_lo) * pi_d &
-                         * S15ABF(dot_product(parms%BC_z(i1,:),parms%BC_beta) &
-                                  + dot_product(parms%BC_C(i1,:),eta),ifail)
+  do j1=2,parms%J
+    ! column j1 has only kmax free elements
+    kmax = min(j1,parms%K)-1
+    do k1=1,kmax
+      ! map (j1,k1) into i1
+      ! (j1,k1) column and row indices
+      ! i1 row index when BC_C is stored as vector
+      if (j1<=parms%K) then
+        i1 = (j1-1)*(j1-2)/2 + k1
+      else
+        i1 = (parms%K*(Parms%K-1))/2 + (j1-parms%K)*(parms%K-1)+k1
+      end if
+      ! lam = 2 if last element in column
+      lam = merge(1.0d0,2.0d0,k1<min(j1-1,parms%K-1))
+      ! (BC_lo,BC_hi) bounds BC_C away from boundary of support to avoid numerical problems.
+      BC(i1) = parms%BC_lo + (parms%BC_hi - parms%BC_lo) * lam * pi_d &
+                           * S15ABF(dot_product(parms%BC_z(i1,:),parms%BC_beta) &
+                                    + dot_product(parms%BC_C(i1,:),eta),ifail)
+     end do
   end do
+  ! Old version: simply loop through elements of BC_C and always use pi_d
+  !do i1=1,parms%nBC
+  !  BC(i1) = parms%BC_lo + (parms%BC_hi - parms%BC_lo) * pi_d &
+  !                       * S15ABF(dot_product(parms%BC_z(i1,:),parms%BC_beta) &
+  !                                + dot_product(parms%BC_C(i1,:),eta),ifail)
+  !end do
   call SphereToMatrix(BC,D,parms%K,parms%J,parms%B,GradBC,GradBD)
   if (any(isnan(parms%B))) then
     print *, "Some values of B are NAN."

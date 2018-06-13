@@ -4042,6 +4042,10 @@ subroutine SetBounds(x,BL,BU)
   real(dp), intent(in)  :: x(:)
   real(dp), intent(out) :: BL(:)
   real(dp), intent(out) :: BU(:)
+  integer(i4b)          :: lastindex,index1(1)
+  ! transpose(BC_C) = (KC x JC)
+  ! transpose(BD_C) = (KC x JD)  
+  integer(i4b) :: KC,KD,JC,JD,i1
 
   BL = x-10.0d0
   BU = x+10.0d0
@@ -4054,6 +4058,24 @@ subroutine SetBounds(x,BL,BU)
   if (iFree%nBC>0) then
     BL(iFree%xBC) = 0.1d0 * pi_d
     BU(iFree%xBC) = 0.9d0 * pi_d
+    ! BC(:,1:K) column i1 has i1-1 elements in BC
+    !           upper bound = 2*pi_d for element i1-1
+    !           upper bound = pi_d otherwise
+    do i1=2,parms%K
+      ! Find elements for which upper bound is 2*pi
+      lastindex = (i1*(i1-1))/2 
+      if (any(iFree%BC==lastindex)) then
+        index1 = pack(iFree%xBC,iFree%BC==lastindex)
+        BU(index1) = 1.9d0 * pi_d 
+      end if
+    end do
+    do i1=parms%K+1,parms%J
+      lastindex = (parms%K*(parms%K-1))/2 + (i1-parms%K)*(parms%K-1)
+      if (any(iFree%BC==lastindex)) then
+        index1 = pack(iFree%xBC,iFree%BC==lastindex)
+      end if
+      BU(index1) = 1.9d0 * pi_d
+    end do
   end if
 
   if (iFree%nMUE>0) then
@@ -4072,9 +4094,15 @@ subroutine SetBounds(x,BL,BU)
   end if
 
   if (iFree%nInvCOffDiag>0) then
-    ! TO DO: for final row of each column range should be [0,2*pi]
     BL(iFree%xInvCOffDiag) = parms%InvCOffDiag_LO * pi_d
     BU(iFree%xInvCOffDiag) = parms%InvCOffDiag_HI * pi_d
+    do i1=2,parms%K
+      lastindex = (i1*(i1-1))/2
+      if (any(iFree%InvCOffDiag==lastindex)) then
+        index1 = pack(iFree%xInvCOffDiag,iFree%InvCOffDiag==lastindex)
+        BU(index1) = parms%InvCOffDiag_HI * 2.0d0*pi_d
+      end if
+    end do 
   end if
   
   if (iFree%nBD_beta>0) then
@@ -4112,15 +4140,45 @@ subroutine SetBounds(x,BL,BU)
   end if 
 
   if (iFree%nBC_COffDiag>0) then
-    ! TO DO: for final row of each column range should be [0,2*pi]
     BL(iFree%xBC_COffDiag) = 0.10d0*pi_d
     BU(iFree%xBC_COffDiag) = 0.90d0*pi_d
+    JC = size(parms%BC_C,1)
+    KC = size(parms%BC_C,2)
+    do i1=2,KC
+      lastindex = (i1*(i1-1))/2
+      if (any(iFree%BC_COffDiag==lastindex)) then
+        index1 = pack(iFree%xBC_COffDiag,iFree%BC_COffDiag==lastindex)
+        BU(index1) = 1.9d0 * pi_d
+      end if
+    end do
+    do i1=KC+1,JC
+      lastindex = (KC*(KC-1))/2 +(i1-KC)*(KC-1)
+      if (any(iFree%xBC_COffDiag==lastindex)) then
+        index1 = pack(iFree%xBC_COffDiag,iFree%BC_COffDiag==lastindex)
+        BU(index1) = 1.9d0 * pi_d
+      end if
+    end do
   end if
   
   if (iFree%nBD_COffDiag>0) then
-    ! TO DO: for final row of each column range should be [0,2*pi]
     BL(iFree%xBD_COffDiag) = 0.10d0*pi_d
     BU(iFree%xBD_COffDiag) = 0.90d0*pi_d
+    JD = size(parms%BD_C,1)
+    KD = size(parms%BD_C,2)
+    do i1=2,KD
+      lastindex = (i1*(i1-1))/2
+      if (any(iFree%BD_COffDiag==lastindex)) then
+        index1 = pack(iFree%xBD_COffDiag,iFree%BD_COffDiag==lastindex)
+        BU(index1) = 1.9d0 * pi_d
+      end if
+    end do
+    do i1=KD+1,JD
+      lastindex = (KD*(KD-1))/2 +(i1-KD)*(KD-1)
+      if (any(iFree%xBD_COffDiag==lastindex)) then
+        index1 = pack(iFree%xBD_COffDiag,iFree%BD_COffDiag==lastindex)
+        BU(index1) = 1.9d0 * pi_d
+      end if
+    end do
   end if
 
   if (MaxOptions%Algorithm==6) then
