@@ -379,7 +379,6 @@ subroutine MapToCartesian(r,phi,x,dx)
   integer(i4b) :: n
   real(dp), allocatable :: s1(:),c1(:),s1A(:)
 
-
   n=size(phi)+1
 
   allocate(s1(n),c1(n),s1A(n))
@@ -414,7 +413,6 @@ subroutine MapToCartesian(r,phi,x,dx)
 
 end subroutine MapToCartesian
 
-
 subroutine MapToSpherical(x,R,PHI)
   use nrtype
   implicit none
@@ -431,7 +429,7 @@ subroutine MapToSpherical(x,R,PHI)
   x2 = x*x
   R = sqrt(sum(x2))
   PHI = 0.0d0
-  do i1=1,n-2
+  do i1=1,n-1
     RTemp = sum(x2(i1:n))
     if (RTemp==0) then
       PHI(i1) = merge(0.0d0,pi_d,x(i1)>0)
@@ -440,7 +438,7 @@ subroutine MapToSpherical(x,R,PHI)
       PHI(i1) = dacos(x(i1)/sqrt(RTemp))
     end if
   end do
-  phi(n-1) = dacos(x(n-1)/sqrt(sum(x2(n-1:n))))
+  !phi(n-1) = dacos(x(n-1)/sqrt(sum(x2(n-1:n))))
   if (x(n)<0.0d0) then
     phi(n-1) = 2.0d0*pi_d - phi(n-1)
   end if
