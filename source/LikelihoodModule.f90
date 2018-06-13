@@ -4072,6 +4072,7 @@ subroutine SetBounds(x,BL,BU)
   end if
 
   if (iFree%nInvCOffDiag>0) then
+    ! TO DO: for final row of each column range should be [0,2*pi]
     BL(iFree%xInvCOffDiag) = parms%InvCOffDiag_LO * pi_d
     BU(iFree%xInvCOffDiag) = parms%InvCOffDiag_HI * pi_d
   end if
@@ -4094,22 +4095,30 @@ subroutine SetBounds(x,BL,BU)
   if (iFree%nBC_CDiag>0) then
     ! BC   = norminv( BC_beta * z + BC_C * eta
     !        want diag of BC_C to be between [0,0.8]
+    !        harmless to allow for BC_CDiag  in [-1,1]
+    !        need to use care when BC_CDiag <=0
+    !        also note: Like(BC_CDiag= -x) = Like(BC_CDiag = x)
     BL(iFree%xBC_CDiag) = max(x(iFree%xBC_CDiag)-1.0d0,-1.0d0)
     BU(iFree%xBC_CDiag) = min(x(iFree%xBC_CDiag)+1.0d0,1.0d0)
   end if 
   if (iFree%nBD_CDiag>0) then
     ! log(BD) = BD_Beta * z + BD_C * eta
     !           want diag of BD_C between 0.0  and  1.0
+    !        harmless to allow for BD_CDiag  in [-1,1]
+    !        need to use care when BD_CDiag <=0
+    !        also note: Like(BD_CDiag= -x) = Like(BD_CDiag = x)
     BL(iFree%xBD_CDiag) = max(x(iFree%xBD_CDiag)-1.0d0,-1.0d0)
     BU(iFree%xBD_CDiag) = min(x(iFree%xBD_CDiag)+1.0d0,1.0d0)
   end if 
 
   if (iFree%nBC_COffDiag>0) then
+    ! TO DO: for final row of each column range should be [0,2*pi]
     BL(iFree%xBC_COffDiag) = 0.10d0*pi_d
     BU(iFree%xBC_COffDiag) = 0.90d0*pi_d
   end if
   
   if (iFree%nBD_COffDiag>0) then
+    ! TO DO: for final row of each column range should be [0,2*pi]
     BL(iFree%xBD_COffDiag) = 0.10d0*pi_d
     BU(iFree%xBD_COffDiag) = 0.90d0*pi_d
   end if
