@@ -2757,7 +2757,7 @@ subroutine SelectFreeParameters(parms,iFree)
   ! iFree%MuE_month  = elements of MuE_month that are free
   if (iFree%flagMUE_month==1) then
     allocate(iFree%MuE_month(11*parms%K))
-    allocate(iFree%xMuE(11*parms%K))
+    allocate(iFree%xMuE_month(11*parms%K))
     iFree%nmue_month = 11*parms%K
     iFree%MuE_month  = (/1:iFree%nmue_month/)
     iFree%xMuE_month = iFree%nall + (/1:iFree%nmue_month/)
@@ -3201,7 +3201,7 @@ subroutine MaximizeLikelihood1(x,LValue,Grad,Hess,ierr)
     if (ControlOptions%TestLikeFlag==0) then
        ! Maximise likelihood 
        print *,'Begin maximization.'
-       if (ControlOptions%OutputFlag .ne. 1) then
+       if (ControlOptions%OutputFlag >0) then
           call ComputeHess(x0,LValue0,GRAD,Hess,iuser,ruser)
        end if
        print *,'LValue0',LValue0
@@ -3215,7 +3215,7 @@ subroutine MaximizeLikelihood1(x,LValue,Grad,Hess,ierr)
        call ReadWriteParameters(parms,'write')
        print *,'E04WDF complete.'
 
-       if (ControlOptions%OutputFlag .ne. 1) then
+       if (ControlOptions%OutputFlag ==2) then
          call ComputeHess(x0,LValue0,GRAD,Hess,iuser,ruser)
          call ComputeHess(x,LValue,GRAD,Hess,iuser,ruser)
        else if (ControlOptions%OutputFlag==1) then
@@ -3231,7 +3231,7 @@ subroutine MaximizeLikelihood1(x,LValue,Grad,Hess,ierr)
     else if (ControlOptions%TestLikeFlag==4) then
        ! maximise likelihood with no non-linear constraints
        print *,'Begin maximization with no non-linear constraints.'
-       if (ControlOptions%OutputFlag .ne. 1) then
+       if (ControlOptions%OutputFlag > 0) then
          call ComputeHess(x0,LValue0,GRAD,Hess,iuser,ruser)
        end if
        print *,'LValue0',LValue0
@@ -3244,7 +3244,7 @@ subroutine MaximizeLikelihood1(x,LValue,Grad,Hess,ierr)
        ! b) save parms to disk
        call ReadWriteParameters(parms,'write')
        print *,'E04WDF complete.'
-       if (ControlOptions%OutputFlag .ne. 1) then
+       if (ControlOptions%OutputFlag ==2) then
          call ComputeHess(x0,LValue0,GRAD,Hess,iuser,ruser)
          call ComputeHess(x,LValue,GRAD,Hess,iuser,ruser)
        else if (ControlOptions%OutputFlag==1) then

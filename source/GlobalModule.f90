@@ -1511,12 +1511,13 @@ subroutine DefineIntegrationRule
   do i1=1,parms%K
     allocate(IntRule%rule(i1)%nQuad(i1))
     IntRule%rule(i1)%nQuad = nQuad(1:i1)
-    n = product(IntRule%rule(i1)%nQuad)
-    if (n>IntRule%nall(i1)) then
-      n = IntRule%nall(i1)
+    if (IntRule%flag(i1)==0 .or. IntRule%flag(i1)==6) then
+      ! Tensor product rules
+      n = product(IntRule%rule(i1)%nQuad)
     else
-      IntRule%nall(i1) = n
-    end if
+      ! Monte Carlo rules
+      n = IntRule%nall(i1)
+    end if 
     allocate(IntRule%rule(i1)%nodes(n,i1))
     allocate(IntRule%rule(i1)%weights(n))
     call DefineIntegrationNodes(i1,IntRule%flag(i1),IntRule%rule(i1)%nQuad,IntRule%nAll(i1), &
@@ -1540,12 +1541,12 @@ subroutine DefineIntegrationRule
     ErrFlag = GetVal(PropList,'RandomB_nQuad',cTemp)
     nRead = min(RandomB_dim,10)
     read(cTemp,'(<nRead>i3)') RandomB%nQuad(1:nRead)
-  
-    RandomB%nall =product(RandomB%nQuad)
-    if (RandomB%nall>RandomB_nall) then
+ 
+    if (RandomB_flag==0 .or. RandomB_flag==6) then
+      ! Tensor product rule
+      RandomB%nall =product(RandomB%nQuad)
+    else
       RandomB%nall = RandomB_nall
-    else if (RandomB%nall<=RandomB_nall) then
-      RandomB_nall = RandomB%nall
     end if
   
     allocate(RandomB%nodes(RandomB%nall,RandomB_dim),RandomB%weights(RandomB%nall))
@@ -1874,26 +1875,31 @@ subroutine BroadcastParms(LocalParms,pid)
   integer(i4b)                        :: i1,nerr,ierr_barrier
   integer(i4b), allocatable           :: ierr(:)
 
-  allocate(ierr(5*LocalParms%J+3*LocalParms%K+11))
+  allocate(ierr(2*LocalParms%J+3*LocalParms%K+12+2*LocalParms%dim_eta &
+                +LocalParms%BD_Z_DIM+LocalParms%BC_Z_DIM+11))
   ierr = 0
   ! broadcast b,CDiag,COffDiag
   call mpi_barrier(MPI_COMM_WORLD,ierr_barrier)
+
   call mpi_bcast(LocalParms%D,LocalParms%J,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(1))
   call mpi_bcast(LocalParms%BC,LocalParms%nBC,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(2))
+
   do i1=1,LocalParms%J
     call mpi_barrier(MPI_COMM_WORLD,ierr_barrier)
     call mpi_bcast(LocalParms%B(:,i1),LocalParms%K,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(2+i1))
   end do
-
   nerr = 2+LocalParms%J
-  call mpi_bcast(LocalParms%mue,LocalParms%K,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(nerr+1))
-  do i1=1,12
-    call mpi_bcast(LocalParms%mue_month(:,i1),LocalParms%K,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(nerr+1))
-  end do
 
+  call mpi_bcast(LocalParms%mue,LocalParms%K,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(nerr+1))
   call mpi_bcast(LocalParms%InvCDiag,LocalParms%K,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(nerr+2))
   call mpi_bcast(LocalParms%InvCOffDiag,LocalParms%K*(LocalParms%K-1)/2,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(nerr+3))
   nerr = nerr+3
+
+  do i1=1,12
+    call mpi_bcast(LocalParms%mue_month(:,i1),LocalParms%K,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(nerr+1))
+  end do
+  nerr=nerr+12
+
   do i1=1,LocalParms%k
     call mpi_barrier(MPI_COMM_WORLD,ierr_barrier)
     call mpi_bcast(LocalParms%InvC(:,i1),LocalParms%K,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(nerr+i1))
@@ -1910,13 +1916,14 @@ subroutine BroadcastParms(LocalParms,pid)
     do i1=1,LocalParms%J
       call mpi_bcast(LocalParms%BD_month(i1,:),12,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(nerr+3))
     end do
-    nerr = nerr+3
+    nerr = nerr+3+LocalParms%J
     do i1=1,LocalParms%dim_eta
       call mpi_barrier(MPI_COMM_WORLD,ierr_barrier)
       call mpi_bcast(LocalParms%BD_C(:,i1),LocalParms%J,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(nerr+i1))
     end do
     nerr = nerr+LocalParms%dim_eta
-      call mpi_barrier(MPI_COMM_WORLD,ierr_barrier)
+
+    call mpi_barrier(MPI_COMM_WORLD,ierr_barrier)
     call mpi_bcast(LocalParms%BC_beta,LocalParms%BC_z_dim,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(nerr+1))
     call mpi_bcast(LocalParms%BC_CDiag,LocalParms%nBC,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(nerr+2))
     call mpi_bcast(LocalParms%BC_COffDiag,LocalParms%nBC_COffDiag,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(nerr+3))
@@ -1934,9 +1941,9 @@ subroutine BroadcastParms(LocalParms,pid)
       call mpi_barrier(MPI_COMM_WORLD,ierr_barrier)
       call mpi_bcast(LocalParms%BC_Z(:,i1),LocalParms%nBC,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(nerr+i1))
     end do
+    nerr = nerr + LocalParms%BC_Z_DIM
   end if
 
-  nerr = 5*LocalParms%J+3*LocalParms%K+11
   print 1677,'parms_ierr',pid,ierr
 1677 format(a11,i4,<nerr>i3)
 end subroutine BroadcastParms
@@ -2370,7 +2377,7 @@ subroutine ReadWriteParameters(LocalParms,LocalAction)
     write(LocalParms%unit,103) LocalParms%MUE
 
     write(LocalParms%unit,120) 'mue_month(K x 12)'
-    do i1=1,12
+    do i1=1,LocalParms%K
       write(LocalParms%unit,121) LocalParms%mue_month(i1,:)
     end do
 
@@ -2442,7 +2449,7 @@ subroutine ReadWriteParameters(LocalParms,LocalAction)
   110 format(12(f25.16,:,','))                           ! BD_month
 
   120 format(a17)      ! mue_month(K x 12)
-  121 format(12f25.16)
+  121 format(12(f25.16,:,','))
 end subroutine ReadWriteParameters
 
 subroutine CopyParameters(parms_in,parms_out)
