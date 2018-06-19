@@ -1745,13 +1745,14 @@ end subroutine RunMonteCarlo
 ! one element of x at a time
 subroutine MaxOneAtTime(pid)
   use nrtype
+  use mpi
   use GlobalModule, only : MasterID,iFree,SelectFreeType,parms, &
                            ReadWriteParameters,DeallocateIFree
 
   implicit none
   integer(i4b), intent(in) :: pid
   type(SelectFreeType)     :: iFree0
-  integer(i4b)             :: i1,ifail
+  integer(i4b)             :: i1,ifail,ierr
   real(dp), allocatable    :: x(:),Grad(:),Hess(:,:)
   real(dp)                 :: LValue
 
@@ -1760,21 +1761,27 @@ subroutine MaxOneAtTime(pid)
   do i1=1,iFree0%NALL
     call DeallocateIFree(iFree)
     call UpdateIFree(i1,iFree0,iFree)
+    allocate(x(iFree%NALL))
+    allocate(Grad(iFree%NALL),Hess(iFree%NALL,iFree%NALL))
+
     if (pid==MasterID) then
-      allocate(x(iFree%NALL))
-      allocate(Grad(iFree%NALL),Hess(iFree%NALL,iFree%NALL))
       call ComputeInitialGuess(parms,iFree,x)
       call MaximizeLikelihood(x,LValue,Grad,Hess,ifail)
-      ! update parms
-      call UpdateParms2(x,iFree,parms)
-      ! b) save parms to disk
-      call ReadWriteParameters(parms,'write')
-      deallocate(x,Grad,Hess)
     elseif (pid .ne. MasterID) then
 #if USE_MPI>0
       call WorkerTask(parms%model,pid)
 #endif
     end if
+
+#if USE_MPI>0
+    call mpi_bcast(x,size(x,1),MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr)
+#endif
+
+    ! update parms
+    call UpdateParms2(x,iFree,parms)
+    ! b) save parms to disk
+    call ReadWriteParameters(parms,'write')
+    deallocate(x,Grad,Hess)
   end do
 
   call DeallocateIFree(iFree)
