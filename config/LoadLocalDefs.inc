@@ -20,12 +20,8 @@ LAPTOP = 400
 
 # Select correct Platform-specific parameters
 HOST_ID := $(shell hostname)
-#HOST_ID = vic.local
 
 ifeq ($(HOST_ID),drebin)
-HOST_ID=$(IFS_HPC)
-include ../config/config.ifs.hpc.inc
-else ifeq ($(HOST_ID),bergerac)
 HOST_ID=$(IFS_HPC)
 include ../config/config.ifs.hpc.inc
 else ifeq ($(HOST_ID),sherlock)
@@ -34,15 +30,12 @@ include ../config/config.ifs.hpc.inc
 else ifeq ($(HOST_ID),wallander)
 HOST_ID=$(IFS_HPC)
 include ../config/config.ifs.hpc.inc
-else ifeq ($(HOST_ID),wise.local)
-HOST_ID=$(CS_HPC)
-include /home/uctpln0/GeneralCode/config/config.cs.inc
 else ifeq ($(HOST_ID),vic.local)
 HOST_ID=$(CS_HPC)
-include /home/uctpln0/GeneralCode/config/config.cs.inc
+include /home/uctpln0/GeneralCode/config/config.cs.inc.2018.07.25
 else ifeq ($(HOST_ID),jake.local)
 HOST_ID=$(CS_HPC)
-include /home/uctpln0/GeneralCode/config/config.cs.inc
+include /home/uctpln0/GeneralCode/config/config.cs.inc.2018.07.25
 else ifeq ($(HOST_ID),zeppo-22-1.local)
 HOST_ID=$(CS_HPC)
 include /home/uctpln0/GeneralCode/config/config.cs.inc

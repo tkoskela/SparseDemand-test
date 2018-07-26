@@ -1809,7 +1809,7 @@ subroutine CopyIFree(iFree,iFreeCopy)
   iFreeCopy%NBD_COFFDIAG = iFree%NBD_COFFDIAG
   iFreeCopy%nBD_month    = iFree%nBD_month
 
-  iFreeCopy%NBC_CDiag     = iFree%NBC_beta
+  iFreeCopy%NBC_beta     = iFree%NBC_beta
   iFreeCopy%NBC_CDIAG    = iFree%NBC_CDIAG
   iFreeCopy%NBC_COFFDIAG = iFree%NBC_COFFDIAG
 
@@ -2193,11 +2193,17 @@ subroutine ComputeElasticities
   SimData1%N = 9  ! simulate and graph for 9 people with varying levels of 
                   ! (eta1,eta2)
   call AllocateLocalHHData(SimData1)
+  ! Define month
+  SimData1%month = 5  ! all are May
   allocate(eta(nprob),prob(nprob))
   prob = (/0.25d0,0.5d0,0.75d0/)
   ! SimData1% e = MuE for all people
   eta = InverseNormal_mkl(prob,nprob,ifail)
-  SimData1%e        = spread(Parms%MuE,2,9)
+  SimData1%e        = spread(Parms%MuE,2,SimData1%N)
+  do i1=1,12
+    SimData1%e = SimData1%e &
+       + merge(spread(parms%mue_month(:,i1),2,SimData1%N),0.0d0,spread(SimData1%month,1,12)==i1)
+  end do
   SimData1%eta(1,:) = reshape(spread(eta,2,nprob),(/nprob*nprob/))
   SimData1%eta(2,:) = reshape(spread(eta,1,nprob),(/nprob*nprob/))
 
@@ -2232,9 +2238,27 @@ subroutine ComputeElasticities
   allocate(e(HHDataSim1%N,parms%K))
   ! generate normal random numbers
   call G05RZF(mode,HHDataSim1%N,parms%K,parms%MuE,parms%sig,parms%K,R,LR,state,e,HHDataSim1%N,ifail)
+
+  ! set price and month
+  if (HHDataSim1%N==HHData%N) then
+    HHDataSim1%p = HHData%p
+    HHDataSim1%month = HHData%month
+  else
+    print *,'HHDataSim1%N = ',HHDataSim1%N,'.'
+    print *,'Sample prices with replacement from raw data.'
+    allocate(e2(HHDataSim1%N))
+    call G05SAF(HHDataSim1%N,state,e2,ifail)
+    do i1=1,HHDataSim1%N
+      i2 =ceiling(HHData%n * e2(i1))
+      HHDataSim1%p(:,i1) = HHData%p(:,i2)
+      HHDataSim1%month(i1) = HHData%month(i2)
+    end do
+    deallocate(e2)
+  end if
+
   ! add seasonal shift to mue
   do i1=1,12
-    e = e + merge(spread(parms%mue_month(:,i1),1,HHDataSim1%N),0.0d0,spread(HHDataSim1%month,2,12)==i1)
+    e = e + merge(spread(parms%mue_month(:,i1),2,HHDataSim1%N),0.0d0,spread(HHDataSim1%month,1,12)==i1)
   end do
   HHDataSim1%e = transpose(e)
 
@@ -2273,19 +2297,6 @@ subroutine ComputeElasticities
   ! aggregate demand in raw data
   call ComputeAggregateDemand(HHData%q,HHData%iNonZero,qdata,HHData%nNonZero,0)
 
-  if (HHDataSim1%N==HHData%N) then
-    HHDataSim1%p = HHData%p
-  else
-    print *,'HHDataSim1%N = ',HHDataSim1%N,'.'
-    print *,'Sample prices with replacement from raw data.'
-    allocate(e2(HHDataSim1%N))
-    call G05SAF(HHDataSim1%N,state,e2,ifail)
-    do i1=1,HHDataSim1%N
-      i2 =ceiling(HHData%n * e2(i1))
-      HHDataSim1%p(:,i1) = HHData%p(:,i2)
-    end do
-    deallocate(e2)
-  end if
   ! predicted demand and welfare at prices in data
   call ComputeDemand(HHDataSim1)
   call ComputeAggregateDemand(HHDataSim1%q,HHDataSim1%iNonZero,qhat,HHDataSim1%nNonZero,0)
@@ -2310,6 +2321,7 @@ subroutine ComputeElasticities
   HHDataSim2%e   = HHDataSim1%e
   HHDataSim2%eta = HHDataSim1%eta
   HHDataSim2%p   = HHDataSim1%p
+  HHDataSim2%month = HHDataSim1%month
 
   ! Compute slope of demand
   allocate(GradQ(parms%J,parms%J))
@@ -2749,9 +2761,9 @@ subroutine SelectFreeParameters(parms,iFree)
   ! iFree%xMuE = elements of xFree corresponding to MuE
   ! iFree.MuE  = elements of MuE that are free
   if (iFree%flagMUE==1) then
-    allocate(iFree%MuE(parms%K))
-    allocate(iFree%xMuE(parms%K))
-    iFree%MuE = (/1:parms%K/)
+    allocate(iFree%MuE(parms%K-ifree%mue1+1))
+    allocate(iFree%xMuE(parms%K-ifree%mue1+1))
+    iFree%MuE = (/ifree%mue1:parms%K/)
     iFree%xMuE = iFree%nall + (/1:size(iFree%MuE)/)
     iFree%nMuE = size(iFree%MuE)
   else
@@ -2763,10 +2775,10 @@ subroutine SelectFreeParameters(parms,iFree)
   ! iFree%xMuE_month = elements of xFree corresponding to MuE_month
   ! iFree%MuE_month  = elements of MuE_month that are free
   if (iFree%flagMUE_month==1) then
-    allocate(iFree%MuE_month(11*parms%K))
-    allocate(iFree%xMuE_month(11*parms%K))
-    iFree%nmue_month = 11*parms%K
-    iFree%MuE_month  = (/1:iFree%nmue_month/)
+    allocate(iFree%MuE_month(11*parms%K - ifree%mue_month1+1))
+    allocate(iFree%xMuE_month(11*parms%K - ifree%mue_month1+1))
+    iFree%nmue_month = size(ifree%mue_month)
+    iFree%MuE_month  = (/1:11*parms%K/)
     iFree%xMuE_month = iFree%nall + (/1:iFree%nmue_month/)
   else
     iFree%nMUE_month = 0
@@ -2777,9 +2789,9 @@ subroutine SelectFreeParameters(parms,iFree)
   ! iFree%xInvCDiag = elements of xFree corresponding to InvCDiag
   ! iFree%InvCDiag  = elements of InvCDiag that are free
   if (iFree%flagInvCDiag==1) then
-    allocate(iFree%InvCDiag(parms%K))
-    allocate(iFree%xInvCDiag(parms%K))
-    iFree%InvCDiag = (/1:parms%K/)
+    allocate(iFree%InvCDiag(parms%K - ifree%invcdiag1+1))
+    allocate(iFree%xInvCDiag(parms%K - ifree%invcdiag1+1))
+    iFree%InvCDiag = (/ifree%invcdiag1:parms%K/)
     iFree%nInvCDiag = size(iFree%InvCDiag)
     iFree%xInvCDiag = iFree%nall + (/1:iFree%nInvCDiag/)
   else
@@ -2792,10 +2804,10 @@ subroutine SelectFreeParameters(parms,iFree)
   ! iFree%xInvCOffDiag = elements of xFree corresponding to InvCOffDiag
   ! iFree%InvCOffDiag  = elements of InvCOffDiag that are free
   if (iFree%flagInvCOffDiag==1) then
-    iFree%nInvCOffDiag = parms%K*(parms%K-1)/2
+    iFree%nInvCOffDiag = parms%K*(parms%K-1)/2 - ifree%invcoffdiag1 + 1
     allocate(iFree%InvCOffDiag(iFree%nInvCOffDiag))
     allocate(iFree%xInvCOffDiag(iFree%nInvCOffDiag))
-    iFree%InvCOffDiag  = (/1:iFree%nInvCOffDiag/)
+    iFree%InvCOffDiag  = (/ifree%invcoffdiag1:(parms%k*(parms%k-1)/2)/)
     iFree%xInvCOffDiag = iFree%nall + (/1:iFree%nInvCOffDiag/)
   else
     iFree%nInvCOffDiag = 0
@@ -2812,66 +2824,66 @@ subroutine SelectFreeParameters(parms,iFree)
     iFree%nBD_month    = 0 
 
     if (iFree%flagBD_beta==1) then
-      iFree%nBD_beta = parms%BD_z_dim
+      iFree%nBD_beta = parms%BD_z_dim - ifree%bd_beta1 + 1
       allocate(iFree%BD_beta(iFree%nBD_beta))
       allocate(iFree%xBD_beta(iFree%nBD_beta))
-      iFree%BD_beta = (/1:parms%BD_z_dim/)
-      iFree%xBD_beta = iFree%nAll + iFree%BD_beta
+      iFree%BD_beta = (/ifree%bd_beta1:parms%BD_z_dim/)
+      iFree%xBD_beta = iFree%nAll + (/1:ifree%nbd_beta/)
       iFree%nall = iFree%nall + iFree%nBD_beta
     end if
 
     if (iFree%flagBC_beta==1) then
-      iFree%nBC_beta = parms%BC_z_dim
+      iFree%nBC_beta = parms%BC_z_dim - ifree%bc_beta1 + 1
       allocate(iFree%BC_beta(iFree%nBC_beta))
       allocate(iFree%xBC_beta(iFree%nBC_beta))
-      iFree%BC_beta = (/1:parms%BC_z_dim/)
-      iFree%xBC_beta = iFree%nAll + iFree%BC_beta
+      iFree%BC_beta = (/ifree%bc_beta1:parms%BC_z_dim/)
+      iFree%xBC_beta = iFree%nAll + (/1:ifree%nbc_beta/)
       iFree%nall = iFree%nall + iFree%nBC_beta
     end if
 
     if (iFree%flagBD_CDiag==1) then
-      iFree%nBD_CDiag = parms%J
+      iFree%nBD_CDiag = parms%J - ifree%bd_cdiag1 + 1
       allocate(iFree%BD_CDiag(iFree%nBD_CDiag))
       allocate(iFree%xBD_CDiag(iFree%nBD_CDiag))
-      iFree%BD_CDiag = (/1:iFree%nBD_CDiag/)
-      iFree%xBD_CDiag = iFree%nAll + iFree%BD_CDiag
+      iFree%BD_CDiag = (/ifree%bd_cdiag1:parms%J/)
+      iFree%xBD_CDiag = iFree%nAll + (/1:ifree%nbd_cdiag/)
       iFree%nall = iFree%nall + iFree%nBD_CDiag
     end if
 
     if (iFree%flagBD_COffDiag==1) then
-      iFree%nBD_COffDiag = size(parms%BD_COffDiag,1)
+      iFree%nBD_COffDiag = size(parms%BD_COffDiag,1) - ifree%bd_coffdiag1 + 1
       allocate(iFree%BD_COffDiag(iFree%nBD_COffDiag))
       allocate(iFree%xBD_COffDiag(iFree%nBD_COffDiag))
-      iFree%BD_COffDiag = (/1:iFree%nBD_COffDiag/)
-      iFree%xBD_COffDiag = iFree%nAll + iFree%BD_COffDiag
+      iFree%BD_COffDiag = (/ifree%bd_coffdiag1:size(parms%bd_coffdiag)/)
+      iFree%xBD_COffDiag = iFree%nAll + (/1:ifree%nbd_coffdiag/)
       iFree%nall = iFree%nall + iFree%nBD_COffDiag
     end if
 
     if (iFree%flagBC_CDiag==1) then
-      iFree%nBC_CDiag = parms%nBC
+      iFree%nBC_CDiag = parms%nBC - ifree%bc_cdiag1 + 1
       allocate(iFree%BC_CDiag(iFree%nBC_CDiag))
       allocate(iFree%xBC_CDiag(iFree%nBC_CDiag))
-      iFree%BC_CDiag = (/1:iFree%nBC_CDiag/)
-      iFree%xBC_CDiag = iFree%nAll + iFree%BC_CDiag
+      iFree%BC_CDiag = (/ifree%bc_cdiag1:parms%nbc/)
+      iFree%xBC_CDiag = iFree%nAll + (/1:ifree%nbc_cdiag/)
       iFree%nall = iFree%nall + iFree%nBC_CDiag
     end if
 
     if (iFree%flagBC_COffDiag==1) then
-      iFree%nBC_COffDiag = size(parms%BC_COffDiag,1)
+      iFree%nBC_COffDiag = size(parms%BC_COffDiag,1) - ifree%bc_coffdiag1 + 1
       allocate(iFree%BC_COffDiag(iFree%nBC_COffDiag))
       allocate(iFree%xBC_COffDiag(iFree%nBC_COffDiag))
-      iFree%BC_COffDiag = (/1:iFree%nBC_COffDiag/)
-      iFree%xBC_COffDiag = iFree%nAll + iFree%BC_COffDiag
+      iFree%BC_COffDiag = (/ifree%bc_coffdiag1:size(parms%bc_coffdiag)/)
+      iFree%xBC_COffDiag = iFree%nAll + (/1:size(parms%bc_coffdiag)/)
       iFree%nall = iFree%nall + iFree%nBC_COffDiag
     end if
 
     ! MONTH 1 is ALWAYS BASE CATEGORY
     if (iFree%flagBD_month==1) then
-      iFree%nBD_month = 11* parms%J 
+      iFree%nBD_month = 11* parms%J - ifree%bd_month1 + 1
       allocate(iFree%BD_month(iFree%nBD_month))
       allocate(iFree%xBD_month(iFree%nBD_month))
-      iFree%BD_month  = (/1:iFree%nBD_month/)
-      iFree%xBD_month = iFree%nAll + iFree%BD_month
+      iFree%BD_month  = (/ifree%bd_month1:11*parms%j/)
+      iFree%xBD_month = iFree%nAll + (/1:ifree%nbd_month/)
       iFree%nall = iFree%nall + iFree%nBD_month
     end if
   end if ! if (parms%model==2)

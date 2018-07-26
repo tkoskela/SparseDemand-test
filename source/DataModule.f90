@@ -299,7 +299,7 @@ subroutine ComputeCurrentB(eta,parms,month)
       if (j1<=parms%K) then
         i1 = (j1-1)*(j1-2)/2 + k1
       else
-        i1 = (parms%K*(Parms%K-1))/2 + (j1-parms%K)*(parms%K-1)+k1
+        i1 = (parms%K*(Parms%K-1))/2 + (j1-parms%K-1)*(parms%K-1)+k1
       end if
       ! lam = 2 if last element in column
       lam = merge(1.0d0,2.0d0,k1<min(j1-1,parms%K-1))

@@ -213,6 +213,13 @@ module GlobalModule
     integer(i4b), allocatable :: BD_month(:)
     integer(i4b), allocatable :: xBD_month(:)
 
+    ! first free element in each vector
+    !  e.g. iFree%mue = (/iFree%mue1:parms%k/)
+    integer(i4b)              :: mue1,mue_month1,invcdiag1,invcoffdiag1
+    integer(i4b)              :: bd_beta1,bd_cdiag1,bd_coffdiag1
+    integer(i4b)              :: bc_beta1,bc_cdiag1,bc_coffdiag1
+    integer(i4b)              :: bd_month1
+
     integer(i4b)              :: nD 
     integer(i4b)              :: nBC
     integer(i4b)              :: nMuE
@@ -1226,6 +1233,19 @@ subroutine InitializeParameters(InputFile)
   ErrFlag = GetVal(PropList,'FreeFlagInvCOffDiag',cTemp)
   read(cTemp,'(i2)') iFree%flagInvCOffDiag
 
+  ! read in (mue1,invcdiag1,invcoffdiag1)
+  ErrFlag = GetVal(PropList,'free_mue1',cTemp)
+  read(cTemp,'(i3)') iFree%mue1
+
+  ErrFlag = GetVal(PropList,'free_mue_month1',cTemp)
+  read(cTemp,'(i3)') iFree%mue_month1
+
+  ErrFlag = GetVal(PropList,'free_cdiag1',cTemp)
+  read(cTemp,'(i3)') iFree%invcdiag1
+
+  ErrFlag = GetVal(PropList,'free_coffdiag1',cTemp)
+  read(cTemp,'(i3)') iFree%invcoffdiag1
+
   if (parms%model==2) then
     ErrFlag = GetVal(PropList,'FreeFlagBC_beta',cTemp)
     read(cTemp,'(i2)') iFree%flagBC_beta
@@ -1247,6 +1267,30 @@ subroutine InitializeParameters(InputFile)
     
     ErrFlag = GetVal(PropList,'FreeFlagBD_month',cTemp)
     read(cTemp,'(i2)') iFree%flagBD_month
+    
+    ! Read in (bc_beta1,bc_cdiag1,bc_coffdiag1)
+    ! read in (bd_beta1,bd_cdiag1,bd_coffdiag1)
+    ErrFlag = GetVal(PropList,'free_bc_beta1',cTemp)
+    read(ctemp,'(i3)') iFree%bc_beta1
+
+    ErrFlag = GetVal(PropList,'free_bc_cdiag1',cTemp)
+    read(ctemp,'(i3)') iFree%bc_cdiag1
+    
+    ErrFlag = GetVal(PropList,'free_bc_coffdiag1',cTemp)
+    read(ctemp,'(i3)') iFree%bc_coffdiag1
+    
+    ErrFlag = GetVal(PropList,'free_bd_beta1',cTemp)
+    read(ctemp,'(i3)') iFree%bd_beta1
+
+    ErrFlag = GetVal(PropList,'free_bd_cdiag1',cTemp)
+    read(ctemp,'(i3)') iFree%bd_cdiag1
+    
+    ErrFlag = GetVal(PropList,'free_bd_coffdiag1',cTemp)
+    read(ctemp,'(i3)') iFree%bd_coffdiag1
+    
+    ErrFlag = GetVal(PropList,'free_bd_month1',cTemp)
+    read(ctemp,'(i3)') iFree%bd_month1
+
   end if
 
   ErrFlag = GetVal(PropList,'OneAtATime',cTemp)
@@ -1971,6 +2015,18 @@ subroutine BroadcastIFree(pid)
   call mpi_bcast(iFree%flagBD_COffDiag,1,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
   call mpi_bcast(iFree%flagBD_month,1,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
   call mpi_bcast(iFree%OneAtATime,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr)
+
+  call mpi_bcast(iFree%MUE1,1,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
+  call mpi_bcast(iFree%MUE_month1,1,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
+  call mpi_bcast(iFree%InvCDiag1,1,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
+  call mpi_bcast(iFree%InvCOffDiag1,1,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
+  call mpi_bcast(iFree%BC_beta1,1,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
+  call mpi_bcast(iFree%BC_CDiag1,1,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
+  call mpi_bcast(iFree%BC_COffDiag1,1,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
+  call mpi_bcast(iFree%BD_beta1,1,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
+  call mpi_bcast(iFree%BD_CDiag1,1,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
+  call mpi_bcast(iFree%BD_COffDiag1,1,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
+  call mpi_bcast(iFree%BD_month1,1,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
 
   call mpi_bcast(iFree%nD,1,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
   call mpi_bcast(iFree%nBC,1,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
