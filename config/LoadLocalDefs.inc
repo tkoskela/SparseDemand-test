@@ -31,23 +31,11 @@ else ifeq ($(HOST_ID),wallander)
 HOST_ID=$(IFS_HPC)
 include ../config/config.ifs.hpc.inc
 else ifeq ($(HOST_ID),vic.local)
-HOST_ID=$(CS_HPC)
-include /home/uctpln0/GeneralCode/config/config.cs.inc.2018.07.25
+  HOST_ID=$(CS_HPC)
+  include /home/uctpln0/GeneralCode/config/config.cs.inc.2018.07.25
 else ifeq ($(HOST_ID),jake.local)
-HOST_ID=$(CS_HPC)
-include /home/uctpln0/GeneralCode/config/config.cs.inc.2018.07.25
-else ifeq ($(HOST_ID),zeppo-22-1.local)
-HOST_ID=$(CS_HPC)
-include /home/uctpln0/GeneralCode/config/config.cs.inc
-else ifeq ($(HOST_ID),zeppo-22-2.local)
-HOST_ID=$(CS_HPC)
-include /home/uctpln0/GeneralCode/config/config.cs.inc
-else ifeq ($(HOST_ID),zeppo-22-3.local)
-HOST_ID=$(CS_HPC)
-include /home/uctpln0/GeneralCode/config/config.cs.inc
-else ifeq ($(HOST_ID),zeppo-22-8.local)
-HOST_ID=$(CS_HPC)
-include /home/uctpln0/GeneralCode/config/config.cs.inc
+  HOST_ID=$(CS_HPC)
+  include /home/uctpln0/GeneralCode/config/config.cs.inc.2018.07.25
 else ifeq ($(HOST_ID),Lars-Nesheims-MacBook-Pro.local)
 HOST_ID=$(LAPTOP)
 else

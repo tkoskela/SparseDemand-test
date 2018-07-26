@@ -2148,7 +2148,7 @@ subroutine ComputeElasticities
   use nag_library, only  : G05KFF,G05RZF,G05SAF
   use OutputModule, only : WriteElasticities,WriteDemandResults1,WriteDemandResults2, &
                            WriteTaxResults1,WriteTaxResults2, &
-                           WriteDataFit
+                           WritePrediction
   use ToolsModule, only  : InverseNormal_mkl
   use IFPORT, only       : system
   implicit none
@@ -2289,7 +2289,7 @@ subroutine ComputeElasticities
 
   ! Copy HHData to HHDataFit
   HHFit%N     = HHData%N
-  allocateLocalHHData(HHFit)
+  call AllocateLocalHHData(HHFit)
   HHFit%p     = HHData%p
   HHFit%month = HHData%month
   call DrawRandomCoefficients(HHFit,state)
@@ -2439,7 +2439,7 @@ end subroutine ComputeElasticities
 
 subroutine DrawRandomCoefficients(HHData_local,random_state)
   use nrtype
-  use GlobalModule, only : parms
+  use GlobalModule, only : parms,DataStructure
   use nag_library, only  : G05RZF,G05SAF
   implicit none
   type(DataStructure), intent(inout) :: HHData_local
