@@ -22,6 +22,7 @@ module OutputModule
   character(len=200)          :: MC_FILE2
   character(len=200)          :: ElasFile
   character(len=200)          :: DemandFile
+  character(len=200)          :: qdata_file(2)
 
   ! Output file: unit numbers
   integer(i4b), parameter :: Results_UNIT           = 12
@@ -43,6 +44,7 @@ module OutputModule
   integer(i4b), parameter :: Demand_UNIT            = 28
   integer(i4b), parameter :: GradLHH_unit           = 29
   integer(i4b), parameter :: taxresults_unit        = 30
+  integer(i4b), parameter :: qdata_unit             = 31
 
 contains
 
@@ -65,6 +67,8 @@ subroutine DefineFileNames(pid)
   SaveDataFile_nNonZero = MakeFullFileName('nNonZero.csv')
   SaveDataFile_market   = MakeFullFileName('market.csv')
   ElasFile              = MakeFullFileName('elas.csv')
+  QData_file(1)         = MakeFullFileName('qdata.csv')
+  QData_file(2)         = MakeFullFileName('qdata_hat.csv')
 
   write(TempFileName,'(A9,i4.4,a4)') 'MCResults',pid,'.txt'
   MC_FILE1      = MakeFullFileName(TempFileName)
@@ -82,6 +86,52 @@ subroutine DefinePenaltyFileNames(iter)
   BIC1_FILE      = MakeFullFileName('BIC1.txt')
 end subroutine DefinePenaltyFileNames
 
+subroutine WritePrediction(HHData,HHFit)
+  use GlobalModule, only : DataStructure,parms
+  implicit none
+  type(DataStructure), intent(in) :: HHData,HHFit
+
+  integer(i4b) :: i1,n
+  real(dp), allocatable :: q(:)
+  integer(i4b), allocatable :: ix1(:)
+
+
+  ! write HHData%q,HHFit%q
+  allocate(q(parms%j))
+
+  open(unit=qdata_unit, &
+       file=qdata_file(1), &
+       action='write')
+
+  write(fmt1,'(a1,i2,a14)') '(',parms%J,'(g12.5,:,","))'
+  do i1=1,n
+    q = 0.0d0
+    allocate(ix1(hhdata%nnonzero))
+    ix1 = (/(ix,ix=1,hhdata%nnonzero)/)
+    q(hhdata%inonzero(ix1)) = hhdata%q(ix1)
+    write(qdata_unit,fmt1) q
+    deallocate(ix1)
+  end do
+
+  close(qdata_unit)
+
+  open(unit=qdata_unit, &
+       file=qdata_file(2), &
+       action='write')
+
+  do i1=1,n
+    q = 0.0d0
+    allocate(ix1(hhfit%nnonzero))
+    ix1 = (/(ix,ix=1,hhfit%nnonzero)/)
+    q(hhfit%inonzero(ix1)) = hhfit%q(ix1)
+    write(qdata_unit,fmt1) q
+    deallocate(ix1)
+  end do
+
+  close(qdata_unit)
+
+  deallocate(q)
+end subroutine WritePrediction
 !------------------------------------------------------------------------------
 !
 ! subroutine SaveOutputs(xFree,LValue,Grad,Hess)

@@ -1,5 +1,5 @@
 #
-# Makefile - builds Euler equation model
+# Makefile - builds Sparse demand model
 #
 # To build a target, enter:
 #
@@ -7,19 +7,17 @@
 #
 # Targets:
 #
-#   all		- builds everything
-#   clean	- deletes all .o, .a, binaries, etc.
-#   exe		- optimized application
-#   dbg		- application with debug symbols
+#   all	  	 - builds everything
+#   clean	 - deletes all .o, .a, binaries, etc.
+#   nuke     - clean + clean all dependencies
+#   exe		 - optimized application
+#   dbg		 - application with debug symbols
 #
 # Options:
 #
 #   USE_MPI	- defaults to 0 (no MPI).  If defined to 1, build 
 #                 application with MPI libraries for execution on 
 #                 multiple processors
-#
-#   USE_DIAG	- defaults to 0 (no diagnostic printing).  Set to 1
-#                 on the command line to enable diagnostic printing.
 #
 # Example:
 #
@@ -37,14 +35,12 @@
 #
 # modification history
 # --------------------
+# 2018JUL25 LN   clean up and edit
 # 09OCT2013 LN   load ApproximationModule.o before ValueModule.o since the latter uses the former
 # 29jun2011 LPN  rename *_module to *Module
 # 11nov2010 LPN  adapt from housing project
 
 .SUFFIXES: .a .o .f95 .f90 .mod
-
-#---------------------------------------
-# Define macros for Makefile
 
 # Select correct Macros based on platform in use
 include ../config/LoadLocalDefs.inc
@@ -91,12 +87,6 @@ FC_FLAGS = $(LOCAL_FC_FLAGS) -I${MKL_DIR} -I$(NR_DIR) -I$(TOOLS_DIR) -I${NAG_DIR
 
 FC_DEBUG_FLAGS = $(LOCAL_FC_DEBUG_FLAGS) -I${MKL_DIR} -I$(NR_DIR) -I$(TOOLS_DIR) -I${NAG_DIR}/nag_interface_blocks -DHOST_ID=$(HOST_ID) 
 
-# Enable diagnostic printing if desired...
-ifeq ($(USE_DIAG),1)
-  FC_FLAGS += -DUSE_DIAG=$(USE_DIAG)
-  FC_DEBUG_FLAGS += -DUSE_DIAG=$(USE_DIAG)
-endif
-
 #---------------------------------------
 # Source code for numerical recipes library
 NR_SRC = \
@@ -121,7 +111,6 @@ MOD_OBJS = \
 # The main program
 PRG_OBJS = main.o
 
-#OBJS = $(PRG_OBJS)
 OBJS = $(MOD_OBJS) $(PRG_OBJS)
 DEBUG_OBJS = $(patsubst %.o, %_d.o, $(OBJS))
 

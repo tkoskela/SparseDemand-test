@@ -2147,13 +2147,14 @@ subroutine ComputeElasticities
                            LoadTaxParameters,OutDir,ParmFiles
   use nag_library, only  : G05KFF,G05RZF,G05SAF
   use OutputModule, only : WriteElasticities,WriteDemandResults1,WriteDemandResults2, &
-                           WriteTaxResults1,WriteTaxResults2
+                           WriteTaxResults1,WriteTaxResults2, &
+                           WriteDataFit
   use ToolsModule, only  : InverseNormal_mkl
   use IFPORT, only       : system
   implicit none
 
   integer(i4b)              :: i1,i2,i3
-  type(DataStructure)       :: HHDataSim1,HHDataSim2,SimData1
+  type(DataStructure)       :: HHDataSim1,HHDataSim2,SimData1,HHFit
 
   ! variables to compute demand
   real(dp)                  :: h
@@ -2228,17 +2229,6 @@ subroutine ComputeElasticities
 
   call G05KFF(genid,subid,localseed,lseed,state,lstate,ifail)
 
-  ! Generate HHDataSim1%e
-  mode = 2
-  ifail = 0
-  ldc = parms%K
-  ldx = parms%K
-  LR = parms%K*(parms%K+1)+1
-  allocate(R(LR))
-  allocate(e(HHDataSim1%N,parms%K))
-  ! generate normal random numbers
-  call G05RZF(mode,HHDataSim1%N,parms%K,parms%MuE,parms%sig,parms%K,R,LR,state,e,HHDataSim1%N,ifail)
-
   ! set price and month
   if (HHDataSim1%N==HHData%N) then
     HHDataSim1%p = HHData%p
@@ -2256,33 +2246,57 @@ subroutine ComputeElasticities
     deallocate(e2)
   end if
 
-  ! add seasonal shift to mue
-  do i1=1,12
-    e = e + merge(spread(parms%mue_month(:,i1),2,HHDataSim1%N),0.0d0,spread(HHDataSim1%month,1,12)==i1)
-  end do
-  HHDataSim1%e = transpose(e)
+  ! Generate (e,eta)
+  call DrawRandomCoefficients(HHDataSim1,state)
 
-  deallocate(R,e)
+!  mode = 2
+!  ifail = 0
+!  ldc = parms%K
+!  ldx = parms%K
+!  LR = parms%K*(parms%K+1)+1
+!  allocate(R(LR))
+!  allocate(e(HHDataSim1%N,parms%K))
+!  ! generate normal random numbers
+!  call G05RZF(mode,HHDataSim1%N,parms%K,parms%MuE,parms%sig,parms%K,R,LR,state,e,HHDataSim1%N,ifail)
+
+  ! add seasonal shift to mue
+!  do i1=1,12
+!    e = e + merge(spread(parms%mue_month(:,i1),1,HHDataSim1%N),0.0d0,spread(HHDataSim1%month,2,12)==i1)
+ ! end do
+ ! HHDataSim1%e = transpose(e)
+
+ ! deallocate(R,e)
 
   ! Random coefficients in utility
-  if (parms%model==2) then
-    ! Random coefficients in BD:  eta
-    ifail = 0
-    LR = parms%dim_eta*(parms%dim_eta+1)+1
-    allocate(zero(parms%dim_eta))
-    allocate(eye(parms%dim_eta,parms%dim_eta))
-    allocate(e(HHDataSim1%N,parms%dim_eta))
-    allocate(R(LR))
-    R    = 0.0d0
-    zero = 0.0d0
-    eye  = 0.0d0
-    do i1=1,parms%dim_eta
-      eye(i1,i1) = 1.0d0
-    end do
-    call G05RZF(mode,HHDataSim1%N,parms%dim_eta,zero,eye,parms%dim_eta,R,LR,state,e,HHDataSim1%N,ifail)
-    HHDataSim1%eta = transpose(e)
-    deallocate(zero,eye,e,R)
-  end if
+!  if (parms%model==2) then
+!    ! Random coefficients in BD:  eta
+!    ifail = 0
+!    LR = parms%dim_eta*(parms%dim_eta+1)+1
+!    allocate(zero(parms%dim_eta))
+!    allocate(eye(parms%dim_eta,parms%dim_eta))
+!!    allocate(e(HHDataSim1%N,parms%dim_eta))
+ !   allocate(R(LR))
+!    R    = 0.0d0
+!    zero = 0.0d0
+!    eye  = 0.0d0
+!    do i1=1,parms%dim_eta
+!      eye(i1,i1) = 1.0d0
+!    end do
+!    call G05RZF(mode,HHDataSim1%N,parms%dim_eta,zero,eye,parms%dim_eta,R,LR,state,e,HHDataSim1%N,ifail)
+!    HHDataSim1%eta = transpose(e)
+!    deallocate(zero,eye,e,R)
+!  end if
+
+  ! Copy HHData to HHDataFit
+  HHFit%N     = HHData%N
+  allocateLocalHHData(HHFit)
+  HHFit%p     = HHData%p
+  HHFit%month = HHData%month
+  call DrawRandomCoefficients(HHFit,state)
+  ! Compute predictions for fitted data
+  call ComputeDemand(HHFit)
+
+  call WritePrediction(HHData,HHFit)
 
   ! Aggregate demand from data
   ! baseline demand
@@ -2411,6 +2425,7 @@ subroutine ComputeElasticities
   ! deallocate memory for HHData0
   call DeallocateLocalHHData(HHDataSim1)
   call DeallocateLocalHHData(HHDataSim2)
+  call DeallocateLocalHHData(HHFit)
   deallocate(q0,q1,p0,GradQ,ExcessQ)
   deallocate(qdata,qhat)
   deallocate(newq)
@@ -2421,6 +2436,61 @@ subroutine ComputeElasticities
   deallocate(HHSpending,HHUtility)
 
 end subroutine ComputeElasticities
+
+subroutine DrawRandomCoefficients(HHData_local,random_state)
+  use nrtype
+  use GlobalModule, only : parms
+  use nag_library, only  : G05RZF,G05SAF
+  implicit none
+  type(DataStructure), intent(inout) :: HHData_local
+  integer(i4b),        intent(inout) :: random_state(:)
+
+  integer(i4b) :: mode,ifail,ldc,ldx,LR,i1
+  real(dp), allocatable :: R(:),e(:,:),zero(:),eye(:,:)
+
+  ! Generate HHData%e
+  mode  = 2
+  ifail = 0
+  ldc   = parms%K
+  ldx   = parms%K
+  LR    = parms%K*(parms%K+1)+1
+  allocate(R(LR))
+  allocate(e(HHData_local%N,parms%K))
+  ! generate normal random numbers
+  call G05RZF(mode,HHData_local%N,parms%K,parms%MuE,parms%sig,parms%K, &
+              R,LR,random_state,e,HHData_local%N,ifail)
+
+  ! add seasonal shift to mue
+  do i1=1,12
+    e = e + merge(spread(parms%mue_month(:,i1),1,HHData_local%N),0.0d0, &
+                  spread(HHData_local%month,2,12)==i1)
+  end do
+  HHData_local%e = transpose(e)
+
+  deallocate(R,e)
+
+  ! Random coefficients in utility
+  if (parms%model==2) then
+    ! Random coefficients in BD:  eta
+    ifail = 0
+    LR = parms%dim_eta*(parms%dim_eta+1)+1
+    allocate(zero(parms%dim_eta))
+    allocate(eye(parms%dim_eta,parms%dim_eta))
+    allocate(e(HHData_local%N,parms%dim_eta))
+    allocate(R(LR))
+    R    = 0.0d0
+    zero = 0.0d0
+    eye  = 0.0d0
+    do i1=1,parms%dim_eta
+      eye(i1,i1) = 1.0d0
+    end do
+    call G05RZF(mode,HHData_local%N,parms%dim_eta,zero,eye, &
+                parms%dim_eta,R,LR,random_state,e,HHData_local%N,ifail)
+    HHData_local%eta = transpose(e)
+    deallocate(zero,eye,e,R)
+  end if
+
+end subroutine DrawRandomCoefficients
 
 subroutine ComputeIndividualDemand(SimData1)
   use nrtype
@@ -2480,7 +2550,13 @@ real(dp),     intent(in)  :: q(:,:)
 integer(i4b), intent(in)  :: iNonZero(:,:)
 real(dp),     intent(out) :: TotalQ(:)
 integer(i4b), intent(in)  :: nNonZero(:),n
-
+! size(q)        = (K x N)
+! size(inonzero) = (K x N)
+! size(TotalQ)   = (J x 1)
+! size(nnonzero) = (N x 1)
+! n              = (1 x 1)  used to compute demand conditional on n
+!                           for n=1,...,K
+!                           n=0 computes total demand
 integer(i4b) :: i1,i2
 
 TotalQ = 0.0d0
@@ -2493,6 +2569,9 @@ do i2=1,parms%K
   endif
 end do
 end do
+
+! Per capita demand
+TotalQ = TotalQ / real(size(q,2),dp)
 end subroutine ComputeAggregateDemand
 
 subroutine ComputeDemand(HHData1)
