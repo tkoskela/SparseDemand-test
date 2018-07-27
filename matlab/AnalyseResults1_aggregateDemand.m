@@ -5,8 +5,9 @@
 addpath('ImportTools')
 
 %WorkDir = '/SAN/economics/Nesheim-IO/FruitDemand/output/A27_20171116';
-WorkDir = '/SAN/economics/Nesheim-IO/FruitDemand/output/A27_20180101';
-OutDir  = '/home/uctpln0/FruitDemand/code/fortran/output/A27_20180101';
+%WorkDir = '/SAN/economics/Nesheim-IO/FruitDemand/output/A27_20180101';
+WorkDir = '/SAN/economics/Nesheim-IO/FruitDemand/output/A27_2018MAY';
+OutDir  = '/home/uctpln0/FruitDemand/code/fortran/output/A27_2018MAY';
 N       = 26514;
 J       = 27;
 K       = 5;
@@ -116,7 +117,7 @@ for j1=1:J
          '-depsc');
    elseif NewPlotFlag==1
      baseprice = (2/3) * min(price(:,j1)) + (1/3)*max(price(:,j1));  
-     area(price(:,j1),quantity(:,2:K+1,j1)/N)
+     area(price(:,j1),quantity(:,2:K+1,j1))
      title(['Demand for ',FruitLabels{j1}],'FontSize',FontSize);
      xlabel(['price (GBP: average market price = ', ...
              num2str(baseprice,2),' GBP)'],'FontSize',FontSize)
