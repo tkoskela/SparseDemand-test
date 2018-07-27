@@ -16,16 +16,18 @@ subroutine CreateData(IMC)
 
   integer(i4b)          :: i1,i2
   real(dp), allocatable :: p0(:),p1(:,:)
-  real(dp), allocatable :: market(:)
+  real(dp), allocatable :: market(:),month(:)
 
   ! initialize random number generator
-  integer(i4b)   ::  genid,subid,lseed,ifail,lstate
+  integer(i4b)              ::  genid,subid,lseed,ifail,lstate
   integer(i4b), allocatable :: seed(:),state(:)
 
   ! variables used by E04RZF: normal random number generator
-  integer(i4b)               :: mode,ldc,ldx,LR
-  real(dp), allocatable      :: R(:)
-  real(dp), allocatable      :: e(:,:)
+!  integer(i4b)               :: mode,ldc,ldx,LR
+!  real(dp), allocatable      :: R(:)
+!  real(dp), allocatable      :: e(:,:)
+!  real(dp), allocatable      :: eye(:,:),zero(:)
+
   ! variables used by E04NCA: solve quadratic program
   integer(i4b)               :: LCWSAV,LLWSAV,LIWSAV,LRWSAV
   integer(i4b), allocatable  :: IWSAV(:)
@@ -41,7 +43,6 @@ subroutine CreateData(IMC)
   real(dp)                   :: obj
   real(dp)                   :: crit
 
-  real(dp), allocatable      :: eye(:,:),zero(:)
   ! set options for E04NCA
   integer(i4b) :: options_unit
   integer(i4b) :: err_unit
@@ -66,9 +67,14 @@ subroutine CreateData(IMC)
 
   ifail = -1
   allocate(market(HHData%N))
+  allocate(month(HHData%N))
   ! generate uniform random numbers
   call G05SAF(HHData%N,state,market,ifail)
   HHData%market = ceiling(real(HHData%M,dp)*market)
+  ifail = -1
+  call G05SAF(HHData%N,state,month,ifail)
+  HHData%month  = ceiling(real(12,dp)*month)
+
   allocate(p1(parms0%J,HHData%M))
  
   PriceFlag = 2
@@ -105,41 +111,10 @@ subroutine CreateData(IMC)
   do i1=1,parms0%J
     write(HHData%ColumnLabels(i1),'(a8,i4)') 'Product ',i1
   end do
-  ! compute HHData%e
 
-  mode = 2
-  ifail = 0
-  ldc = parms0%K
-  ldx = parms0%K
-  LR = parms0%K*(parms0%K+1)+1
-  allocate(R(LR))
-  allocate(e(HHData%N,parms0%K))
-  ! generate normal random numbers
-  call G05RZF(mode,HHData%N,parms0%K,parms0%MuE,parms0%sig,parms0%K,R,LR,state,e,HHData%N,ifail)
-  HHData%e = transpose(e)
-  deallocate(R,e)
+  ! compute HHData%e,HHData%eta
+  call DrawRandomCoefficients(HHData,state)
 
-  ! Random coefficients in utility
-  if (parms0%model==2) then
-
-    ! Random coefficients in BD:  eta
-    ifail = 0
-    LR = parms0%dim_eta*(parms0%dim_eta+1)+1
-    allocate(zero(parms0%dim_eta))
-    allocate(eye(parms0%dim_eta,parms0%dim_eta))
-    allocate(e(HHData%N,parms0%dim_eta))
-    allocate(R(LR))
-    R    = 0.0d0
-    zero = 0.0d0
-    eye  = 0.0d0
-    do i1=1,parms0%dim_eta
-      eye(i1,i1) = 1.0d0
-    end do
-    call G05RZF(mode,HHData%N,parms0%dim_eta,zero,eye,parms0%dim_eta,R,LR,state,e,HHData%N,ifail)
-    HHData%eta = transpose(e)
-    deallocate(zero,eye,e,R)
-
-  end if
   ! solve quadratic program
   ! 1) E04NCA or E04NCF  (convex)
   ! 2) E04NFA or E04NFF  (not convex)
@@ -218,7 +193,7 @@ subroutine CreateData(IMC)
   do i1=1,HHData%N
     if (parms0%model==2) then
       ! if model==2, each HH TempB is a random coefficient
-      call ComputeCurrentB(HHData%eta(:,i1),parms0)
+      call ComputeCurrentB(HHData%eta(:,i1),parms0,HHData%month(i1))
     end if
 
     CVEC = HHData%p(:,i1) - matmul(transpose(parms0%B),HHData%e(:,i1)) 
@@ -250,6 +225,60 @@ subroutine CreateData(IMC)
   deallocate(market)
   deallocate(seed,state)
 end subroutine CreateData
+
+subroutine DrawRandomCoefficients(HHData_local,random_state)
+  use nrtype
+  use GlobalModule, only : parms,DataStructure
+  use nag_library, only  : G05RZF,G05SAF
+  implicit none
+  type(DataStructure), intent(inout) :: HHData_local
+  integer(i4b),        intent(inout) :: random_state(:)
+
+  integer(i4b) :: mode,ifail,ldc,ldx,LR,i1
+  real(dp), allocatable :: R(:),e(:,:),zero(:),eye(:,:)
+
+  ! Generate HHData%e
+  mode  = 2
+  ifail = 0
+  ldc   = parms%K
+  ldx   = parms%K
+  LR    = parms%K*(parms%K+1)+1
+  allocate(R(LR))
+  allocate(e(HHData_local%N,parms%K))
+  ! generate normal random numbers
+  call G05RZF(mode,HHData_local%N,parms%K,parms%MuE,parms%sig,parms%K, &
+              R,LR,random_state,e,HHData_local%N,ifail)
+
+  ! add seasonal shift to mue
+  do i1=1,12
+    e = e + merge(spread(parms%mue_month(:,i1),1,HHData_local%N),0.0d0, &
+                  spread(HHData_local%month,2,12)==i1)
+  end do
+  HHData_local%e = transpose(e)
+
+  deallocate(R,e)
+
+  ! Random coefficients in utility
+  if (parms%model==2) then
+    ! Random coefficients in BD:  eta
+    ifail = 0
+    LR = parms%dim_eta*(parms%dim_eta+1)+1
+    allocate(zero(parms%dim_eta))
+    allocate(eye(parms%dim_eta,parms%dim_eta))
+    allocate(e(HHData_local%N,parms%dim_eta))
+    allocate(R(LR))
+    R    = 0.0d0
+    zero = 0.0d0
+    eye  = 0.0d0
+    do i1=1,parms%dim_eta
+      eye(i1,i1) = 1.0d0
+    end do
+    call G05RZF(mode,HHData_local%N,parms%dim_eta,zero,eye, &
+                parms%dim_eta,R,LR,random_state,e,HHData_local%N,ifail)
+    HHData_local%eta = transpose(e)
+    deallocate(zero,eye,e,R)
+  end if
+end subroutine DrawRandomCoefficients
 
 subroutine ComputeCurrentB(eta,parms,month)
   use nrtype

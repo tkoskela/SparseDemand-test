@@ -2149,6 +2149,7 @@ subroutine ComputeElasticities
   use OutputModule, only : WriteElasticities,WriteDemandResults1,WriteDemandResults2, &
                            WriteTaxResults1,WriteTaxResults2, &
                            WritePrediction
+  use DataModule,  only  : DrawRandomCoefficients
   use ToolsModule, only  : InverseNormal_mkl
   use IFPORT, only       : system
   implicit none
@@ -2179,17 +2180,19 @@ subroutine ComputeElasticities
   integer(i4b), allocatable :: localseed(:),state(:)
 
   ! variables used by E04RZF: normal random number generator
-  integer(i4b)              :: mode,ldc,ldx,LR
-  real(dp), allocatable     :: R(:)
-  real(dp), allocatable     :: e(:,:),eta(:),prob(:)
-  real(dp), allocatable     :: eye(:,:),zero(:)
-  real(dp), allocatable     :: e2(:)
+!  integer(i4b)              :: mode,ldc,ldx,LR
+!  real(dp), allocatable     :: R(:)
+!  real(dp), allocatable     :: e(:,:)
+!  real(dp), allocatable     :: eye(:,:),zero(:)
 
   ! SimData1 will simulate results for a small number of individual people
   !   nprob = number of values of eta in each dimension
   !   N     = total number of individuals in simulation
   !   prob  = quantiles of eta distribution at which results will be computed
   !   eta   = corresponding points in eta distribution
+  real(dp), allocatable     :: eta(:),prob(:)
+  real(dp), allocatable     :: e2(:)
+
   nprob      = 3
   SimData1%N = 9  ! simulate and graph for 9 people with varying levels of 
                   ! (eta1,eta2)
@@ -2248,44 +2251,6 @@ subroutine ComputeElasticities
 
   ! Generate (e,eta)
   call DrawRandomCoefficients(HHDataSim1,state)
-
-!  mode = 2
-!  ifail = 0
-!  ldc = parms%K
-!  ldx = parms%K
-!  LR = parms%K*(parms%K+1)+1
-!  allocate(R(LR))
-!  allocate(e(HHDataSim1%N,parms%K))
-!  ! generate normal random numbers
-!  call G05RZF(mode,HHDataSim1%N,parms%K,parms%MuE,parms%sig,parms%K,R,LR,state,e,HHDataSim1%N,ifail)
-
-  ! add seasonal shift to mue
-!  do i1=1,12
-!    e = e + merge(spread(parms%mue_month(:,i1),1,HHDataSim1%N),0.0d0,spread(HHDataSim1%month,2,12)==i1)
- ! end do
- ! HHDataSim1%e = transpose(e)
-
- ! deallocate(R,e)
-
-  ! Random coefficients in utility
-!  if (parms%model==2) then
-!    ! Random coefficients in BD:  eta
-!    ifail = 0
-!    LR = parms%dim_eta*(parms%dim_eta+1)+1
-!    allocate(zero(parms%dim_eta))
-!    allocate(eye(parms%dim_eta,parms%dim_eta))
-!!    allocate(e(HHDataSim1%N,parms%dim_eta))
- !   allocate(R(LR))
-!    R    = 0.0d0
-!    zero = 0.0d0
-!    eye  = 0.0d0
-!    do i1=1,parms%dim_eta
-!      eye(i1,i1) = 1.0d0
-!    end do
-!    call G05RZF(mode,HHDataSim1%N,parms%dim_eta,zero,eye,parms%dim_eta,R,LR,state,e,HHDataSim1%N,ifail)
-!    HHDataSim1%eta = transpose(e)
-!    deallocate(zero,eye,e,R)
-!  end if
 
   ! Copy HHData to HHDataFit
   HHFit%N     = HHData%N
@@ -2437,61 +2402,6 @@ subroutine ComputeElasticities
   deallocate(HHSpending,HHUtility)
 
 end subroutine ComputeElasticities
-
-subroutine DrawRandomCoefficients(HHData_local,random_state)
-  use nrtype
-  use GlobalModule, only : parms,DataStructure
-  use nag_library, only  : G05RZF,G05SAF
-  implicit none
-  type(DataStructure), intent(inout) :: HHData_local
-  integer(i4b),        intent(inout) :: random_state(:)
-
-  integer(i4b) :: mode,ifail,ldc,ldx,LR,i1
-  real(dp), allocatable :: R(:),e(:,:),zero(:),eye(:,:)
-
-  ! Generate HHData%e
-  mode  = 2
-  ifail = 0
-  ldc   = parms%K
-  ldx   = parms%K
-  LR    = parms%K*(parms%K+1)+1
-  allocate(R(LR))
-  allocate(e(HHData_local%N,parms%K))
-  ! generate normal random numbers
-  call G05RZF(mode,HHData_local%N,parms%K,parms%MuE,parms%sig,parms%K, &
-              R,LR,random_state,e,HHData_local%N,ifail)
-
-  ! add seasonal shift to mue
-  do i1=1,12
-    e = e + merge(spread(parms%mue_month(:,i1),1,HHData_local%N),0.0d0, &
-                  spread(HHData_local%month,2,12)==i1)
-  end do
-  HHData_local%e = transpose(e)
-
-  deallocate(R,e)
-
-  ! Random coefficients in utility
-  if (parms%model==2) then
-    ! Random coefficients in BD:  eta
-    ifail = 0
-    LR = parms%dim_eta*(parms%dim_eta+1)+1
-    allocate(zero(parms%dim_eta))
-    allocate(eye(parms%dim_eta,parms%dim_eta))
-    allocate(e(HHData_local%N,parms%dim_eta))
-    allocate(R(LR))
-    R    = 0.0d0
-    zero = 0.0d0
-    eye  = 0.0d0
-    do i1=1,parms%dim_eta
-      eye(i1,i1) = 1.0d0
-    end do
-    call G05RZF(mode,HHData_local%N,parms%dim_eta,zero,eye, &
-                parms%dim_eta,R,LR,random_state,e,HHData_local%N,ifail)
-    HHData_local%eta = transpose(e)
-    deallocate(zero,eye,e,R)
-  end if
-
-end subroutine DrawRandomCoefficients
 
 subroutine ComputeIndividualDemand(SimData1)
   use nrtype
