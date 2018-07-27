@@ -14,3 +14,11 @@ Problem
    c) is e normal?
    d) is dim(eta) = 2
    e) integration rule: use diffe nodes for HH
+
+4) demand predictions hit some spikes for some goods but overpredict for many
+    a) convergence to local optimizer with mue too big??
+        i) try different starting point with small mue?? and small variance of
+e? combined with big factor loadings?
+    b) increase dimension of eta???
+    c) model e as micture of normals??
+    d) sensitive to integration rule??

@@ -2351,6 +2351,7 @@ subroutine ComputeElasticities
     GradQ(:,i1) = (q1-q0)/(HHDataSim2%p(i1,1)-HHDataSim1%p(i1,1))
     elas(:,i1)  = HHDataSim1%p(i1,1)*GradQ(:,i1)/q0
     HHDataSim2%p(i1,:) = HHDataSim1%p(i1,:)
+    print *,'Computing elasticities: ',i1,' of ',parms%J
   end do
 
   call WriteElasticities(elas)
