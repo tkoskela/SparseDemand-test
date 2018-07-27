@@ -1,0 +1,16 @@
+Problem
+1) demand predictions don't fit
+2) cause
+   a) error in  estimation code
+   b) error in simulation  code
+   c) error in analysis of results
+   d) mis-specification
+   e) lack of convergence
+3) checks
+   a) MC with small K and J.
+      i) are parameters recovered
+      ii) compare data and prediction
+   b) check code
+   c) is e normal?
+   d) is dim(eta) = 2
+   e) integration rule: use diffe nodes for HH
