@@ -91,20 +91,20 @@ subroutine WritePrediction(HHData,HHFit)
   implicit none
   type(DataStructure), intent(in) :: HHData,HHFit
 
-  integer(i4b) :: i1,n,ix
-  real(dp), allocatable :: q(:)
+  integer(i4b)              :: i1,ix
+  real(dp), allocatable     :: q(:)
   integer(i4b), allocatable :: ix1(:)
-  character(len=100) :: fmt1
+  character(len=100)        :: fmt1
 
   ! write HHData%q,HHFit%q
   allocate(q(parms%j))
-
+  
   open(unit=qdata_unit, &
        file=qdata_file(1), &
        action='write')
 
   write(fmt1,'(a1,i2,a14)') '(',parms%J,'(g12.5,:,","))'
-  do i1=1,n
+  do i1=1,HHData%n
     q = 0.0d0
     allocate(ix1(hhdata%nnonzero(i1)))
     ix1 = (/(ix,ix=1,hhdata%nnonzero(i1))/)
@@ -119,7 +119,7 @@ subroutine WritePrediction(HHData,HHFit)
        file=qdata_file(2), &
        action='write')
 
-  do i1=1,n
+  do i1=1,HHFit%n
     q = 0.0d0
     allocate(ix1(hhfit%nnonzero(i1)))
     ix1 = (/(ix,ix=1,hhfit%nnonzero(i1))/)
