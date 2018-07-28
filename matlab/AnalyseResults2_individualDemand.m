@@ -1,6 +1,6 @@
 
 file1 = fullfile(FortranOutDir,'IndividualDemand.txt');
-IndividualDemand = ImportIndividualDemand(file1);
+IndividualDemand = ImportIndividualDemand(file1,J);
 
 % Column indexes of variables
 cols.ihh      = 1;  % HH ID
@@ -10,7 +10,7 @@ cols.eta      = (4:5)';      % columns with draw of random coefficient
 cols.n        = 6;           % number of goods purchased
 cols.iNonZero = (7:11)';     % indexes of goods with nonzero demand
 cols.q        = (12:16)';    % columns with quantities
-cols.p        = (17:16+24)'; % columns with prices
+cols.p        = (17:16+J)'; % columns with prices
 
 nhh=9;  % number of distinct households in data
 

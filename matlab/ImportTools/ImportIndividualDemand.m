@@ -1,4 +1,4 @@
-function IndividualDemand = ImportIndividualDemand(filename, startRow, endRow)
+function IndividualDemand = ImportIndividualDemand(filename,J, startRow, endRow)
 %IMPORTFILE Import numeric data from a text file as a matrix.
 %   INDIVIDUALDEMAND = IMPORTFILE(FILENAME) Reads data from text file
 %   FILENAME for the default selection.
@@ -22,7 +22,14 @@ end
 
 %% Read columns of data as strings:
 % For more information, see the TEXTSCAN documentation.
-formatSpec = '%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%[^\n\r]';
+%               1 2 3 4 5 6 7 8 9 10 
+formatSpec = ['%s%s%s%s%s%s%s%s%s%s', ...
+              '%s%s%s%s%s%s'];
+for i1=1:J
+  formatSpec=strcat(formatSpec,'%s');
+%  formatSpec=[formatSpec,'%s'];
+end
+formatSpec = strcat(formatSpec,'%[^\n\r]');
 
 %% Open the text file.
 fileID = fopen(filename,'r');
