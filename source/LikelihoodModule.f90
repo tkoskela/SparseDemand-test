@@ -2434,7 +2434,7 @@ subroutine ComputeIndividualDemand(SimData1)
       call ComputeDemand(SimData1)
 
       do ihh=1,nHH
-        ! iHH  i1 i2  eta(1)  eta(2)  nNonZero i1-i5 q1-q5 p1-p24
+        ! iHH  i1 i2  eta(1)  eta(2)  nNonZero i1-i5 q1-q5 p1-pJ
         write(SimUnit,30) ihh,i1,i2,SimData1%eta(:,ihh),SimData1%nNonZero(ihh), &
                           SimData1%iNonZero(:,ihh),SimData1%q(:,ihh), &
                           SimData1%p(:,ihh)
