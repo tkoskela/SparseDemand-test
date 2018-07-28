@@ -6,6 +6,7 @@ addpath('ImportTools')
 
 %WorkDir = '/SAN/economics/Nesheim-IO/FruitDemand/output/A27_20171116';
 %WorkDir = '/SAN/economics/Nesheim-IO/FruitDemand/output/A27_20180101';
+WorkDir = 
 WorkDir = '/SAN/economics/Nesheim-IO/FruitDemand/output/A27_2018MAY';
 OutDir  = '/home/uctpln0/FruitDemand/code/fortran/output/A27_2018MAY';
 N       = 26514;

@@ -1,11 +1,12 @@
-OutDir = '/SAN/economics/Nesheim-IO/FruitDemand/output/A27_2018MAY';
+OutDir = '../output/A27_2018MAY';
+%OutDir = '/SAN/economics/Nesheim-IO/FruitDemand/output/A27_2018MAY';
 qdata_file     = fullfile(OutDir,'qdata.csv');
 qdata_hat_file = fullfile(OutDir,'qdata_hat.csv');
 
 addpath('tools');
 addpath('ImportTools');
-%q = ImportRawData(qdata_file);
-%qhat = ImportRawData(qdata_hat_file);
+q = ImportRawData(qdata_file);
+qhat = ImportRawData(qdata_hat_file);
 
 q0    = sum(q==0,1)';
 qhat0 = sum(qhat==0,1)';
