@@ -1,7 +1,7 @@
 addpath('tools')
 
-taxfile1       = fullfile(WorkDir,'taxresults_aggregate.csv');
-taxfile2       = fullfile(WorkDir,'taxresults_hh.csv');
+taxfile1       = fullfile(FortranOutDir,'taxresults_aggregate.csv');
+taxfile2       = fullfile(FortranOutDir,'taxresults_hh.csv');
 taxfile_tables = fullfile(OutDir,'taxresults.tex');
 
 % Import aggregate tax results
