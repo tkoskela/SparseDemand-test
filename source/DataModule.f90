@@ -23,10 +23,11 @@ subroutine CreateData(IMC)
   integer(i4b), allocatable :: seed(:),state(:)
 
   ! variables used by E04RZF: normal random number generator
-!  integer(i4b)               :: mode,ldc,ldx,LR
-!  real(dp), allocatable      :: R(:)
+  integer(i4b)               :: mode,ldc,ldx,LR
+  real(dp), allocatable      :: R(:)
+  real(dp), allocatable      :: zero(:)
 !  real(dp), allocatable      :: e(:,:)
-!  real(dp), allocatable      :: eye(:,:),zero(:)
+!  real(dp), allocatable      :: eye(:,:)
 
   ! variables used by E04NCA: solve quadratic program
   integer(i4b)               :: LCWSAV,LLWSAV,LIWSAV,LRWSAV
