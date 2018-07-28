@@ -169,7 +169,7 @@ free_mue_month1   : 1   #55
 free_cdiag1       : 1   #5
 free_coffdiag1    : 1   #10
 free_bc_beta1     : 1   #98
-free_bc_cdiag1    : 1   #98
+free_bc_cdiag1    : 8   #98
 free_bc_coffdiag1 : 1   #97
 free_bd_beta1     : 1   #27
 free_bd_cdiag1    : 1   #27
