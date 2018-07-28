@@ -8,7 +8,7 @@
 #  Name of output directory
 OutDir : /SAN/economics/Nesheim-IO/FruitDemand/output/A27_2018MAY
 InputDir: /home/uctpln0/FruitDemand/code/fortran/inputs/A27_new
-TestLikeFlag : 6     # 0 = maximise likelihood
+TestLikeFlag : 5     # 0 = maximise likelihood
                      # 1 = test likelihood gradient
                      # 2 = plot likelihood
                      # 3 = test non-linear constraint
@@ -20,8 +20,8 @@ SimulateDataFlag : 0 # 1 simulate data, 0 = load data from file
 HotStart         : 1 # 1 to do HotStart, from previous saved output
 
 # Flags
-ComputeHessFlag     : 0  # 1 = compute hessian. 2 = load gradLHH and compute hessian
-OutputFlag          : 0     # 0 don't print output and 1 to print output
+ComputeHessFlag     : 2  # 1 = compute hessian. 2 = load gradLHH and compute hessian
+OutputFlag          : 1     # 0 don't print output and 1 to print output
 SaveDataFlag        : 0     # 1 to save data, 0 otherwise
 TestIntegrationFlag : 0 # 1 to test accuracy of integration
 SimulateDataFlag    : 0 # 1 simulate data, 0 = load data from file

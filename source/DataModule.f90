@@ -416,8 +416,8 @@ subroutine SendData(pid)
       call mpi_send(temp1,parms%J*N2,MPI_DOUBLE_PRECISION,iw,2,MPI_COMM_WORLD,ierr(2))
   
       ! send expenditure
-      temp1 = HHData%expenditure(iHH1:iHH2)
-      call mpi_send(temp1,N2,MPI_DOUBLE_PRECISION,iw,3,MPI_COMM_WORLD,ierr(3))
+      temp1(1:n2) = HHData%expenditure(iHH1:iHH2)
+      call mpi_send(temp1(1:n2),N2,MPI_DOUBLE_PRECISION,iw,3,MPI_COMM_WORLD,ierr(3))
 
       deallocate(temp1)
  
@@ -484,8 +484,8 @@ subroutine SendData(pid)
     HHData%p = reshape(temp1,(/parms%J,N2/))
 
     ! receive expenditure 
-    call mpi_recv(temp1,N2,MPI_DOUBLE_PRECISION,MasterID,3,MPI_COMM_WORLD,stat1,ierr(3))
-    HHData%expenditure = temp1
+    call mpi_recv(temp1(1:n2),N2,MPI_DOUBLE_PRECISION,MasterID,3,MPI_COMM_WORLD,stat1,ierr(3))
+    HHData%expenditure = temp1(1:n2)
     deallocate(temp1)
 
     allocate(iTemp1(N2*parms%J))
