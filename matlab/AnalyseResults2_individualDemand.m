@@ -1,5 +1,5 @@
 
-file1 = fullfile(WorkDir,'IndividualDemand.txt');
+file1 = fullfile(FortranOutDir,'IndividualDemand.txt');
 IndividualDemand = ImportIndividualDemand(file1);
 
 % Column indexes of variables

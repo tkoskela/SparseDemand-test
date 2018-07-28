@@ -4,18 +4,19 @@
 % 4) Create table of elasticities
 addpath('ImportTools')
 
-%WorkDir = '/SAN/economics/Nesheim-IO/FruitDemand/output/A27_20171116';
-%WorkDir = '/SAN/economics/Nesheim-IO/FruitDemand/output/A27_20180101';
-WorkDir = 
-WorkDir = '/SAN/economics/Nesheim-IO/FruitDemand/output/A27_2018MAY';
-OutDir  = '/home/uctpln0/FruitDemand/code/fortran/output/A27_2018MAY';
+%FortranOutDir = '/SAN/economics/Nesheim-IO/FruitDemand/output/A27_20171116';
+%FortranOutDir = '/SAN/economics/Nesheim-IO/FruitDemand/output/A27_20180101';
+FortranOutDir = '../output/A27_2018MAY/fortran_output';
+OutDir        = '../output/A27_208MAY';
+%FortranOutDir = '/SAN/economics/Nesheim-IO/FruitDemand/output/A27_2018MAY';
+%OutDir  = '/home/uctpln0/FruitDemand/code/fortran/output/A27_2018MAY';
 N       = 26514;
 J       = 27;
 K       = 5;
 np      = 30;
 
-if exist(WorkDir,'dir')~=7
-  display(['WorkDir = ',WorkDir]);    
+if exist(FortranOutDir,'dir')~=7
+  display(['FortranOutDir = ',FortranOutDir]);    
   error('Directory does not exist.')
 end
 if exist(OutDir,'dir')~=7
@@ -26,7 +27,7 @@ if exist(OutDir,'dir')~=7
 end
 
 [qdata,qhat,qaverage] = ...
-    ImportDemandData(fullfile(WorkDir,'demand_data.csv'), 1, J);
+    ImportDemandData(fullfile(FortranOutDir,'demand_data.csv'), 1, J);
 
 fig1=1;
 FontSize = 16;
@@ -90,7 +91,7 @@ for j1=1:J
   else
     str1 = ['demand',int2str(j1),'.csv'];
   end
-  str1 = fullfile(WorkDir,str1);
+  str1 = fullfile(FortranOutDir,str1);
   str2 = sprintf('%c%c%c%c',FruitLabels{j1});
   [p,q1,q2,q3,q4,q5,q6]=ImportDemandData2(str1, 1, np);
   [price(:,j1),      ...
@@ -131,8 +132,8 @@ for j1=1:J
 end
 
 % Load elasticities
-elas = ImportElasticity(fullfile(WorkDir,'elas.csv'),J, 1, J);
-%elas = ImportElasticity2(fullfile(WorkDir,'elas.csv'), 1, J);
+elas = ImportElasticity(fullfile(FortranOutDir,'elas.csv'),J, 1, J);
+%elas = ImportElasticity2(fullfile(FortranOutDir,'elas.csv'), 1, J);
 
 CreateElasTable(fullfile(OutDir,'elas1.tex'),elas,FruitLabels);
 close all;
