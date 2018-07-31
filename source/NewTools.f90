@@ -22,7 +22,7 @@ subroutine ComputeMatrixType(M,MatrixType)
   real(dp),         intent(in)  :: M(:,:)
   character(len=*), intent(out) :: MatrixType
 
-  integer(i4b)                  :: N,i1
+  integer(i4b)                  :: N,i1,ix
   logical                       :: upper,lower
   ! Matrix type
   !  1) Lower triangular
@@ -37,7 +37,7 @@ subroutine ComputeMatrixType(M,MatrixType)
     upper = .true.
     lower = .true.
     do i1=1,N
-      upper = merge(upper,.false.,all(M(i1,i1+1:N)==0.0d0))
+      upper = merge(upper,.false.,all(M(i1,(/(ix,ix=i1+1,N)/))==0.0d0))
       lower = merge(lower,.false.,all(M(i1+1:N,i1)==0.0d0))
     end do
     if (upper) then

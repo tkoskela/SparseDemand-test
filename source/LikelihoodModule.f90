@@ -1745,7 +1745,9 @@ end subroutine RunMonteCarlo
 ! one element of x at a time
 subroutine MaxOneAtTime(pid)
   use nrtype
+#if USE_MPI=1
   use mpi
+#endif
   use GlobalModule, only : MasterID,iFree,SelectFreeType,parms, &
                            ReadWriteParameters,DeallocateIFree
 
