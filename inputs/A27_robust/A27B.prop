@@ -152,13 +152,13 @@ FreeFlagBC          : 0   # 1 to be free, 0 to be fixed
 FreeFlagMUE         : 0   # 1 to be free, 0 to be fixed
 FreeFlagMUE_month   : 0   # 1 to be free, 0 to be fixed
 FreeFlagInvCDiag    : 0   # 1 to be free, 0 to be fixed
-FreeFlagInvCOffDiag : 1   # 1 to be free, 0 to be fixed
+FreeFlagInvCOffDiag : 0   # 1 to be free, 0 to be fixed
 
 FreeFlagBD_beta     : 0
 FreeFlagBD_CDiag    : 0
 FreeFlagBD_COffDiag : 0
-FreeFlagBC_beta     : 0
-FreeFlagBC_CDiag    : 1
+FreeFlagBC_beta     : 1
+FreeFlagBC_CDiag    : 0
 FreeFlagBC_COffDiag : 0
 FreeFlagBD_month    : 0
 OneAtATime          : 1
@@ -168,8 +168,8 @@ free_mue1         : 1   #5
 free_mue_month1   : 1   #55
 free_cdiag1       : 1   #5
 free_coffdiag1    : 1   #10
-free_bc_beta1     : 1   #98
-free_bc_cdiag1    : 8   #98
+free_bc_beta1     : 83  #98
+free_bc_cdiag1    : 1   #98
 free_bc_coffdiag1 : 1   #97
 free_bd_beta1     : 1   #27
 free_bd_cdiag1    : 1   #27

@@ -32,10 +32,18 @@ HOST_ID=$(IFS_HPC)
 include ../config/config.ifs.hpc.inc
 else ifeq ($(HOST_ID),vic.local)
   HOST_ID=$(CS_HPC)
-  include /home/uctpln0/GeneralCode/config/config.cs.inc.2018.07.25
+  ifeq ($(GFORTRAN),1)
+    include /home/uctpln0/GeneralCode/config/gcc.cs.inc
+  else
+    include /home/uctpln0/GeneralCode/config/config.cs.inc
+  endif
 else ifeq ($(HOST_ID),jake.local)
   HOST_ID=$(CS_HPC)
-  include /home/uctpln0/GeneralCode/config/config.cs.inc.2018.07.25
+  ifeq ($(GFORTRAN),1)
+    include /home/uctpln0/GeneralCode/config/gcc.cs.inc
+  else
+    include /home/uctpln0/GeneralCode/config/config.cs.inc
+  endif
 else ifeq ($(HOST_ID),Lars-Nesheims-MacBook-Pro.local)
 HOST_ID=$(LAPTOP)
 else
