@@ -38,7 +38,7 @@ subroutine ComputeMatrixType(M,MatrixType)
     lower = .true.
     do i1=1,N
       upper = merge(upper,.false.,all(M(i1,(/(ix,ix=i1+1,N)/))==0.0d0))
-      lower = merge(lower,.false.,all(M(i1+1:N,i1)==0.0d0))
+      lower = merge(lower,.false.,all(M((/(ix,ix=i1+1,N)/),i1)==0.0d0))
     end do
     if (upper) then
       MatrixType = 'Upper triangular'
@@ -255,7 +255,7 @@ subroutine SphereToMatrix(phi,r,K,J,B,GradB_phi,GradB_r)
   real(dp),     intent(out),optional :: GradB_r(:,:)
 
   integer(i4b)              :: n,nphi
-  integer(i4b)              :: i1
+  integer(i4b)              :: i1,ix
   integer(i4b)              :: index(K-1)
   real(dp)                  :: GradB0(K,K)
 
@@ -288,22 +288,24 @@ subroutine SphereToMatrix(phi,r,K,J,B,GradB_phi,GradB_r)
     ! B is upper triangular
     ! B(1:i1,i1) = is set by elements of phi(index) and r(i1)
    
-    index(1:i1-1) = (i1-1)*(i1-2)/2 + (/1:i1-1/)
+    index((/(ix,ix=1,i1-1)/)) = (i1-1)*(i1-2)/2 + (/(ix,ix=1,i1-1)/)
     GradB0 = 0.0d0
-    call MapToCartesian(r(i1),phi(index(1:i1-1)),B(1:i1,i1),GradB0(1:i1,1:i1))
+    call MapToCartesian(r(i1),phi(index(1:i1-1)),B((/(ix,ix=1,i1),i1), &
+                        GradB0((/(ix,ix=1,i1)/),(/(ix,ix=1,i1)/)))
     if (present(GradB_phi)) then
-      GradB_phi(1:i1,index(1:i1-1)) = transpose(GradB0(1:i1-1,1:i1))
+      GradB_phi((/(ix,ix=1,i1)/),index((/(ix,ix=1,i1-1)/))) &
+         = transpose(GradB0((/(ix,ix=1,i1-1)/),(/(ix,ix=1,i1)/)))
     end if
     if (present(GradB_r)) then
-      GradB_r(1:i1,i1)              = GradB0(i1,1:i1)
+      GradB_r((/(ix,ix=1,i1)/),i1) = GradB0(i1,(/(ix,ix=1,i1)/))
     end if
   end do
   do i1=K+1,J
-    index = K*(K-1)/2 + (K-1)*(i1-K-1)+(/1:K-1/)
+    index = K*(K-1)/2 + (K-1)*(i1-K-1)+(/(ix,ix=1,K-1)/)
     GradB0 = 0.0d0
     call MapToCartesian(r(i1),phi(index),B(:,i1),GradB0)
     if (present(GradB_phi)) then
-      GradB_phi(:,index) = transpose(GradB0(1:K-1,:))
+      GradB_phi(:,index) = transpose(GradB0((/(ix,ix=1,K-1)/),:))
     end if
     if (present(GradB_r)) then
       GradB_r(:,i1)      = GradB0(K,:)
@@ -321,7 +323,7 @@ subroutine MatrixToSphere(C,D,PHI)
   implicit none
   real(dp), intent(in)  :: C(:,:)
   real(dp), intent(out) :: D(:),PHI(:)
-  integer(i4b)          :: K,J,i1,j1,j2
+  integer(i4b)          :: K,J,i1,j1,j2,ix
 
   integer(i4b), allocatable :: index(:)
 
@@ -336,10 +338,10 @@ subroutine MatrixToSphere(C,D,PHI)
 
   do i1=2,K
     ! index used to put result in correct location in PHI(:)
-    index(1:i1-1) = (i1-1)*(i1-2)/2 + (/1:i1-1/)
+    index((/(ix,ix=1,i1-1)/)) = (i1-1)*(i1-2)/2 + (/(ix,ix=1,i1-1)/)
     j1= (i1-1)*(i1-2)/2+1
     j2 = j1+i1-2
-    call MapToSpherical(C(1:i1,i1),D(i1),PHI(j1:j2))
+    call MapToSpherical(C((/(ix,ix=1,i1)/),i1),D(i1),PHI((/(ix,ix=j1,j2)/)))
   end do
 
   if (J>K) then
@@ -347,7 +349,7 @@ subroutine MatrixToSphere(C,D,PHI)
       j1 = K*(K-1)/2 + (K-1)*(i1-K-1) + 1
       j2 = j1+K-2
      ! index = K*(K-1)/2 + (K-1)*(i1-K-1) + (/1:K-1/)
-      call MapToSpherical(C(:,i1),D(i1),PHI(j1:j2))
+      call MapToSpherical(C(:,i1),D(i1),PHI((/(ix,ix=j1,j2)/)))
     end do
   end if 
 
@@ -375,7 +377,7 @@ subroutine MapToCartesian(r,phi,x,dx)
   real(dp), intent(out) :: x(:)
   real(dp), optional,intent(out) :: dx(:,:)
   
-  integer(i4b) :: i1,i2
+  integer(i4b) :: i1,i2,ix
   integer(i4b) :: n
   real(dp), allocatable :: s1(:),c1(:),s1A(:)
 
@@ -391,19 +393,19 @@ subroutine MapToCartesian(r,phi,x,dx)
   end if
 
   do i1=1,n
-    x(i1)=r*c1(i1)*product(s1(1:i1))
+    x(i1)=r*c1(i1)*product(s1((/(ix,ix=1,i1)/)))
 
     if (present(dx)) then
       if (i1<n) then
-        dx(i1,i1) = -r*product(s1(1:i1+1))
+        dx(i1,i1) = -r*product(s1((/(ix,ix=1,i1+1)/)))
         do i2=1,i1-1
-          s1A(1:i1-1) = pack(s1,(/1:i1/) .ne. (i2+1))
-          dx(i2,i1) = r*c1(i1)*product(s1A(1:i1-1))*c1(i2)
+          s1A((/(ix,ix=1,i1-1)/)) = pack(s1,(/(ix,ix=1,i1)/) .ne. (i2+1))
+          dx(i2,i1) = r*c1(i1)*product(s1A((/(ix,ix=1,i1-1)/)))*c1(i2)
         end do
       elseif (i1==n) then
         do i2=1,i1-1
-          s1A(1:i1-1) = pack(s1,(/1:i1/) .ne. (i2+1))
-          dx(i2,i1) = r*c1(i1)*product(s1A(1:i1-1))*c1(i2)
+          s1A((/(ix,ix=1,i1-1)/)) = pack(s1,(/(ix,ix=1,i1)/) .ne. (i2+1))
+          dx(i2,i1) = r*c1(i1)*product(s1A((/(ix,ix=1,i1-1)/)))*c1(i2)
         end do
         dx(i1,:) = x/r
       end if
@@ -418,7 +420,7 @@ subroutine MapToSpherical(x,R,PHI)
   implicit none
   real(dp), intent(in)  :: x(:)
   real(dp), intent(out) :: R,PHI(:)
-  integer(i4b)          :: n,i1
+  integer(i4b)          :: n,i1,ix
   real(dp), allocatable :: x2(:)
   real(dp)              :: RTemp
 
@@ -430,7 +432,7 @@ subroutine MapToSpherical(x,R,PHI)
   R = sqrt(sum(x2))
   PHI = 0.0d0
   do i1=1,n-1
-    RTemp = sum(x2(i1:n))
+    RTemp = sum(x2((/(ix,ix=i1,n)/)))
     if (RTemp==0) then
       PHI(i1) = merge(0.0d0,pi_d,x(i1)>0)
     else
@@ -452,7 +454,7 @@ subroutine MapToSpherical_old(x,R,PHI)
   real(dp), intent(out) :: R,PHI(:)
   integer(i4b)          :: n,i1
   real(dp), allocatable :: x2(:)
-
+  integer(i4b)          :: ix
   n = size(x,1)
 
   allocate(x2(n))
@@ -460,7 +462,7 @@ subroutine MapToSpherical_old(x,R,PHI)
   x2 = x*x
   R = sqrt(sum(x2))
   do i1=1,n-2
-    PHI(i1) = atan2(sqrt(sum(x2(i1+1:n))),x(i1))
+    PHI(i1) = atan2(sqrt(sum(x2((/(ix,ix=i1+1,n)/)))),x(i1))
   end do
   phi(n-1) = atan2(x(n),x(n-1))
 
@@ -536,7 +538,7 @@ subroutine ComputeLQ(m,n,A,L,Q,ifail)
   real(dp), allocatable :: work(:)
   integer(i4b)          :: lwork
   real(dp), allocatable :: tau(:)
-  integer(i4b)          :: i1
+  integer(i4b)          :: i1,ix
   real(dp), allocatable :: QTemp(:,:)
 
 !  external F08AHF
@@ -550,9 +552,9 @@ subroutine ComputeLQ(m,n,A,L,Q,ifail)
   QTemp = L
   call F08AJF(n,n,min(m,n),QTemp,m,tau,work,lwork,ifail)
   do i1=1,min(m,n)-1
-    L(i1,i1+1:n) = 0.0d0
+    L(i1,(/(ix,ix=i1+1,n)/)) = 0.0d0
   end do
-  Q = QTemp(1:n,1:n)
+  Q = QTemp((/(ix,ix=1,n)/),(/(ix,ix=1,n)/))
 end subroutine ComputeLQ
 
 function det(A)

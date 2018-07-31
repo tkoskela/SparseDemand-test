@@ -1,7 +1,7 @@
-OutDir = '../output/A27_2018MAY';
+FortranOutDir = '../output/A27_2018MAY/fortran_output';
 %OutDir = '/SAN/economics/Nesheim-IO/FruitDemand/output/A27_2018MAY';
-qdata_file     = fullfile(OutDir,'qdata.csv');
-qdata_hat_file = fullfile(OutDir,'qdata_hat.csv');
+qdata_file     = fullfile(FortranOutDir,'qdata.csv');
+qdata_hat_file = fullfile(FortranOutDir,'qdata_hat.csv');
 
 addpath('tools');
 addpath('ImportTools');
