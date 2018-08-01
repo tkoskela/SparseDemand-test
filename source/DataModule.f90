@@ -14,7 +14,7 @@ subroutine CreateData(IMC)
   implicit none
   integer(i4b),         intent(in) :: IMC
 
-  integer(i4b)          :: i1,i2
+  integer(i4b)          :: i1,i2,ix
   real(dp), allocatable :: p0(:),p1(:,:)
   real(dp), allocatable :: market(:),month(:)
 
@@ -208,10 +208,12 @@ subroutine CreateData(IMC)
     call E04NCA(M,N,NCLIN,LDC,LDA,C,BL,BU,CVEC,ISTATE,KX,X,A,B,iter,OBJ,CLAMDA, &
                 IWORK,LIWORK,WORK,LWORK,LWSAV,IWSAV,RWSAV,ifail)
     HHData%nNonZero(i1) = count(x>=crit)
-    HHData%iNonZero(1:HHData%nNonZero(i1),i1) = pack((/1:parms0%J/),x>=crit)
-    HHData%iZero(1:parms0%J-HHData%nNonZero(i1),i1) = pack((/1:parms0%J/),x<crit)
+    HHData%iNonZero((/(ix,ix=1,HHData%nNonZero(i1))/),i1) &
+           = pack((/(ix,ix=1,parms0%J)/),x>=crit)
+    HHData%iZero((/(ix,ix=1,parms0%J-HHData%nNonZero(i1))/),i1) &
+        = pack((/(ix,ix=1,parms0%J)/),x<crit)
     if (HHData%nNonZero(i1)>0) then 
-      HHData%q(1:HHData%nNonZero(i1),i1) = pack(x,x>=crit)
+      HHData%q((/(ix,ix=1,HHData%nNonZero(i1))/),i1) = pack(x,x>=crit)
     end if
 
   end do
@@ -359,7 +361,7 @@ end subroutine ComputeCurrentB
 #if USE_MPI==1
 subroutine SendData(pid)
   use nrtype
-  use IFPORT
+!  use IFPORT
   use mpi
   use GlobalModule, only : HHData,parms,AllocateHHData,MasterID,nWorkers
   implicit none
@@ -478,7 +480,6 @@ subroutine SendData(pid)
     call mpi_recv(temp1(1:parms%K*N2),parms%K*N2,MPI_DOUBLE_PRECISION,MasterID,1,MPI_COMM_WORLD,stat1,ierr(1))
     HHData%q = reshape(temp1(1:parms%K*N2),(/parms%K,n2/))
    
-
     ! receive p 
     call mpi_recv(temp1,parms%J*N2,MPI_DOUBLE_PRECISION,MasterID,2,MPI_COMM_WORLD,stat1,ierr(2))
     HHData%p = reshape(temp1,(/parms%J,N2/))
@@ -554,11 +555,12 @@ subroutine LoadData
   use nrtype
   use GlobalModule, only : HHData,parms
   implicit none
-  integer(i4b)                    :: DataUnit,iComma,i1
+  integer(i4b)                    :: DataUnit,iComma,i1,ix
   character(400)                  :: AllLabels
   real(dp),           allocatable :: qp(:,:),err(:,:),tiering(:,:),expenditure(:)
   character(len=100), allocatable :: RawDataLabels(:)
   integer(i4b),       allocatable :: year(:)
+  character(len=30)               :: fmt1
 
   DataUnit = 20
   open(unit = DataUnit, &
@@ -575,8 +577,10 @@ subroutine LoadData
     ! iComma = end of current data field
     iComma = index(AllLabels,',')
     if (iComma>0) then
-      RawDataLabels(i1) = AllLabels(1:iComma-1)
-      AllLabels = AllLabels(iComma+1:400)
+      RawDataLabels(i1) = AllLabels(1:icomma-1)
+      AllLabels         = AllLabels(icomma+1:400)
+      !RawDataLabels(i1) = AllLabels((/(ix,ix=1,iComma-1)/))
+      !AllLabels = AllLabels((/(ix,ix=iComma+1,400)/))
     else 
       RawDataLabels(i1) = AllLabels
       exit
@@ -592,40 +596,49 @@ subroutine LoadData
 
   case('1')
     ! Pre-2016 data format
+    write(fmt1,'(a6,i2,a11,i2,a6)') '(3i10,',2*parms%J,'f25.0,2i10,',parms%J,'f25.0)'
     do i1=1,HHData%N
-      read(DataUnit,389) HHData%HHID(i1),HHData%date(i1),HHData%shopid(i1),  &
+      read(DataUnit,fmt1) HHData%HHID(i1),HHData%date(i1),HHData%shopid(i1),  &
                          qp(i1,:),HHData%nNonZero(i1),HHData%day(i1),err(i1,:)
-      HHData%q(1:HHData%nNonZero(i1),i1) = pack(qp(i1,1:2*parms%J:2),qp(i1,1:2*parms%J:2)>0.0d0)
-      HHData%p(:,i1) = qp(i1,2:2*parms%J:2)
-      HHData%iNonZero(1:HHData%nNonZero(i1),i1) = pack((/1:parms%J/),qp(i1,1:2*parms%J:2)>0.0d0)
-      HHData%iZero(1:parms%J-HHData%nNonZero(i1),i1) = pack((/1:parms%J/),qp(i1,1:2*parms%J:2)==0.0d0)
+      HHData%q((/(ix,ix=1,HHData%nNonZero(i1))/),i1) &
+         = pack(qp(i1,(/(ix,ix=1,2*parms%J,2)/)),qp(i1,(/(ix,ix=1,2*parms%J,2)/))>0.0d0)
+      HHData%p(:,i1) = qp(i1,(/(ix,ix=2,2*parms%J,2)/))
+      HHData%iNonZero((/(ix,ix=1,HHData%nNonZero(i1))/),i1) &
+         = pack((/(ix,ix=1,parms%J)/),qp(i1,(/(ix,ix=1,2*parms%J,2)/))>0.0d0)
+      HHData%iZero((/(ix,ix=1,parms%J-HHData%nNonZero(i1))/),i1) &
+         = pack((/(ix,ix=1,parms%J)/),qp(i1,(/(ix,ix=1,2*parms%J,2)/))==0.0d0)
     end do
-389 format(3i10,<2*parms%J>f25.0,2i10,<parms%J>f25.0)
   case('2')
     ! 2016 format
+    write(fmt1,'(a6,i3,a21,i3,a6)') '(3i10,',2*parms%J,'f25.0,2i10,f25.0,i10,',parms%J,'f25.0)'
     do i1=1,HHData%N
-      read(DataUnit,390) HHData%HHID(i1),HHData%date(i1),HHData%shopid(i1),  &
+      read(DataUnit,fmt1) HHData%HHID(i1),HHData%date(i1),HHData%shopid(i1),  &
                          qp(i1,:),HHData%nNonZero(i1),         &
                          HHData%fascia(i1),expenditure(i1),HHData%day(i1),err(i1,:)
-      HHData%q(1:HHData%nNonZero(i1),i1) = pack(qp(i1,1:2*parms%J:2),qp(i1,1:2*parms%J:2)>0.0d0)
-      HHData%p(:,i1) = qp(i1,2:2*parms%J:2)
-      HHData%iNonZero(1:HHData%nNonZero(i1),i1) = pack((/1:parms%J/),qp(i1,1:2*parms%J:2)>0.0d0)
-      HHData%iZero(1:parms%J-HHData%nNonZero(i1),i1) = pack((/1:parms%J/),qp(i1,1:2*parms%J:2)==0.0d0)
+      HHData%q((/(ix,ix=1,HHData%nNonZero(i1))/),i1) &
+          = pack(qp(i1,(/(ix,ix=1,2*parms%J,2)/)),qp(i1,(/(ix,ix=1,2*parms%J,2)/))>0.0d0)
+      HHData%p(:,i1) = qp(i1,(/(ix,ix=2,2*parms%J,2)/))
+      HHData%iNonZero((/(ix,ix=1,HHData%nNonZero(i1))/),i1) &
+          = pack((/(ix,ix=1,parms%J)/),qp(i1,(/(ix,ix=1,2*parms%J,2)/))>0.0d0)
+      HHData%iZero((/(ix,ix=1,parms%J-HHData%nNonZero(i1))/),i1) &
+          = pack((/(ix,ix=1,parms%J)/),qp(i1,(/(ix,ix=1,2*parms%J,2)/))==0.0d0)
     end do
-390 format(3i10,<2*parms%J>f25.0,2i10,f25.0,i10,<parms%J>f25.0)
   case('20171109')
     ! 20171109 Data Format
+    write(fmt1,'(a6,i3,a21,i3,a6)') '(3i10,',2*parms%J,'f25.0,4i10,f25.0,i10,',parms%J,'f25.0)'
     do i1=1,HHData%N
-      read(DataUnit,522) HHData%HHID(i1),HHData%date(i1),HHData%shopid(i1),  &
+      read(DataUnit,fmt1) HHData%HHID(i1),HHData%date(i1),HHData%shopid(i1),  &
                          qp(i1,:),HHData%nNonZero(i1),              &
                          HHData%fascia(i1),HHData%internet(i1),HHData%SmallStore(i1),    &
                          expenditure(i1),HHData%day(i1),err(i1,:)
-      HHData%q(1:HHData%nNonZero(i1),i1) = pack(qp(i1,1:2*parms%J:2),qp(i1,1:2*parms%J:2)>0.0d0)
-      HHData%p(:,i1) = qp(i1,2:2*parms%J:2)
-      HHData%iNonZero(1:HHData%nNonZero(i1),i1) = pack((/1:parms%J/),qp(i1,1:2*parms%J:2)>0.0d0)
-      HHData%iZero(1:parms%J-HHData%nNonZero(i1),i1) = pack((/1:parms%J/),qp(i1,1:2*parms%J:2)==0.0d0)
+      HHData%q((/(ix,ix=1,HHData%nNonZero(i1))/),i1) &
+          = pack(qp(i1,(/(ix,ix=1,2*parms%J,2)/)),qp(i1,(/(ix,ix=1,2*parms%J,2)/))>0.0d0)
+      HHData%p(:,i1) = qp(i1,(/(ix,ix=2,2*parms%J,2)/))
+      HHData%iNonZero((/(ix,ix=1,HHData%nNonZero(i1))/),i1) &
+          = pack((/(ix,ix=1,parms%J)/),qp(i1,(/(ix,ix=1,2*parms%J,2)/))>0.0d0)
+      HHData%iZero((/(ix,ix=1,parms%J-HHData%nNonZero(i1))/),i1) &
+          = pack((/(ix,ix=1,parms%J)/),qp(i1,(/(ix,ix=1,2*parms%J,2)/))==0.0d0)
     end do
-522 format(3i10,<2*parms%J>f25.0,4i10,f25.0,i10,<parms%J>f25.0)
     ! Create month and week
     allocate(year(HHData%N))
     year = HHData%date/10000

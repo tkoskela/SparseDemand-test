@@ -531,7 +531,7 @@ end subroutine AllocateLocalHHData
     integer(i4b), intent(in) :: pid
     integer(i4b) :: method,nx,nx1,nx2,nxP
     character(len=PL_VAL_LEN)       :: cTemp      ! temporary character string
-    integer(i4b) :: ErrFlag,ierr
+    integer(i4b) :: ErrFlag,ierr,ix
     real(dp)     :: lambda
  
     ! method = 1   max L(x1,x2) + P(x2)  subject to   x2 = xPLus-xMinus
@@ -598,28 +598,28 @@ end subroutine AllocateLocalHHData
     allocate(Penalty%x_index1(nx1))
     allocate(Penalty%xP_index1(nx1))
 
-    Penalty%x_index1 = (/1:nx1/)
+    Penalty%x_index1 = (/(ix,ix=1,nx1)/)
     Penalty%xP_index1 = Penalty%x_index1
  
     ! x_index2 = elements that are penalized
     allocate(Penalty%x_index2(nx2),Penalty%xP_index2(nx2))
-    Penalty%x_index2  = nx1+(/1:nx2/)
+    Penalty%x_index2  = nx1+(/(ix,ix=1,nx2)/)
     Penalty%xP_index2 = Penalty%x_index2
     
     allocate(Penalty%xP_index_xPlus(nx2))
-    Penalty%xP_index_xPlus = nx + (/1:nx2/)
+    Penalty%xP_index_xPlus = nx + (/(ix,ix=1,nx2)/)
   
     allocate(Penalty%xP_index_xMinus(nx2))
-    Penalty%xP_index_xMinus = nx+nx2+(/1:nx2/)
+    Penalty%xP_index_xMinus = nx+nx2+(/(ix,ix=1,nx2)/)
 
     allocate(Penalty%xPlus_index(nx2))
     allocate(Penalty%xMinus_index(nx2))
-    Penalty%xPlus_index = (/1:nx2/)
-    Penalty%xMinus_index = nx2+(/1:nx2/)
+    Penalty%xPlus_index = (/(ix,ix=1,nx2)/)
+    Penalty%xMinus_index = nx2+(/(ix,ix=1,nx2)/)
 
     allocate(Penalty%VectorLambda(Penalty%nLambda))
     Penalty%VectorLambda = Penalty%MinLambda + &
-                           (Penalty%MaxLambda-Penalty%MinLambda)*dble((/0:Penalty%nLambda-1/))/dble(Penalty%nLambda-1)
+                           (Penalty%MaxLambda-Penalty%MinLambda)*dble((/(ix,ix=0,Penalty%nLambda-1)/))/dble(Penalty%nLambda-1)
   end subroutine AllocatePenaltyParameters
 
 subroutine ComputeNMC(pid,NMC,IMC1,IMC2)
@@ -627,7 +627,7 @@ subroutine ComputeNMC(pid,NMC,IMC1,IMC2)
   integer(i4b), intent(in)  :: pid,NMC
   integer(i4b), intent(out) :: IMC1,IMC2
   integer(i4b)              :: NMC1,NMC2
-  integer(i4b)              :: N1,N2
+  integer(i4b)              :: N1,N2,ix
   integer(i4b), allocatable :: j1(:),j2(:)
   ! NMC = total number of reps
   ! NMC1  = number of reps per processor for first N1 processors
@@ -641,19 +641,20 @@ subroutine ComputeNMC(pid,NMC,IMC1,IMC2)
   N2 = nWorkers+1-N1
   
   allocate(j1(N1),j2(N2))
-  J1 = (/1:1+(N1-1)*NMC1:NMC1/)
+!  J1 = (/1:1+(N1-1)*NMC1:NMC1/)
+  J1 = (/(ix,ix=1,(N1-1)*NMC1+1,NMC1)/)
   if (pid+1<=N1) then
     IMC1 = j1(pid+1)
     IMC2 = IMC1+NMC1-1;
   end if
-  J2 = (/1:1+(N2-1)*NMC2:NMC2/)+N1*NMC1
+!  J2 = (/1:1+(N2-1)*NMC2:NMC2/)+N1*NMC1
+  J2 = (/(ix,ix=1,NMC2*(N2-1)+1,NMC2)/) + NMC1*N1
   if (pid+1>N1) then
     IMC1 = j2(pid+1-N1)
     IMC2 = IMC1+NMC2-1
   end if
   deallocate(j1,j2)
 end subroutine ComputeNMC
-
 
 subroutine DeallocateParms(LocalParms)
   implicit none
@@ -932,7 +933,9 @@ subroutine GetInputFile(InputFile)
 
 !------------------------------------------------------------------------------
 subroutine InitializeParameters(InputFile)
-    use IFPORT       ! intel fortran portability library
+#ifndef  __GFORTRAN__
+     use IFPORT       ! intel fortran portability library
+#endif
     implicit none
     character(len=*), intent(inout) :: InputFile  ! Name of input file
     integer(i4b)                    :: ErrFlag    ! error flag when reading inputs
@@ -941,11 +944,9 @@ subroutine InitializeParameters(InputFile)
     real(dp)                        :: dTemp      ! temporary double precision real
     integer(i4b), allocatable       :: iTemp(:)   ! temporary integer array
     integer(i4b)                    :: nRead      ! number of values read
-    logical                         :: DirExists  ! true if dir exists
-    integer(i4b)                    :: i1
-    character(Len=100)              :: TempDir
+    integer(i4b)                    :: i1,DirStatus
+    character(Len=100)              :: TempDir,TempFile,cmd_string
 
-    
     ! read parameters from property file
     ErrFlag = LoadPropertyFile(PropList,InputFile)
     if (ErrFlag /= PL_OK) then
@@ -967,12 +968,15 @@ subroutine InitializeParameters(InputFile)
 
     ! check whether outputdirectory exists.
     ! If not, create.
-    inquire(DIRECTORY=OutDir,exist=DirExists)
-    if (.not. DirExists) then
-      print *, 'Warning: Output directory does not exists.'
+    TempFile = trim(OutDir) // '/' // 'a.txt'
+    open(unit=85,file=TempFile,action='write',iostat=DirStatus)
+    close(85)
+    if (DirStatus .ne. 0) then
+      print *, 'Warning: Output directory does not exist.'
       print *, 'Creating ',trim(OutDir),'.'
-      DirExists = makedirqq(OutDir)
-      if (.not. DirExists) then
+      cmd_string = 'mkdir ' // trim(OutDir)
+      DirStatus = system(cmd_string)
+      if (DirStatus .ne. 0) then
         print *, 'Error: Failed to create output directory ', trim(OutDir), '.'
         stop
       end if
@@ -1130,12 +1134,15 @@ subroutine InitializeParameters(InputFile)
 
   ! file for parms output
   TempDir = trim(OutDir) // '/parms'
-  inquire(DIRECTORY=TempDir,exist=DirExists)
-    if (.not. DirExists) then
+  TempFile = trim(TempDir) // 'a.txt'
+  open(unit=85,file=TempFile,action='write',iostat=DirStatus)
+  close(85)
+  if (DirStatus .ne. 0) then
       print *, 'Warning: parms directory does not exist.'
       print *, 'Creating ',trim(TempDir),'.'
-      DirExists = makedirqq(TempDir)
-      if (.not. DirExists) then
+      cmd_string = 'mkdir ' // trim(tempDir)
+      DirStatus = system(trim(cmd_string))
+      if (DirStatus .ne. 0) then
         print *, 'Error: Failed to create output directory ', trim(TempDir), '.'
         stop
       end if
@@ -1315,8 +1322,9 @@ end subroutine InitializeParameters
     implicit none
     integer(i4b)       :: tempunit
     character(len=200) :: tempfile
+    character(len=20)  :: fmt1
 
-    integer(i4b), allocatable :: index(:)
+    integer(i4b), allocatable :: tempindex(:)
     integer(i4b)              :: row,col
     real(dp),     allocatable :: temp2(:,:)
     integer(i4b)              :: i1,n
@@ -1489,10 +1497,13 @@ end subroutine InitializeParameters
            file=tempfile, &
            action='read')
       parms%BD_Z = 0.0d0
+      
+      write(fmt1,'(a1,i2,a7)') '(',parms%BD_Z_DIM,'g25.16)'
       do i1=1,parms%J
-        read(tempunit,1390) parms%BD_Z(i1,:)
+        read(tempunit,fmt1) parms%BD_Z(i1,:)
+        !read(tempunit,1390) parms%BD_Z(i1,:)
       end do
-1390 format(<parms%BD_Z_DIM>f25.16)
+!1390 format(<parms%BD_Z_DIM>f25.16)
       close(tempunit)
 
       ! Load parms%BC_Z   (nBC x BC_z_dim)
@@ -1502,10 +1513,11 @@ end subroutine InitializeParameters
       open(unit=tempunit, &
            file=tempfile, &
            action='read')
+      write(fmt1,'(a1,i3,a7)') '(',parms%BC_Z_DIM,'g25.16)'
       do i1=1,parms%nBC
-        read(tempunit,1420) parms%BC_Z(i1,:)
+        read(tempunit,fmt1) parms%BC_Z(i1,:)
       end do
-1420 format(<parms%BC_Z_DIM>f25.16)
+!1420 format(<parms%BC_Z_DIM>f25.16)
       close(tempunit)
     end if ! if (model==2) then
    
@@ -1523,7 +1535,7 @@ end subroutine InitializeParameters
     897 format(f25.0)
     close(tempunit)
     
-  end subroutine ReadParameters
+end subroutine ReadParameters
 
 subroutine DefineIntegrationRule
   implicit none
@@ -1532,7 +1544,7 @@ subroutine DefineIntegrationRule
   character(len=PL_VAL_LEN)  :: cTemp      ! temporary character string
   integer(i4b), allocatable  :: nQuad(:)
   integer(i4b)               :: RandomB_flag,RandomB_nall,RandomB_dim,nRead
-
+  character(len=20)          :: fmt1
 
   ! integration rule
   ! 0 = Gauss hermite            0 : not working
@@ -1543,14 +1555,17 @@ subroutine DefineIntegrationRule
   ! 7 = pseudo-MC on (-1,1)      7 : working
 
   ErrFlag = GetVal(PropList,'IntegrationFlag',cTemp)
-  read(cTemp,'(<parms%K>i2)') IntRule%flag
+  write(fmt1,'(a1,i2,a3)') '(',parms%K,'i2)'
+  read(cTemp,fmt1) IntRule%flag
  
   ErrFlag = GetVal(PropList,'nQuadAll',cTemp)
-  read(cTemp,'(<parms%K>i4)') IntRule%nAll
+  write(fmt1,'(a1,i2,a3)') '(',parms%K,'i4)'
+  read(cTemp,fmt1) IntRule%nAll
 
   allocate(nQuad(parms%K))
   ErrFlag = GetVal(PropList,'nQuad',cTemp)
-  read(cTemp,'(<parms%K>i3)') nQuad
+  write(fmt1,'(a1,i2,a3)') '(',parms%K,'i3)'
+  read(cTemp,fmt1) nQuad
 
   do i1=1,parms%K
     allocate(IntRule%rule(i1)%nQuad(i1))
@@ -1584,7 +1599,8 @@ subroutine DefineIntegrationRule
     RandomB%nQuad = 3
     ErrFlag = GetVal(PropList,'RandomB_nQuad',cTemp)
     nRead = min(RandomB_dim,10)
-    read(cTemp,'(<nRead>i3)') RandomB%nQuad(1:nRead)
+    write(fmt1,'(a1,i2,a3)') '(',nread,'i3)'
+    read(cTemp,fmt1) RandomB%nQuad(1:nRead)
  
     if (RandomB_flag==0 .or. RandomB_flag==6) then
       ! Tensor product rule
@@ -1780,13 +1796,13 @@ end subroutine DefineIntegrationNodes
 #if USE_MPI==1
 subroutine BroadcastParameters(pid)
   use mpi
-  use IFPORT
+  !use IFPORT
   implicit none
   integer(i4b), intent(in)  :: pid
   integer(i4b)              :: ierr(30),i1,i2,nerr,ierr_barrier
   integer(i4b), allocatable :: ierr_quad(:),ierr_B(:)
   integer(i4b)              :: n,d  ! size of matrix for RandomB and RandomD
-
+  character(len=20)         :: fmt1
   ! Broadcast OutDir and Control Flags
   ierr = 0
   !call sleep(10)
@@ -1878,8 +1894,9 @@ subroutine BroadcastParameters(pid)
                      MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr_quad(2*parms%K+parms%K*(i1-1)+i2))
     end do            
   end do
-  print 1596,'ierr_quad',pid,ierr(25:26),ierr_quad
-1596 format(a10,i4,2i3,<nerr>i3)
+  write(fmt1,'(a8,i2,a3)') '(a10,i3,',nerr,'i3)'
+  print fmt1,'ierr_quad',pid,ierr(25:26),ierr_quad
+!1596 format(a10,i4,2i3,<nerr>i3)
   deallocate(ierr_quad)
   call mpi_barrier(MPI_COMM_WORLD,ierr_barrier)
 
@@ -1905,8 +1922,9 @@ subroutine BroadcastParameters(pid)
   do i1=1,d
     call mpi_bcast(RandomB%nodes(:,i1),n,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr_B(2+i1))
   end do
-  print 1619,'ierr_B',pid,ierr_B
-1619 format(a7,i4,<d+2>i3)
+  write(fmt1,'(a7,i1,a3)') '(a7,a4,',d+2,'i3)'
+  print fmt1,'ierr_B',pid,ierr_B
+!1619 format(a7,i4,<d+2>i3)
   deallocate(ierr_B)
   call mpi_barrier(MPI_COMM_WORLD,ierr_barrier)
 end subroutine BroadcastParameters
@@ -1918,7 +1936,8 @@ subroutine BroadcastParms(LocalParms,pid)
   integer(i4b), intent(in)            :: pid
   integer(i4b)                        :: i1,nerr,ierr_barrier
   integer(i4b), allocatable           :: ierr(:)
-
+  character(len=20)                   :: fmt1
+ 
   allocate(ierr(2*LocalParms%J+3*LocalParms%K+12+2*LocalParms%dim_eta &
                 +LocalParms%BD_Z_DIM+LocalParms%BC_Z_DIM+11))
   ierr = 0
@@ -1988,8 +2007,9 @@ subroutine BroadcastParms(LocalParms,pid)
     nerr = nerr + LocalParms%BC_Z_DIM
   end if
 
-  print 1677,'parms_ierr',pid,ierr
-1677 format(a11,i4,<nerr>i3)
+  write(fmt1,'(a8,i3,a3)') '(a11,i4,',nerr,'i3)'
+  print fmt1,'parms_ierr',pid,ierr
+!1677 format(a11,i4,<nerr>i3)
 end subroutine BroadcastParms
 
 subroutine BroadcastIFree(pid)
@@ -2311,7 +2331,40 @@ subroutine ReadWriteParameters(LocalParms,LocalAction)
 
   integer(i4b)                        :: i1
   character(len=30)                   :: TempString
+  character(len=30)                   :: fmt102,fmt103,fmt104,fmt107,fmt108,fmt109  
 
+  ! formats for strings in parms.csv
+  111 format(a13)   !'model,K,J,nBC'
+  112 format(a9)    ! B(K x J)
+  113 format(a11)   ! MUE(K x 1)
+  114 format(a12)   ! CSIG (K x K)
+  115 format(a25)   ! dim_eta,BC_Z_DIM,BD_Z_DIM
+  116 format(a37)   ! nBC_COffDiag,nBD_COffDiag,BC_lo,BC_hi
+  117 format(a21)   ! BC_Beta(BC_Z_Dim x 1)
+  118 format(a21)   ! BD_beta(BD_Z_DIM x 1)
+  119 format(a19)   ! BC_C(nBC x dim_eta)
+
+  ! formats for data in parms.csv
+  101 format(3(i4,','),i4)                               ! (model,K,J,nBC)
+  write(fmt102,'(a1,i2,a15)') '(',LocalParms%J,'(f25.16,:,","))'
+  write(fmt103,'(a1,i2,a15)') '(',LocalParms%K,'(f25.16,:,","))'
+  write(fmt104,'(a1,i2,a15)') '(',LocalParms%K,'(f25.16,:,","))'
+!  102 format(<LocalParms%J-1>(f25.16,','),f25.16)        ! B
+!  103 format(<LocalParms%K-1>(f25.16,','),f25.16)        ! MUE  (K x 1)
+!  104 format(<LocalParms%K-1>(f25.16,','),f25.16)        ! CSIG
+  105 format(2(i4,','),i4)                               ! (dim_eta,BC_Z_DIM,BD_Z_DIM)
+  106 format(2(i4,','),f25.16,',',f25.16)                ! nBC_COffDiag,nBD_COffDiag,BC_LO,BC_HI
+  write(fmt107,'(a1,i2,a15)') '(',LocalParms%BC_Z_DIM,'(f25.16,:,","))'
+  write(fmt108,'(a1,i2,a15)') '(',LocalParms%BD_Z_DIM,'(f25.16,:,","))'
+  write(fmt109,'(a1,i2,a15)') '(',LocalParms%DIM_ETA,'(f25.16,:,","))'
+!  107 format(<LocalParms%BC_Z_DIM-1>(f25.16,','),f25.16) ! BC_BETA
+!  108 format(<LocalParms%BD_Z_DIM-1>(f25.16,','),f25.16) ! BD_BETA
+!  109 format(<LocalParms%dim_eta-1>(f25.16,','),f25.16)  ! BC_C
+  110 format(12(f25.16,:,','))                           ! BD_month
+
+  120 format(a17)      ! mue_month(K x 12)
+  121 format(12(f25.16,:,','))
+  
   ! open file for reading or writing
   open(unit=LocalParms%unit,  &
        file=LocalParms%file,  &
@@ -2334,7 +2387,7 @@ subroutine ReadWriteParameters(LocalParms,LocalAction)
     read(LocalParms%unit,112) TempString
     print *,TempString
     do i1=1,LocalParms%K
-      read(LocalParms%unit,102) LocalParms%B(i1,:)
+      read(LocalParms%unit,fmt102) LocalParms%B(i1,:)
     end do
 
     ! update (D,BC): convert B to spherical coordinates (D,BC)
@@ -2343,7 +2396,7 @@ subroutine ReadWriteParameters(LocalParms,LocalAction)
     ! MUE   (K x 1)
     read(LocalParms%unit,113) TempString
     print *, TempString
-    read(LocalParms%unit,103) LocalParms%MUE
+    read(LocalParms%unit,fmt103) LocalParms%MUE
 
     ! MUE_month   (K x 12)
     read(LocalParms%unit,120) TempString
@@ -2356,7 +2409,7 @@ subroutine ReadWriteParameters(LocalParms,LocalAction)
     read(LocalParms%unit,114) TempString
     print *,TempString
     do i1=1,LocalParms%K
-      read(LocalParms%unit,104) LocalParms%CSIG(i1,:)
+      read(LocalParms%unit,fmt104) LocalParms%CSIG(i1,:)
     end do
 
     ! SIG = covariance matrix of epsilon
@@ -2379,25 +2432,25 @@ subroutine ReadWriteParameters(LocalParms,LocalAction)
     ! BC_beta  (BC_Z_DIM)
     read(LocalParms%unit,117) TempString
     print *, TempString
-    read(LocalParms%unit,107) LocalParms%BC_BETA
+    read(LocalParms%unit,fmt107) LocalParms%BC_BETA
 
     ! BD_beta  (BD_Z_DIM)
     read(LocalParms%unit,118) TempString
     print *, TempString
-    read(LocalParms%unit,108) LocalParms%BD_BETA
+    read(LocalParms%unit,fmt108) LocalParms%BD_BETA
 
     ! BC_C  (nBC x dim_eta)
     read(LocalParms%unit,119) TempString
     print *,TempString
     do i1=1,LocalParms%nBC
-      read(LocalParms%unit,109) LocalParms%BC_C(i1,:)
+      read(LocalParms%unit,fmt109) LocalParms%BC_C(i1,:)
     end do
 
     ! BD_C  (J x dim_eta)
     read(LocalParms%unit,119) TempString
     print *,TempString
     do i1=1,LocalParms%J
-      read(LocalParms%unit,109) LocalParms%BD_C(i1,:)
+      read(LocalParms%unit,fmt109) LocalParms%BD_C(i1,:)
     end do
 
    ! BD_month (J x 12)
@@ -2425,12 +2478,12 @@ subroutine ReadWriteParameters(LocalParms,LocalAction)
     ! B  (K x J)
     write(LocalParms%unit,112) 'B(K x J)'
     do i1=1,LocalParms%K
-      write(LocalParms%unit,102) LocalParms%B(i1,:)
+      write(LocalParms%unit,fmt102) LocalParms%B(i1,:)
     end do
 
     ! MUE
     write(LocalParms%unit,113) 'MUE(K x 1)'
-    write(LocalParms%unit,103) LocalParms%MUE
+    write(LocalParms%unit,fmt103) LocalParms%MUE
 
     write(LocalParms%unit,120) 'mue_month(K x 12)'
     do i1=1,LocalParms%K
@@ -2440,7 +2493,7 @@ subroutine ReadWriteParameters(LocalParms,LocalAction)
     ! CSIG  (K x K)  Cholesky decomposition of sig
     write(LocalParms%unit,114) 'CSIG(K x K)'
     do i1=1,LocalParms%K
-      write(LocalParms%unit,104) LocalParms%CSIG(i1,:)
+      write(LocalParms%unit,fmt104) LocalParms%CSIG(i1,:)
     end do
 
     ! (dim_eta,BC_Z_DIM,BD_Z_DIM)
@@ -2454,22 +2507,22 @@ subroutine ReadWriteParameters(LocalParms,LocalAction)
 
     ! BC_beta  (BC_Z_DIM)
     write(LocalParms%unit,117) 'BC_BETA(BC_Z_DIM x 1)'
-    write(LocalParms%unit,107) LocalParms%BC_BETA
+    write(LocalParms%unit,fmt107) LocalParms%BC_BETA
 
     ! BD_beta  (BD_Z_DIM)
     write(LocalParms%unit,118) 'BD_BETA(BD_Z_DIM x 1)'
-    write(LocalParms%unit,108) LocalParms%BD_BETA
+    write(LocalParms%unit,fmt108) LocalParms%BD_BETA
 
     ! BC_C  (nBC x dim_eta)
     write(LocalParms%unit,119) 'BC_C(nBC x dim_eta)'
     do i1=1,LocalParms%nBC
-      write(LocalParms%unit,109) LocalParms%BC_C(i1,:)
+      write(LocalParms%unit,fmt109) LocalParms%BC_C(i1,:)
     end do
 
     ! BD_C  (J x dim_eta)
     write(LocalParms%unit,119) 'BD_C(J x dim_eta)'
     do i1=1,LocalParms%J
-      write(LocalParms%unit,109) LocalParms%BD_C(i1,:)
+      write(LocalParms%unit,fmt109) LocalParms%BD_C(i1,:)
     end do
 
    ! BD_month (J x 12)
@@ -2481,31 +2534,6 @@ subroutine ReadWriteParameters(LocalParms,LocalAction)
 
   close(LocalParms%unit)
 
-  ! formats for strings in parms.csv
-  111 format(a13)   !'model,K,J,nBC'
-  112 format(a9)    ! B(K x J)
-  113 format(a11)   ! MUE(K x 1)
-  114 format(a12)   ! CSIG (K x K)
-  115 format(a25)   ! dim_eta,BC_Z_DIM,BD_Z_DIM
-  116 format(a37)   ! nBC_COffDiag,nBD_COffDiag,BC_lo,BC_hi
-  117 format(a21)   ! BC_Beta(BC_Z_Dim x 1)
-  118 format(a21)   ! BD_beta(BD_Z_DIM x 1)
-  119 format(a19)   ! BC_C(nBC x dim_eta)
-
-  ! formats for data in parms.csv
-  101 format(3(i4,','),i4)                               ! (model,K,J,nBC)
-  102 format(<LocalParms%J-1>(f25.16,','),f25.16)        ! B
-  103 format(<LocalParms%K-1>(f25.16,','),f25.16)        ! MUE  (K x 1)
-  104 format(<LocalParms%K-1>(f25.16,','),f25.16)        ! CSIG
-  105 format(2(i4,','),i4)                               ! (dim_eta,BC_Z_DIM,BD_Z_DIM)
-  106 format(2(i4,','),f25.16,',',f25.16)                ! nBC_COffDiag,nBD_COffDiag,BC_LO,BC_HI
-  107 format(<LocalParms%BC_Z_DIM-1>(f25.16,','),f25.16) ! BC_BETA
-  108 format(<LocalParms%BD_Z_DIM-1>(f25.16,','),f25.16) ! BD_BETA
-  109 format(<LocalParms%dim_eta-1>(f25.16,','),f25.16)  ! BC_C
-  110 format(12(f25.16,:,','))                           ! BD_month
-
-  120 format(a17)      ! mue_month(K x 12)
-  121 format(12(f25.16,:,','))
 end subroutine ReadWriteParameters
 
 subroutine CopyParameters(parms_in,parms_out)
@@ -2614,7 +2642,7 @@ subroutine LoadTaxParameters(taxid,taxlabel,taxtype,tax)
   character(len=1024)       :: buffer1,buffer2
   integer(i4b), allocatable :: itemp(:)
   integer(i4b)              :: i1,icomma,ntax
-
+  character(len=20)         :: fmt1
   ! tax parameter file: (J+3 x ntax)  csv file
   ! row 1       taxid
   ! row 2       taxlabel
@@ -2670,10 +2698,11 @@ subroutine LoadTaxParameters(taxid,taxlabel,taxtype,tax)
   ! read in (J x n1) tax rates
   allocate(tax(parms%J,ntax))
   tax = 1.0d0
+  write(fmt1,'(a1,i2,a6)') '(',ntax,'g13.4)'
   do i1=1,parms%J
-    read(TaxParmsUnit,69) tax(i1,:)
+    read(TaxParmsUnit,fmt1) tax(i1,:)
   end do
- 69 format(<ntax>g13.4)  
+! 69 format(<ntax>g13.4)  
 
   deallocate(itemp)
 

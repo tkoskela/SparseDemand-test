@@ -159,7 +159,7 @@ subroutine SaveOutputs(xFree,LValue,Grad,Hess,Stats)
   real(dp), allocatable :: InvHess(:,:)
   
   integer(i4b)          :: n 
-  character(20)         :: cTemp
+  character(20)         :: cTemp,fmt1
 
   ! Define filenames
   !call DefineFileNames
@@ -326,10 +326,10 @@ subroutine SaveOutputs(xFree,LValue,Grad,Hess,Stats)
   open(UNIT = Hess_UNIT, &
        FILE = Hess_FILE, &
        ACTION = 'WRITE')
+  write(fmt1,'(a1,i3,a8)') '(',n,'es25.16)'
   do i1=1,n
-    write(Hess_UNIT,3)  Hess(i1,:)
+    write(Hess_UNIT,fmt1)  Hess(i1,:)
   end do
-  3 format(<n>es25.16)
   close(UNIT = Hess_UNIT) 
   deallocate(InvHess,StandardErrors)
 end subroutine SaveOutputs
@@ -338,32 +338,35 @@ subroutine WriteHess(hess)
   implicit none
   real(dp), intent(in) :: hess(:,:)
   integer(i4b) :: i1,n
+  character(len=20) :: fmt1
 
   n = size(hess,1)
 
   open(UNIT = Hess_UNIT, &
        FILE = Hess_FILE, &
        ACTION = 'WRITE')
+  write(fmt1,'(a1,i3,a8)') '(',n,'es25.16)'
   do i1=1,n
-    write(Hess_UNIT,3)  Hess(i1,:)
+    write(Hess_UNIT,fmt1)  Hess(i1,:)
   end do
-  3 format(<n>es25.16)
   close(UNIT = Hess_UNIT) 
   
 end subroutine WriteHess
 
-subroutine ReadWriteGradLHH(GradLHH,action)
+subroutine ReadWriteGradLHH(GradLHH,local_action)
   implicit none
   real(dp), intent(inout)      :: GradLHH(:,:)
-  character(len=*), intent(in) :: action
+  character(len=*), intent(in) :: local_action
 
   integer(i4b)                 :: n,nx,i1
   logical                      :: existflag
+  character(len=30)            :: fmt1
 
   n = size(GradLHH,1)
   nx = size(GradLHH,2)
+  write(fmt1,'(a1,i3,a7)') '(',nx,'g25.16)'
 
-  select case (action)
+  select case (local_action)
     case ('read')
       GradLHH = 0.0d0
       inquire(file=GradLHH_file,exist=existflag)
@@ -372,7 +375,7 @@ subroutine ReadWriteGradLHH(GradLHH,action)
              file = GradLHH_file, &
              action = 'read')
         do i1=1,n
-          read(GradLHH_unit,329) GradLHH(i1,:)
+          read(GradLHH_unit,fmt1) GradLHH(i1,:)
         end do
         close(GradLHH_unit)
       end if
@@ -381,11 +384,10 @@ subroutine ReadWriteGradLHH(GradLHH,action)
            file = GradLHH_file, &
            action = 'write')
       do i1=1,n
-        write(GradLHH_unit,329) GradLHH(i1,:)
+        write(GradLHH_unit,fmt1) GradLHH(i1,:)
       end do
       close(GradLHH_unit)
   end select
-329 format(<nx>g25.16)
 
 end subroutine ReadWriteGradLHH
 !------------------------------------------------------------------------------
@@ -563,58 +565,60 @@ subroutine SaveData
   use GlobalModule, only : HHData,parms
   implicit none
   integer(i4b) :: i1,i2
+  character(len=20) :: fmt1
 
   open(UNIT = SaveData_UNIT_q,    &
        File = SaveDataFile_q, &
        Action = 'write')
+
+  write(fmt1,'(a1,i1,a15)') '(',parms%K,'(g25.16,:,","))'
   do i1=1,HHData%N
-    write(SaveData_UNIT_q,161) HHData%q(:,i1)
-    161 format(<parms%K>(g25.16,','))
+    write(SaveData_UNIT_q,fmt1) HHData%q(:,i1)
   end do
   close(SaveData_UNIT_q)
 
   open(UNIT = SaveData_UNIT_p,    &
        File = SaveDataFile_p, &
        Action = 'write')
+  write(fmt1,'(a1,i1,a15)') '(',parms%J,'(g25.16,:,","))'
   do i1=1,HHData%N
-    write(SaveData_UNIT_p,374) HHData%p(:,i1)
-    374 format(<parms%J>(g25.16,','))
+    write(SaveData_UNIT_p,fmt1) HHData%p(:,i1)
   end do
   close(SaveData_UNIT_p)
 
   open(UNIT = SaveData_UNIT_e,    &
        File = SaveDataFile_e, &
        Action = 'write')
+  write(fmt1,'(a1,i1,a15)') '(',parms%K,'(g25.16,:,","))'
   do i1=1,HHData%N
-    write(SaveData_UNIT_e,382) HHData%e(:,i1)
-    382 format(<parms%K>(g25.16,','))
+    write(SaveData_UNIT_e,fmt1) HHData%e(:,i1)
   end do
   close(SaveData_UNIT_e)
 
   open(UNIT = SaveData_UNIT_eta,    &
        File = SaveDataFile_eta, &
        Action = 'write')
+  write(fmt1,'(a1,i1,a15)') '(',parms%dim_eta,'(g25.16,:,","))'
   do i1=1,HHData%N
-    write(SaveData_UNIT_eta,396) HHData%eta(:,i1)
-    396 format(<parms%dim_eta>(g25.16,','))
+    write(SaveData_UNIT_eta,fmt1) HHData%eta(:,i1)
   end do
   close(SaveData_UNIT_e)
 
   open(UNIT = SaveData_UNIT_iNonZero,    &
        File = SaveDataFile_iNonZero, &
        Action = 'write')
+  write(fmt1,'(a1,i1,a15)') '(',parms%K,'(g25.16,:,","))'
   do i1=1,HHData%N
-    write(SaveData_UNIT_iNonZero,392) HHData%iNonZero(:,i1)
-    392 format(<parms%K>(g25.16,','))
+    write(SaveData_UNIT_iNonZero,fmt1) HHData%iNonZero(:,i1)
   end do
   close(SaveData_UNIT_iNonZero)
 
   open(UNIT = SaveData_UNIT_iZero,    &
        File = SaveDataFile_iZero, &
        Action = 'write')
+  write(fmt1,'(a1,i1,a15)') '(',parms%J,'(g25.16,:,","))'
   do i1=1,HHData%N
-    write(SaveData_UNIT_iZero,400) HHData%iZero(:,i1)
-    400 format(<parms%J>(g25.16,','))
+    write(SaveData_UNIT_iZero,fmt1) HHData%iZero(:,i1)
   end do
   close(SaveData_UNIT_iZero)
  
@@ -623,8 +627,8 @@ subroutine SaveData
        Action = 'write')
   do i1=1,HHData%N
     write(SaveData_UNIT_nNonZero,409) HHData%nNonZero(i1)
-    409 format(g25.16)
   end do
+409 format(g25.16)
   close(SaveData_UNIT_nNonZero)
 
   open(UNIT = SaveData_UNIT_market,    &
@@ -668,7 +672,7 @@ subroutine SaveMCOutputs(model,MCX,MCLambda,IMC)
   real(dp),     intent(in) :: MCX(:,:),MCLambda(:)
   integer(i4b), intent(in) :: IMC
   integer(i4b)             :: i1,NX,NMC
-
+  character(len=20)        :: fmt1
   ! write values of MCX
   open(UNIT = MC_UNIT1, &
        FILE = MC_FILE1, &
@@ -676,9 +680,9 @@ subroutine SaveMCOutputs(model,MCX,MCLambda,IMC)
 
   NX = size(MCX,1)
   NMC = size(MCX,2)
+  write(fmt1,'(a1,i4,a8)') '(',IMC+1,'es25.16)'
   do i1=1,NX
-    write(MC_UNIT1,471) MCX(i1,1:IMC),MCX(i1,NMC)
-    471 format(<IMC+1>es25.16)
+    write(MC_UNIT1,fmt1) MCX(i1,1:IMC),MCX(i1,NMC)
   end do
 
   close(MC_UNIT1)
@@ -725,17 +729,17 @@ end subroutine WriteBayes
 subroutine WriteElasticities(elas)
   implicit none
   real(dp), intent(in) :: elas(:,:)
-
+  character(len=20)    :: fmt1
   integer(i4b)         :: J,j1
 
   open(UNIT = Elas_UNIT, &
        FILE = ElasFILE, &
        ACTION = 'WRITE')
   J = size(elas,1)
+  write(fmt1,'(a1,i3,a15)') '(',J,'(g25.16,:,","))'
   do j1=1,J
-    write(Elas_UNIT,534) elas(:,j1)
+    write(Elas_UNIT,fmt1) elas(:,j1)
   end do
-534 format(<J>(g25.16,','))
 
   close(Elas_UNIT)
 end subroutine WriteElasticities
@@ -797,7 +801,7 @@ subroutine WriteTaxResults1(q0,p0,qtax,ptax,filename)
   character(len=200)           :: resultsfile
   integer(i4b)                 :: ntax,i1,J
   character(len=4), allocatable :: qstring(:),pstring(:)
-
+  character(len=20)            :: fmt1
   resultsfile = MakeFullFileName(trim(filename))
 
   open(unit = taxresults_UNIT, &
@@ -815,14 +819,14 @@ subroutine WriteTaxResults1(q0,p0,qtax,ptax,filename)
   end do
 
   ! write variable names 
-  write(taxresults_unit,780) "q0",qstring,"p0",pstring
-780 format(<2*ntax+2>(a25,:,","))
+  write(fmt1,'(a1,i2,a12)') '(',2*ntax+2,'(a25,:,","))'
+  write(taxresults_unit,fmt1) "q0",qstring,"p0",pstring
 
   ! write (quantity,price)
+  write(fmt1,'(a1,i2,a15)') '(',2*ntax+2,'(g25.16,:,","))'
   do i1=1,J
-    write(taxresults_unit,781) q0(i1),qtax(i1,:),p0(i1),ptax(i1,:)
+    write(taxresults_unit,fmt1) q0(i1),qtax(i1,:),p0(i1),ptax(i1,:)
   end do
-781 format(<2*ntax+2>(g25.16,:,","))
 
   close(taxresults_unit)
   deallocate(qstring,pstring) 
@@ -838,6 +842,7 @@ subroutine WriteTaxResults2(e0,u0,etax,utax,filename)
   character(len=200)           :: resultsfile
   integer(i4b)                 :: i1,n,ntax
   character(len=4), allocatable :: estring(:),ustring(:)
+  character(len=20)            :: fmt1
 
   resultsfile = MakeFullFileName(trim(filename))
 
@@ -855,14 +860,14 @@ subroutine WriteTaxResults2(e0,u0,etax,utax,filename)
        Action = 'WRITE')
 
   ! Write variable names
-  write(taxresults_unit,826) "e0",estring,"u0",ustring
-826 format(<2*ntax+2>(a25,:,","))
+  write(fmt1,'(a1,i2,a15)') '(',2*ntax+2,'(a25,:,","))'
+  write(taxresults_unit,fmt1) "e0",estring,"u0",ustring
 
   ! write (expenditure,utility)
+  write(fmt1,'(a1,i2,a15)') '(',2*ntax+2,'(g25.16,:,","))'
   do i1=1,n
-    write(taxresults_unit,830) e0(i1),etax(i1,:),u0(i1),utax(i1,:)
+    write(taxresults_unit,fmt1) e0(i1),etax(i1,:),u0(i1),utax(i1,:)
   end do
-830 format(<2*ntax+2>(g25.16,:,","))
   close(taxresults_unit)
   deallocate(ustring,estring)
 end subroutine WriteTaxResults2

@@ -380,7 +380,7 @@ subroutine Like1B(iHH,d1,d2,d3,parms,mode,L,GradL)
   integer(i4b), allocatable :: ipivot(:)
   real(dp),     allocatable :: temp2(:,:)
 
-  integer(i4b)              :: i1,i2
+  integer(i4b)              :: i1,i2,ix
   integer(i4b), allocatable :: index1(:),index2(:)
   real(dp),     allocatable :: B1(:,:)
   real(dp),     allocatable :: U(:,:),S(:),VT(:,:)
@@ -408,8 +408,8 @@ subroutine Like1B(iHH,d1,d2,d3,parms,mode,L,GradL)
   allocate(index1(d1))
   allocate(index2(d2))
   
-  index1 = (/1:d1/)
-  index2 = (/d1+1:parms%K/)
+  index1 = (/(ix,ix=1,d1)/)
+  index2 = (/(ix,ix=d1+1,parms%K)/)
 
   ! size(B1) = (K x d1)
   allocate(B1(parms%K,d1))
@@ -1076,12 +1076,12 @@ subroutine ComputeRowGroup(L,J,d,RowGroup)
   real(dp), intent(in)      :: L(J,d)
   integer(i4b), intent(out) :: RowGroup(J)
 
-  integer(i4b) :: j1 
+  integer(i4b) :: j1,ix 
   ! for each row find the right-most column with a non-zero element
   ! RowGroup(j)==i1 indicates that L(j,i1)~=0 and L(j,i1+1:d)==0
   RowGroup = 0
   do j1=1,J
-    RowGroup(j1) =  maxval(pack((/1:d/),L(j1,1:min(j1,d)) .ne. 0.0d0))
+    RowGroup(j1) =  maxval(pack((/(ix,ix=1,d)/),L(j1,1:min(j1,d)) .ne. 0.0d0))
   end do
 end subroutine ComputeRowGroup
 
@@ -1593,7 +1593,7 @@ subroutine LikeFunc_QuadWrapper(x,nx,iuser,ruser,F)
   real(dp),     intent(inout) :: ruser(*)
   real(dp),     intent(out)   :: F(:)
 
-  integer(i4b) :: mode,nstate,i1
+  integer(i4b) :: mode,nstate,i1,ix
   real(dp)     :: L,GradL(nx)
 
   mode=0
@@ -1603,7 +1603,7 @@ subroutine LikeFunc_QuadWrapper(x,nx,iuser,ruser,F)
   F(1) = L
   F(2:nx+1) = x*L
   do i1=1,nx
-    F(1+nx+i1*(i1-1)/2 + (/1:i1/)) = x(i1) * F(2:i1+1)
+    F(1+nx+i1*(i1-1)/2 + (/(ix,ix=1,i1)/)) = x(i1) * F(2:i1+1)
   end do
 
 end subroutine LikeFunc_QuadWrapper
@@ -2142,6 +2142,9 @@ subroutine AnalyseResults(IMC)
 end subroutine AnalyseResults
 
 subroutine ComputeElasticities
+#ifndef __GFORTRAN__
+  use IFPORT
+#endif
   use nrtype
   use GlobalModule, only : parms,HHData,ControlOptions,InputDir, &
                            DataStructure,AllocateLocalHHData,    &
@@ -2153,7 +2156,6 @@ subroutine ComputeElasticities
                            WritePrediction
   use DataModule,  only  : DrawRandomCoefficients
   use ToolsModule, only  : InverseNormal_mkl
-  use IFPORT, only       : system
   implicit none
 
   integer(i4b)              :: i1,i2,i3
@@ -2415,7 +2417,7 @@ subroutine ComputeIndividualDemand(SimData1)
   integer(i4b)              :: nHH,np,SimUnit
   integer(i4b)              :: i1,i2,ihh
   real(dp), allocatable     :: p(:)
-  character(len=99)         :: SimFile
+  character(len=99)         :: SimFile,fmt1
 
   nHH = SimData1%n
   np  = 30
@@ -2437,19 +2439,16 @@ subroutine ComputeIndividualDemand(SimData1)
 
       do ihh=1,nHH
         ! iHH  i1 i2  eta(1)  eta(2)  nNonZero i1-i5 q1-q5 p1-pJ
-        write(SimUnit,30) ihh,i1,i2,SimData1%eta(:,ihh),SimData1%nNonZero(ihh), &
-                          SimData1%iNonZero(:,ihh),SimData1%q(:,ihh), &
-                          SimData1%p(:,ihh)
+        write(SimUnit,fmt1) ihh,i1,i2,SimData1%eta(:,ihh),SimData1%nNonZero(ihh), &
+                            SimData1%iNonZero(:,ihh),SimData1%q(:,ihh), &
+                            SimData1%p(:,ihh)
       end do
     end do
   end do
-30 format(3(i2,","), &
-          <parms%dim_eta>(g12.4,","), &
-          i2,",",              &
-          <parms%K>(i3,","),   &
-          <parms%K>(g12.4,",") &
-          <parms%J>(g12.4,:,","))
-
+write(fmt1,'(a11,i1,a18,i2,a9,i2,a12,i3,a14)') &
+             '(3(i2,","),',parms%dim_eta,'(g12.4,","),i2,","', &
+             parms%k,'(i3,","),',parms%k,'(g12.4,","),',       &
+             parms%J,'(g12.4,:,","))'
   close(SimUnit)
 
   deallocate(p)
@@ -2706,7 +2705,7 @@ subroutine SelectFreeParameters(parms,iFree)
   type(ParmsStructure), intent(in)    :: parms
   type(SelectFreeType), intent(inout) :: iFree
 
-  integer(i4b) :: i1,fruit,month
+  integer(i4b) :: i1,fruit,month,ix
 
   !  FreeFlags.D           = 1;
   !  FreeFlags.C           = 1;
@@ -2770,8 +2769,8 @@ subroutine SelectFreeParameters(parms,iFree)
     allocate(iFree%MuE_month(11*parms%K - ifree%mue_month1+1))
     allocate(iFree%xMuE_month(11*parms%K - ifree%mue_month1+1))
     iFree%nmue_month = size(ifree%mue_month)
-    iFree%MuE_month  = (/1:11*parms%K/)
-    iFree%xMuE_month = iFree%nall + (/1:iFree%nmue_month/)
+    iFree%MuE_month  = (/(ix,ix=1,11*parms%K)/)
+    iFree%xMuE_month = iFree%nall + (/(ix,ix=1,iFree%nmue_month)/)
   else
     iFree%nMUE_month = 0
   end if
@@ -2783,9 +2782,9 @@ subroutine SelectFreeParameters(parms,iFree)
   if (iFree%flagInvCDiag==1) then
     allocate(iFree%InvCDiag(parms%K - ifree%invcdiag1+1))
     allocate(iFree%xInvCDiag(parms%K - ifree%invcdiag1+1))
-    iFree%InvCDiag = (/ifree%invcdiag1:parms%K/)
+    iFree%InvCDiag = (/(ix,ix=ifree%invcdiag1,parms%K)/)
     iFree%nInvCDiag = size(iFree%InvCDiag)
-    iFree%xInvCDiag = iFree%nall + (/1:iFree%nInvCDiag/)
+    iFree%xInvCDiag = iFree%nall + (/(ix,ix=1,iFree%nInvCDiag)/)
   else
     iFree%nInvCDiag = 0
   end if
@@ -2799,8 +2798,8 @@ subroutine SelectFreeParameters(parms,iFree)
     iFree%nInvCOffDiag = parms%K*(parms%K-1)/2 - ifree%invcoffdiag1 + 1
     allocate(iFree%InvCOffDiag(iFree%nInvCOffDiag))
     allocate(iFree%xInvCOffDiag(iFree%nInvCOffDiag))
-    iFree%InvCOffDiag  = (/ifree%invcoffdiag1:(parms%k*(parms%k-1)/2)/)
-    iFree%xInvCOffDiag = iFree%nall + (/1:iFree%nInvCOffDiag/)
+    iFree%InvCOffDiag  = (/(ix,ix=ifree%invcoffdiag1,(parms%k*(parms%k-1)/2))/)
+    iFree%xInvCOffDiag = iFree%nall + (/(ix,ix=1,iFree%nInvCOffDiag)/)
   else
     iFree%nInvCOffDiag = 0
   end if
@@ -2819,8 +2818,8 @@ subroutine SelectFreeParameters(parms,iFree)
       iFree%nBD_beta = parms%BD_z_dim - ifree%bd_beta1 + 1
       allocate(iFree%BD_beta(iFree%nBD_beta))
       allocate(iFree%xBD_beta(iFree%nBD_beta))
-      iFree%BD_beta = (/ifree%bd_beta1:parms%BD_z_dim/)
-      iFree%xBD_beta = iFree%nAll + (/1:ifree%nbd_beta/)
+      iFree%BD_beta = (/(ix,ix=ifree%bd_beta1,parms%BD_z_dim)/)
+      iFree%xBD_beta = iFree%nAll + (/(ix,ix=1,ifree%nbd_beta)/)
       iFree%nall = iFree%nall + iFree%nBD_beta
     end if
 
@@ -2828,8 +2827,8 @@ subroutine SelectFreeParameters(parms,iFree)
       iFree%nBC_beta = parms%BC_z_dim - ifree%bc_beta1 + 1
       allocate(iFree%BC_beta(iFree%nBC_beta))
       allocate(iFree%xBC_beta(iFree%nBC_beta))
-      iFree%BC_beta = (/ifree%bc_beta1:parms%BC_z_dim/)
-      iFree%xBC_beta = iFree%nAll + (/1:ifree%nbc_beta/)
+      iFree%BC_beta = (/(ix,ix=ifree%bc_beta1,parms%BC_z_dim)/)
+      iFree%xBC_beta = iFree%nAll + (/(ix,ix=1,ifree%nbc_beta)/)
       iFree%nall = iFree%nall + iFree%nBC_beta
     end if
 
@@ -2837,8 +2836,8 @@ subroutine SelectFreeParameters(parms,iFree)
       iFree%nBD_CDiag = parms%J - ifree%bd_cdiag1 + 1
       allocate(iFree%BD_CDiag(iFree%nBD_CDiag))
       allocate(iFree%xBD_CDiag(iFree%nBD_CDiag))
-      iFree%BD_CDiag = (/ifree%bd_cdiag1:parms%J/)
-      iFree%xBD_CDiag = iFree%nAll + (/1:ifree%nbd_cdiag/)
+      iFree%BD_CDiag = (/(ix,ix=ifree%bd_cdiag1,parms%J)/)
+      iFree%xBD_CDiag = iFree%nAll + (/(ix,ix=1,ifree%nbd_cdiag)/)
       iFree%nall = iFree%nall + iFree%nBD_CDiag
     end if
 
@@ -2846,8 +2845,8 @@ subroutine SelectFreeParameters(parms,iFree)
       iFree%nBD_COffDiag = size(parms%BD_COffDiag,1) - ifree%bd_coffdiag1 + 1
       allocate(iFree%BD_COffDiag(iFree%nBD_COffDiag))
       allocate(iFree%xBD_COffDiag(iFree%nBD_COffDiag))
-      iFree%BD_COffDiag = (/ifree%bd_coffdiag1:size(parms%bd_coffdiag)/)
-      iFree%xBD_COffDiag = iFree%nAll + (/1:ifree%nbd_coffdiag/)
+      iFree%BD_COffDiag = (/(ix,ix=ifree%bd_coffdiag1,size(parms%bd_coffdiag))/)
+      iFree%xBD_COffDiag = iFree%nAll + (/(ix,ix=1,ifree%nbd_coffdiag)/)
       iFree%nall = iFree%nall + iFree%nBD_COffDiag
     end if
 
@@ -2855,8 +2854,8 @@ subroutine SelectFreeParameters(parms,iFree)
       iFree%nBC_CDiag = parms%nBC - ifree%bc_cdiag1 + 1
       allocate(iFree%BC_CDiag(iFree%nBC_CDiag))
       allocate(iFree%xBC_CDiag(iFree%nBC_CDiag))
-      iFree%BC_CDiag = (/ifree%bc_cdiag1:parms%nbc/)
-      iFree%xBC_CDiag = iFree%nAll + (/1:ifree%nbc_cdiag/)
+      iFree%BC_CDiag = (/(ix,ix=ifree%bc_cdiag1,parms%nbc)/)
+      iFree%xBC_CDiag = iFree%nAll + (/(ix,ix=1,ifree%nbc_cdiag)/)
       iFree%nall = iFree%nall + iFree%nBC_CDiag
     end if
 
@@ -2864,8 +2863,8 @@ subroutine SelectFreeParameters(parms,iFree)
       iFree%nBC_COffDiag = size(parms%BC_COffDiag,1) - ifree%bc_coffdiag1 + 1
       allocate(iFree%BC_COffDiag(iFree%nBC_COffDiag))
       allocate(iFree%xBC_COffDiag(iFree%nBC_COffDiag))
-      iFree%BC_COffDiag = (/ifree%bc_coffdiag1:size(parms%bc_coffdiag)/)
-      iFree%xBC_COffDiag = iFree%nAll + (/1:size(parms%bc_coffdiag)/)
+      iFree%BC_COffDiag = (/(ix,ix=ifree%bc_coffdiag1,size(parms%bc_coffdiag))/)
+      iFree%xBC_COffDiag = iFree%nAll + (/(ix,ix=1,size(parms%bc_coffdiag))/)
       iFree%nall = iFree%nall + iFree%nBC_COffDiag
     end if
 
@@ -2874,8 +2873,8 @@ subroutine SelectFreeParameters(parms,iFree)
       iFree%nBD_month = 11* parms%J - ifree%bd_month1 + 1
       allocate(iFree%BD_month(iFree%nBD_month))
       allocate(iFree%xBD_month(iFree%nBD_month))
-      iFree%BD_month  = (/ifree%bd_month1:11*parms%j/)
-      iFree%xBD_month = iFree%nAll + (/1:ifree%nbd_month/)
+      iFree%BD_month  = (/(ix,ix=ifree%bd_month1,11*parms%j)/)
+      iFree%xBD_month = iFree%nAll + (/(ix,ix=1,ifree%nbd_month)/)
       iFree%nall = iFree%nall + iFree%nBD_month
     end if
   end if ! if (parms%model==2)
@@ -3047,7 +3046,7 @@ subroutine MaximizeLikelihood1(x,LValue,Grad,Hess,ierr)
   integer(i4b)                :: nx,nc_lin,nc_nonlin,ldcj,ldh,lda,nctotal
 
   ! Loop counter
-  integer(i4b)                :: i1
+  integer(i4b)                :: i1,ix
 
   ! initial value of x and likelihood function
   real(dp), allocatable       :: x0(:)
@@ -3149,7 +3148,7 @@ subroutine MaximizeLikelihood1(x,LValue,Grad,Hess,ierr)
 
   ! Nonlinear constraints
   if (nc_nonlin>0) then
-    BU(nx+nc_lin+(/1:nc_nonlin/)) = 0.0d0
+    BU(nx+nc_lin+(/(ix,ix=1,nc_nonlin)/)) = 0.0d0
   end if
 
   nstate = 1
@@ -3236,7 +3235,7 @@ subroutine MaximizeLikelihood1(x,LValue,Grad,Hess,ierr)
       ! test non-linear contraint
       mode_constraint=0
       allocate(needc(nc_nonlin))
-      needc = (/1:nc_nonlin/)
+      needc = (/(ix,ix=1,nc_nonlin)/)
       call NAGConstraintWrapper(mode_constraint,nc_nonlin,nx,LDCJ,NEEDC,X,CCON,CJAC,nstate,iuser,ruser)
       deallocate(needc)
     else if (ControlOptions%TestLikeFlag==4) then
@@ -3933,7 +3932,9 @@ end subroutine ComputeHess2
 subroutine ComputeHess2(x,L,Grad,Hess,ComputeHessFlag)
   use GlobalModule, only : HHData,ifree
   use OutputModule, only : WriteHess,ReadWriteGradLHH
+#ifndef __GFORTRAN__
   use IFPORT, only : time
+#endif
   use nrtype
   implicit none
   real(dp), intent(in)     :: x(:)

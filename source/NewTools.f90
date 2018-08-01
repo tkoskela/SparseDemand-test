@@ -256,9 +256,9 @@ subroutine SphereToMatrix(phi,r,K,J,B,GradB_phi,GradB_r)
 
   integer(i4b)              :: n,nphi
   integer(i4b)              :: i1,ix
-  integer(i4b)              :: index(K-1)
+  integer(i4b)              :: tempindex(K-1)
   real(dp)                  :: GradB0(K,K)
-
+  real(dp), allocatable     :: temp1(:),temp2(:,:)
   ! Determine size of x and check it is compatible with dimensions of M
   n = size(phi)
   
@@ -288,24 +288,28 @@ subroutine SphereToMatrix(phi,r,K,J,B,GradB_phi,GradB_r)
     ! B is upper triangular
     ! B(1:i1,i1) = is set by elements of phi(index) and r(i1)
    
-    index((/(ix,ix=1,i1-1)/)) = (i1-1)*(i1-2)/2 + (/(ix,ix=1,i1-1)/)
+    tempindex((/(ix,ix=1,i1-1)/)) = (i1-1)*(i1-2)/2 + (/(ix,ix=1,i1-1)/)
     GradB0 = 0.0d0
-    call MapToCartesian(r(i1),phi(index(1:i1-1)),B((/(ix,ix=1,i1),i1), &
-                        GradB0((/(ix,ix=1,i1)/),(/(ix,ix=1,i1)/)))
+    allocate(temp1(i1),temp2(i1,i1))
+    call MapToCartesian(r(i1),phi(tempindex((/(ix,ix=1,i1-1)/))), &
+                        temp1,temp2)
+    B((/(ix,ix=1,i1)/),i1) = temp1
+    GradB0((/(ix,ix=1,i1)/),(/(ix,ix=1,i1)/)) = temp2
     if (present(GradB_phi)) then
-      GradB_phi((/(ix,ix=1,i1)/),index((/(ix,ix=1,i1-1)/))) &
+      GradB_phi((/(ix,ix=1,i1)/),tempindex((/(ix,ix=1,i1-1)/))) &
          = transpose(GradB0((/(ix,ix=1,i1-1)/),(/(ix,ix=1,i1)/)))
     end if
     if (present(GradB_r)) then
       GradB_r((/(ix,ix=1,i1)/),i1) = GradB0(i1,(/(ix,ix=1,i1)/))
     end if
+    deallocate(temp1,temp2)
   end do
   do i1=K+1,J
-    index = K*(K-1)/2 + (K-1)*(i1-K-1)+(/(ix,ix=1,K-1)/)
+    tempindex = K*(K-1)/2 + (K-1)*(i1-K-1)+(/(ix,ix=1,K-1)/)
     GradB0 = 0.0d0
-    call MapToCartesian(r(i1),phi(index),B(:,i1),GradB0)
+    call MapToCartesian(r(i1),phi(tempindex),B(:,i1),GradB0)
     if (present(GradB_phi)) then
-      GradB_phi(:,index) = transpose(GradB0((/(ix,ix=1,K-1)/),:))
+      GradB_phi(:,tempindex) = transpose(GradB0((/(ix,ix=1,K-1)/),:))
     end if
     if (present(GradB_r)) then
       GradB_r(:,i1)      = GradB0(K,:)
@@ -316,7 +320,7 @@ end subroutine SphereToMatrix
 ! Convert (upper triangular) matrix to spherical coordinates
 ! size(C)   = K x J    upper triangular matrix with K<J
 ! size(D)   = K x 1    magnitude of each column
-! size(PHI) = N x 1    spherical coordinate represenation of column
+! size(PHI) = N x 1    spherical coordinate representation of column
 !                      N = K*(K-1)/2 + (J-K)*(K-1)
 subroutine MatrixToSphere(C,D,PHI)
   use nrtype
@@ -325,7 +329,7 @@ subroutine MatrixToSphere(C,D,PHI)
   real(dp), intent(out) :: D(:),PHI(:)
   integer(i4b)          :: K,J,i1,j1,j2,ix
 
-  integer(i4b), allocatable :: index(:)
+  real(dp),     allocatable :: temp(:)
 
   K = size(C,1)
   J = size(C,2)
@@ -334,26 +338,27 @@ subroutine MatrixToSphere(C,D,PHI)
   PHI = 0.0d0
   D(1) = C(1,1)
 
-  allocate(index(K-1))
-
   do i1=2,K
-    ! index used to put result in correct location in PHI(:)
-    index((/(ix,ix=1,i1-1)/)) = (i1-1)*(i1-2)/2 + (/(ix,ix=1,i1-1)/)
+    ! (j1:j2) are locations in phi
     j1= (i1-1)*(i1-2)/2+1
     j2 = j1+i1-2
-    call MapToSpherical(C((/(ix,ix=1,i1)/),i1),D(i1),PHI((/(ix,ix=j1,j2)/)))
+    allocate(temp(i1-1))
+    call MapToSpherical(C((/(ix,ix=1,i1)/),i1),D(i1),temp)
+    PHI((/(ix,ix=j1,j2)/)) = temp
+    deallocate(temp)
   end do
 
   if (J>K) then
+    allocate(temp(K-1))
     do i1=K+1,J
       j1 = K*(K-1)/2 + (K-1)*(i1-K-1) + 1
       j2 = j1+K-2
-     ! index = K*(K-1)/2 + (K-1)*(i1-K-1) + (/1:K-1/)
-      call MapToSpherical(C(:,i1),D(i1),PHI((/(ix,ix=j1,j2)/)))
+      call MapToSpherical(C(:,i1),D(i1),temp)
+      PHI((/(ix,ix=j1,j2)/)) = temp
     end do
+    deallocate(temp)
   end if 
 
-  deallocate(index)
 end subroutine MatrixToSphere
 
 subroutine MapToCartesian(r,phi,x,dx)
@@ -372,8 +377,8 @@ subroutine MapToCartesian(r,phi,x,dx)
 !
 ! Revision history
 ! 09DEC2012  LN  translated from matlab file MapToCartesian.m
-  real(dp), intent(in) :: r
-  real(dp), intent(in) :: phi(:)
+  real(dp), intent(in)  :: r
+  real(dp), intent(in)  :: phi(:)
   real(dp), intent(out) :: x(:)
   real(dp), optional,intent(out) :: dx(:,:)
   
