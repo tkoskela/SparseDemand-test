@@ -1,0 +1,7 @@
+# to run mpi job using INtel MPI
+1) compile
+2) qsub sleep.sh
+3) .gethosts.sh jid hosts.txt
+4) ssh host1
+5) cd source
+6) mpirun -perhost 1 -hostfile hosts.txt -env I_MPI_FABRICS tcp ./SparseDemand_mpi.exe ../inputs/A27_new/A27A.prop
