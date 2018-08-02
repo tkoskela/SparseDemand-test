@@ -560,7 +560,7 @@ subroutine LoadData
   real(dp),           allocatable :: qp(:,:),err(:,:),tiering(:,:),expenditure(:)
   character(len=100), allocatable :: RawDataLabels(:)
   integer(i4b),       allocatable :: year(:)
-  character(len=30)               :: fmt1
+  character(len=50)               :: fmt1
 
   DataUnit = 20
   open(unit = DataUnit, &

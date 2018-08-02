@@ -7,9 +7,9 @@
 #$ -R y
 #$ -cwd
 #$ -V
-#$ -t 1-201
+#$ -t 1-401
 #$ -l tmem=2.4G,h_vmem=2.4G
-#$ -l h_rt=240:0:0
+##$ -l h_rt=240:0:0
 ##$ -l hostname="fry*|burns*|larry*|zeppo*"
 ##$ -l hostname=fry*\|burns-*\|zeppo*\|larry*
 ##$ -pe orte 401
