@@ -2429,7 +2429,11 @@ subroutine ComputeIndividualDemand(SimData1)
   open(Unit= SimUNit, &
        File= SimFile, &
        action = 'write')
-
+  
+  write(fmt1,'(a11,i1,a18,i2,a9,i2,a12,i3,a14)') &
+             '(3(i2,","),',parms%dim_eta,'(g12.4,","),i2,","', &
+             parms%k,'(i3,","),',parms%k,'(g12.4,","),',       &
+             parms%J,'(g12.4,:,","))'
 
   do i1=1,parms%J
     p = SimData1%p(i1,1) * (0.5d0+(2.0d0-0.5d0)*real((/0:np-1/),dp)/real(np-1,dp))
@@ -2445,10 +2449,6 @@ subroutine ComputeIndividualDemand(SimData1)
       end do
     end do
   end do
-write(fmt1,'(a11,i1,a18,i2,a9,i2,a12,i3,a14)') &
-             '(3(i2,","),',parms%dim_eta,'(g12.4,","),i2,","', &
-             parms%k,'(i3,","),',parms%k,'(g12.4,","),',       &
-             parms%J,'(g12.4,:,","))'
   close(SimUnit)
 
   deallocate(p)

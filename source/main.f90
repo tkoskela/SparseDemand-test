@@ -66,18 +66,22 @@ program SparseDemand
     InputFileString = "cp " // trim(InputFile) // " " // trim(NewInputFile)
     eflag = system(InputFileString)
     call date_and_time(values = DateTime)
-    print *, "Parameter initialization complete. (day,hour,sec) = ",DateTime(3),DateTime(5),DateTime(6)
+    print 71, "Parameter initialization complete. day = ",DateTime(3), &
+              ' time = ',DateTime(5),':',DateTime(6)
+71 format(a41,i2,a8,i2.2,a1,i2.2)
   end if
  
   ! broadcast stuff
 #if USE_MPI==1
   call date_and_time(values = DateTime)
-  print 101,'Process ',pid,': start BroadcastParameters: ',DateTime((/3,5,6/))
-101 format(a8,i4,a30,3i4)
+  print 101,'Process ',pid,': start BroadcastParameters: ', &
+            'day = ',DateTime(3),' time = ',DateTime(5),':',DateTime(6)
+101 format(a8,i4,a30,a6,i2,a8,i2.2,a1,i2.2)
   if (nprocs>1) then
     call BroadcastParameters(pid)
   end if
-  print 101,'Process ',pid,': finish BroadcastParameters: ',DateTime((/3,5,6/))
+  print 101,'Process ',pid,': finish BroadcastParameters: ', &
+            'day = ',DateTime(3),' time = ',DateTime(5),':',DateTime(6)
 #endif
 
   if (CONTROLOPTIONS%MPIFLAG==1) then
