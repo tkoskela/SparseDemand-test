@@ -16,7 +16,7 @@ K       = 5;
 np      = 30;
 
 if exist(FortranOutDir,'dir')~=7
-  display(['FortranOutDir = ',FortranOutDir]);    
+  disp(['FortranOutDir = ',FortranOutDir]);    
   error('Directory does not exist.')
 end
 if exist(OutDir,'dir')~=7
