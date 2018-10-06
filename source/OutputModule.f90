@@ -217,6 +217,18 @@ subroutine SaveOutputs(xFree,LValue,Grad,Hess,Stats)
     end do
   end if
 
+  if (ifree$flagmue_month>0) then
+    do i1=1,iFree$nmue_month
+      ! temp_mue_month(iFree%mue_month) = xFree(iFree%xmue_month)
+      write(cTemp,'(a10,i2.2)') 'MUE_month_',i1
+      write(Results_UNIT,1) cTemp,                &
+                            xFree(iFree%xMUE_month(i1)),  &
+                            Grad(iFree%XMUE_month(i1)),   &
+                            StandardErrors(iFree%XMUE_month(i1))
+    end do
+
+  end if
+
   ! write parms%INVCDiag
   if (iFree%flagInvCDiag>0) then
     do i1=1,iFree%nINVCDiag
@@ -281,6 +293,16 @@ subroutine SaveOutputs(xFree,LValue,Grad,Hess,Stats)
                             xFree(iFree%xBD_beta(i1)),  &
                             Grad(iFree%xBD_beta(i1)),   &
                             StandardErrors(iFree%xBD_beta(i1))
+    end do
+  end if
+
+  if (ifree%flagbd_month>0) then
+    do i1=1,ifree%nbd_month
+      write(ctemp,'(a8,i2.2') 'BDmonth_',i1
+      write(Results_UNIT,1) cTemp &
+                            xfree(iFree%xbd_month(i1)), &
+                            grad(ifree%xbd_month(i1)),  &
+                            standarderrors(ifree%xbd_month(i1))
     end do
   end if
 
