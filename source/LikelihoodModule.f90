@@ -10,7 +10,7 @@ module LikelihoodModule
 !-------------------------
 !
 ! 41       | subroutine Like2(mode,nx,x,L,GradL,nstate,iuser,ruser)
-! 18       | subroutine Like1(mode,nx,x,L,GradL,nstate,iuser,ruser)                        
+! 18       | subroutine Like1(mode,nx,x,L,GradL,nstate,iuser,ruser)
 ! 490      | subroutine UpdateParms(xFree,iFree,parms)
 ! 566      | subroutine LogDensityFunc(e,F,GradF_e,GradF_MuE,GradF_InvC)
 ! 634      | subroutine ComputeRowGroup(R,J,d,RowGroup)
@@ -29,7 +29,7 @@ subroutine Like2_master(mode,nx,x,L,GradL,nstate,iuser,ruser)
   use mpi
   use GlobalModule, only : MasterID,nWorkers
   implicit none
-  
+
   integer(i4b), intent(inout)        :: mode
   integer(i4b), intent(in)           :: nx
   real(dp),     intent(in)           :: x(:)
@@ -146,7 +146,7 @@ end subroutine WorkerTask
 !
 !  LIKE2:   Likelihood function:  Random coefficients quadratic utility
 !
-!   Compute likelihood and its gradient w.r.t. x where utility is  
+!   Compute likelihood and its gradient w.r.t. x where utility is
 !
 !        u  = y - p'*q - 0.5 * (B*q - e)' * (B*q - e)
 !
@@ -166,7 +166,7 @@ subroutine Like2(mode,nx,x,L,GradL,nstate,iuser,ruser)
   use GlobalModule, only : iFree,parms,HHData,RandomB,small
   use DataModule,   only : ComputeCurrentB
   implicit none
-  
+
   integer(i4b), intent(inout)        :: mode
   integer(i4b), intent(in)           :: nx
   real(dp),     intent(in)           :: x(:)
@@ -175,19 +175,19 @@ subroutine Like2(mode,nx,x,L,GradL,nstate,iuser,ruser)
   integer(i4b), intent(in)           :: nstate
   integer(i4b), intent(in)           :: iuser(*)
   real(dp),     intent(in)           :: ruser(*)
-  
+
   integer(i4b)                       :: d1,d2,d3,iHH,iq
   real(dp)                           :: L0,L1
   real(dp), allocatable              :: GradL0(:),GradL1(:)
 
   call UpdateParms2(x,iFree,parms)
-  
+
   ! Initial values for likelihood and gradient
   L     = 0.0d0
   !GradL = 0.0d0
 
   ! Loop through households
-  
+
   allocate(GradL0(nx),GradL1(nx))
   do iHH=1,HHData%N
     L0 = 0.0d0
@@ -213,9 +213,9 @@ subroutine Like2(mode,nx,x,L,GradL,nstate,iuser,ruser)
     end if
   end do
 
-  L = -L 
+  L = -L
   deallocate(GradL0,GradL1)
-  
+
 end subroutine Like2
 
 !-----------------------------------------------------------------------------
@@ -230,7 +230,7 @@ subroutine Like2Hess(nx,x,L)
   use GlobalModule, only : iFree,parms,HHData,RandomB,small
   use DataModule,   only : ComputeCurrentB
   implicit none
-  
+
   integer(i4b), intent(in)           :: nx
   real(dp),     intent(in)           :: x(:)
   real(dp),     intent(out)          :: L(:)
@@ -244,12 +244,12 @@ subroutine Like2Hess(nx,x,L)
   mode = 0 ! only compute L(iHH)
 
   call UpdateParms2(x,iFree,parms)
-  
+
   ! Initial values for likelihood
   L     = 0.0d0
 
   ! Loop through households
-  
+
   allocate(GradL1(nx))
   do iHH=1,HHData%N
 
@@ -270,12 +270,12 @@ subroutine Like2Hess(nx,x,L)
   end do
 
   deallocate(GradL1)
-  
+
 end subroutine Like2Hess
 
 !-----------------------------------------------------------------------------
 !
-! Like1_wrapper:   Given (i1,B), compute likelihood for 3 cases 
+! Like1_wrapper:   Given (i1,B), compute likelihood for 3 cases
 !
 !-----------------------------------------------------------------------------
 subroutine Like1_wrapper(i1,d1,d2,d3,parms,mode,L1,GradL1)
@@ -330,7 +330,7 @@ subroutine Like1C(i1,parms,mode,L,GradL)
 
   integer(i4b)              :: integrand
   integer(i4b)              :: ifail
- 
+
   M1 = matmul(transpose(parms%B),parms%CSig)
 
   ! M1 = LL*Q
@@ -339,9 +339,9 @@ subroutine Like1C(i1,parms,mode,L,GradL)
   DTilde = HHData%p(:,i1) - matmul(transpose(parms%B),parms%MuE+parms%mue_month(:,HHData%month(i1)))
 
   ! Prob = integral of DensityFunc over region of x satisfying R*x<=M2_tilda
-  ! 
+  !
   Integrand = 3
-    
+
   ! size(RowGroup) = d2 = parms%J
   ! RowGroup(j1) = max(i1) s.t.  R(i1,j1) .ne. 0.0d0
   call ComputeRowGroup(R,parms%J,parms%K,RowGroup)
@@ -369,7 +369,7 @@ subroutine Like1B(iHH,d1,d2,d3,parms,mode,L,GradL)
   implicit none
   integer(i4b),         intent(in)    :: iHH,d1,d2,d3
   type(ParmsStructure), intent(in)    :: parms
-  integer(i4b),         intent(inout) :: mode 
+  integer(i4b),         intent(inout) :: mode
   real(dp),             intent(out)   :: L
   real(dp),             intent(inout) :: GradL(:)
 
@@ -395,7 +395,7 @@ subroutine Like1B(iHH,d1,d2,d3,parms,mode,L,GradL)
   integer(i4b), allocatable :: RowGroup(:)
   integer(i4b)              :: integrand
 
-  !------------------------------------------------------------------------  
+  !------------------------------------------------------------------------
   ! Case 2:   d1 < K products were purchased
   !           (HHData%nNonZero(iHH) == d1 and d1 < K)
   !           Mapping from q(iNonZero) to e is NOT one-to-one
@@ -407,7 +407,7 @@ subroutine Like1B(iHH,d1,d2,d3,parms,mode,L,GradL)
   !  d3 = J - d1
   allocate(index1(d1))
   allocate(index2(d2))
-  
+
   index1 = (/(ix,ix=1,d1)/)
   index2 = (/(ix,ix=d1+1,parms%K)/)
 
@@ -469,7 +469,7 @@ subroutine Like1B(iHH,d1,d2,d3,parms,mode,L,GradL)
   !  size( inv(Omega22)*Omega12' ) = (d2 x d1)
   Psi = Omega11 - matmul(Omega12,temp2)
   deallocate(temp2,iPivot)
-   
+
   allocate(CPsi(d1,d1))
   ! Cholesky decomposition of Psi: lower triangular form
   !      CPsi * CPsi' = Psi
@@ -534,7 +534,7 @@ subroutine Like1B(iHH,d1,d2,d3,parms,mode,L,GradL)
   ! L = integral of DensityFunc over region of x satisfying R*x<=DTilde
   !
   Integrand = 2
-  
+
   ! size(RowGroup) = d3
   ! RowGroup(j1) = max(i1) s.t.  LL(i1,j1) .ne. 0.0d0
 
@@ -592,7 +592,7 @@ subroutine Like1A(i1,parms,mode,L,GradL)
   real(dp), allocatable     :: GradF_InvC(:,:)
 
   ! variables used by F04BAF,F07ADF,F03BAF
-  real(dp)                  :: rcond,errBound 
+  real(dp)                  :: rcond,errBound
   integer(i4b), allocatable :: iPivot(:)
   integer(i4b)              :: ifail
   real(dp)                  :: D
@@ -639,7 +639,7 @@ subroutine Like1A(i1,parms,mode,L,GradL)
     end if
   else
     e = e + matmul(B1,HHData%q(1:parms%K,i1))
-   
+
     ! mue_month = seasonal adjustment to mue
     mue_month = parms%mue_month(:,HHData%month(i1))
     call LogDensityFunc(e,parms,mue_month, &
@@ -691,7 +691,7 @@ subroutine Like1(mode,nx,x,L,GradL,nstate,iuser,ruser)
 !
 !     u  = y - p'*q - 0.5 * (B*q - e)' * (B*q - e)
 !
-! 
+!
 ! HHData%N        = (1 x 1)  number of households
 !
 ! Revision history
@@ -753,7 +753,7 @@ subroutine UpdateParms(xFree,iFree,parms)
 !
 ! C   = K*(K-1)/2 + (K-1)*(J-K) spherical coordinate representation of B
 !       stored as a vector
-! D   = J x 1 scaling factors 
+! D   = J x 1 scaling factors
 !
 real(dp),             intent(in)    :: xFree(:)
 type(SelectFreeType), intent(in)    :: iFree
@@ -786,7 +786,7 @@ call SphereToMatrix(parms%BC,parms%D,parms%K,parms%J,parms%B, &
 ! iFree%MuE  = elements of xFree corresponding to MuE
 ! iFree%xmue = elements of MuE that are free
 if (size(iFree%MuE>0)) then
-  parms%MuE(iFree%MuE) = xFree(iFree%xmue)    
+  parms%MuE(iFree%MuE) = xFree(iFree%xmue)
 end if
 
 ! iFree%InvCDiag  = elements of xFree corresponding to InvCDiag
@@ -804,7 +804,7 @@ if (size(iFree%InvCOffDiag)>0) then
   parms%InvCOffDiag(iFree%InvCOffDiag) = xFree(iFree%xInvCOffDiag)
 end if
 
-! parms%InvC         = (K x K) upper triangular Cholesky decomposition 
+! parms%InvC         = (K x K) upper triangular Cholesky decomposition
 !                                 of inverse of Sig
 !                                 inv(sig) = InvC'*InvC
 ! parms%GradInvCOffDiag = (K x n) gradient of InvC w.r.t. InvCOffDiag
@@ -825,14 +825,14 @@ end subroutine UpdateParms
 !
 ! Revision history
 !
-! 2018MAY23 LN  add seasonality to model 
+! 2018MAY23 LN  add seasonality to model
 ! 10JUN2014 LN  adapted from matlab file UpdateParms_RC.m
 !
 ! Utility parameters
 !     log(BD) = BD_z * BD_beta + BD_C * eta + BD_month(month)
 !     BC      = pi * normcdf(Y)
 !     Y      = BC_z * BC_beta + BC_C * eta
-! 
+!
 ! BD_beta = (nzD x 1)
 ! BD_C    = (J x dim_eta)
 ! BC_beta = (nzC x 1)
@@ -933,7 +933,7 @@ subroutine UpdateParms2(x,iFree,parms)
   ! iFree%xmue  = elements of xFree corresponding to MuE
   ! iFree%mue = elements of MuE that are free
   if (iFree%nMuE>0) then
-    parms%MuE(iFree%MuE) = x(iFree%xmue)    
+    parms%MuE(iFree%MuE) = x(iFree%xmue)
   end if
 
   ! MuE_month
@@ -994,8 +994,8 @@ subroutine LogDensityFunc(e,parms,mue_month,F,GradF_e,GradF_MuE,GradF_InvC)
 ! F          = (1 x 1) log density evaluated at e
 ! GradF_e    = (K x 1) gradient of log density w.r.t. e
 ! GradF_MuE  = (K x 1) gradient of log density w.r.t. MuE
-! GradF_InvC = (K x K) gradient of log density w.r.t. InvC 
-!                           
+! GradF_InvC = (K x K) gradient of log density w.r.t. InvC
+!
 ! Revision history
 ! 09DEC2012 LN translated to Fortran from matlab LogDensity.m
   use nrtype
@@ -1032,7 +1032,7 @@ subroutine LogDensityFunc(e,parms,mue_month,F,GradF_e,GradF_MuE,GradF_InvC)
   DetInvC = 1.0d0
   do i1=1,parms%K
     DetInvC = DetInvC * parms%InvC(i1,i1)
-  end do  
+  end do
 
   ! Ln(L) = -0.5*z'*z -0.5*K*log(2*pi) + log(det(InvC))
   F     = -0.5d0*dot_product(z,z) - 0.5d0*real(parms%K,dp)*log(2.0d0*pi) &
@@ -1051,7 +1051,7 @@ subroutine LogDensityFunc(e,parms,mue_month,F,GradF_e,GradF_MuE,GradF_InvC)
     GradF_InvC(i2,i1) = -0.5d0*dot_product(e-parms%MuE-mue_month,temp1)
   end do
   end do
-  
+
   temp2 = 0.0d0
   do i1=1,parms%K
     temp2(i1,i1) = 1.0d0
@@ -1076,7 +1076,7 @@ subroutine ComputeRowGroup(L,J,d,RowGroup)
   real(dp), intent(in)      :: L(J,d)
   integer(i4b), intent(out) :: RowGroup(J)
 
-  integer(i4b) :: j1,ix 
+  integer(i4b) :: j1,ix
   ! for each row find the right-most column with a non-zero element
   ! RowGroup(j)==i1 indicates that L(j,i1)~=0 and L(j,i1+1:d)==0
   RowGroup = 0
@@ -1088,7 +1088,7 @@ end subroutine ComputeRowGroup
 subroutine ComputeProb(p,v,w,RowGroup,R,DTilde,Integrand,  &
                        epsilon1,nu1,Omega12,C2,CPsi,Q,S1,  &
                        d1,d2)
-  
+
   use nrtype
   use nag_library, only : S15ABF
   use ToolsModule, only : InverseNormal_mkl
@@ -1098,23 +1098,23 @@ subroutine ComputeProb(p,v,w,RowGroup,R,DTilde,Integrand,  &
   ! Compute integral of f(x) * exp(-0.5*x'*x)/((2*pi)^d/2) over the region
   ! R*x <= DTilde.
   !
-  ! v        = (n x d) integration nodes lieing in [-1,1]^d  
+  ! v        = (n x d) integration nodes lieing in [-1,1]^d
   ! w        = (n x 1) w(i1) integration weights for node x(i1,:)
   ! RowGroup = (J x 1) index of group that row j belongs to
-  !                     if RowGroup(j)==i1, then row(j) imposes 
+  !                     if RowGroup(j)==i1, then row(j) imposes
   !                    a constraint on x(i1) because R(j,i1)~=0
   !                    and R(j,i1+1:d)==0
   !                    a column in row(j) is i1.
   ! R        = (J x d2) lower triangular matrix of constraints
   ! DTilde   = (J x 1) right side of constraints
-  ! func     = (function handle) integrand 
+  ! func     = (function handle) integrand
   real(dp),     intent(out) :: p
   real(dp),     intent(in)  :: v(:,:)
   real(dp),     intent(in)  :: w(:)
   integer(i4b), intent(in)  :: RowGroup(:)
   real(dp),     intent(in)  :: R(:,:)
   real(dp),     intent(in)  :: DTilde(:)
-  integer(i4b), intent(in)  :: Integrand 
+  integer(i4b), intent(in)  :: Integrand
   real(dp),     optional, intent(in) :: epsilon1(:),nu1(:),Omega12(:,:),C2(:,:),CPsi(:,:)
   real(dp),     optional, intent(in) :: S1(:),Q(:,:)
   integer(i4b), optional, intent(in) :: d1,d2
@@ -1125,7 +1125,7 @@ subroutine ComputeProb(p,v,w,RowGroup,R,DTilde,Integrand,  &
   logical                   :: ZeroProb
   integer(i4b)              :: i1,i2,i3
   logical, allocatable      :: Rows_Pos(:),Rows_Neg(:)
-  real(dp), allocatable     :: ULO(:),UHI(:) 
+  real(dp), allocatable     :: ULO(:),UHI(:)
   integer(i4b)              :: n1
   real(dp), allocatable     :: t1(:),t2(:),t3(:)
   real(dp), allocatable     :: R1(:)
@@ -1158,7 +1158,7 @@ subroutine ComputeProb(p,v,w,RowGroup,R,DTilde,Integrand,  &
   do i1=1,QuadDim
     Rows_Pos = (RowGroup .eq. i1) .and. (R(:,i1)>0)
     Rows_Neg = (RowGroup .eq. i1) .and. (R(:,i1)<0)
- 
+
     if (i1==1) then
       if (any(Rows_Neg)) then
         xtemp = maxval(pack(DTilde,Rows_Neg)/pack(R(:,i1),Rows_Neg))
@@ -1184,8 +1184,8 @@ subroutine ComputeProb(p,v,w,RowGroup,R,DTilde,Integrand,  &
       ifail = 0
       xT(:,i1) = max(InverseNormal_mkl(u(:,1),n,ifail),-big)
 
-      J = J*(UHi-ULo)/2.0d0 
-    elseif (i1>1) then 
+      J = J*(UHi-ULo)/2.0d0
+    elseif (i1>1) then
       if (any(Rows_Neg)) then
         n1 = count(Rows_Neg)
         allocate(t1(n1),t2(n1),t3(n1),R1(n1))
@@ -1194,7 +1194,7 @@ subroutine ComputeProb(p,v,w,RowGroup,R,DTilde,Integrand,  &
         do i3=1,i1-1
           t2 = pack(R(:,i3),Rows_Neg)/R1
           t3 = t1
-          do i2=1,n 
+          do i2=1,n
             t3=t3-t2*xT(i2,i3)
             ! S15ABF normal CDF
             ifail = 0
@@ -1231,7 +1231,7 @@ subroutine ComputeProb(p,v,w,RowGroup,R,DTilde,Integrand,  &
       ! xT(:,i1) = InverseNormal of u(:,i1)
       xT(:,i1) = max(InverseNormal_mkl(u(:,i1),n,ifail),-big)
 
-      J = 0.5d0*J*(UHi-ULo)     
+      J = 0.5d0*J*(UHi-ULo)
     end if ! if i1==1
   end do   ! do i1=1,d
 
@@ -1251,11 +1251,11 @@ subroutine ComputeProb(p,v,w,RowGroup,R,DTilde,Integrand,  &
     elseif (Integrand==3) then
       F = 1.0d0
     end if
-    
+
     p = dot_product(F*J,w)
   end if
   deallocate(u,xT,J,F)
-  deallocate(Rows_Pos,Rows_Neg) 
+  deallocate(Rows_Pos,Rows_Neg)
   deallocate(ULO,UHI)
 end subroutine ComputeProb
 
@@ -1293,7 +1293,7 @@ case ('deallocate')
   deallocate(GradF%Q)
   deallocate(GradF%CPsi)
 
-end select 
+end select
 end subroutine AllocateGradF
 
 subroutine DensityFunc2(xT,epsilon1,nu1,Omega12,C2,CPsi,Q,S1,d1,d2,F,GradF)
@@ -1305,9 +1305,9 @@ subroutine DensityFunc2(xT,epsilon1,nu1,Omega12,C2,CPsi,Q,S1,d1,d2,F,GradF)
   ! Case 2: 0 < d1 < K
   ! density of data to be integrated
   !
-  ! Compute f(q1,x) = f(epsilon1(q1),x) 
+  ! Compute f(q1,x) = f(epsilon1(q1),x)
   !                   epsilon2 = C2*z2+nu2
-  !                   z2 = x*Q     
+  !                   z2 = x*Q
   !                   v1 = nu1 + Omega12*(C2.'\z2)
   !
   ! F        = (nx x 1)   output, one value for each value of x
@@ -1430,7 +1430,7 @@ subroutine DensityFunc2(xT,epsilon1,nu1,Omega12,C2,CPsi,Q,S1,d1,d2,F,GradF)
 
   !  Gradient w.r.t. (C2,Q)
   !  dF/d(C2) = df/dz1 * dz1/d(C2)
-  !             dz1/d(C2) = - 
+  !             dz1/d(C2) = -
 
   deallocate(e2,z1T)
 end subroutine DensityFunc2
@@ -1488,7 +1488,7 @@ subroutine SparseGridBayes(iFree,iuser,ruser)
     write(OPTSTR,'(a21,i2)') "Maximum Level = ",MaxOptions%MaxLevel
     ifail=-1
     call D01ZKF(OPTSTR, IOPTS, LIOPTS, OPTS, LOPTS, IFAIL)
-  end if 
+  end if
   ifail = -1
   call D01ESF(NI, NDIM, IntegrateLikeFunc, MAXDLV, DINEST, ERREST, IVALID, IOPTS, OPTS, IUSER, RUSER, IFAIL)
 
@@ -1626,7 +1626,7 @@ subroutine SetupBayesPrior(parms,iFree)
   else if (parms%model==2) then
 
     if (iFree%flagMUE==1) then
-      
+
 
   end if
 
@@ -1903,7 +1903,7 @@ subroutine CopyIFree(iFree,iFreeCopy)
     iFreeCopy%BD_beta = iFree%BD_beta
     iFreeCopy%xBD_beta = iFree%xBD_beta
   end if
-  
+
   if (iFree%flagBD_month>0) then
     allocate(iFreeCopy%BD_month(iFree%NBD_month))
     allocate(iFreeCopy%xBD_month(iFree%NBD_month))
@@ -1949,7 +1949,7 @@ subroutine UpdateIFree(i1,iFree0,iFreeNew)
   iFreeNew%nBD_CDiag    = 0
   iFreeNew%nBD_COffDiag = 0
   iFreeNew%nBD_month    = 0
-  
+
   iFreeNew%flagD           = 0
   iFreeNew%flagBC          = 0
   iFreeNew%flagMUE         = 0
@@ -1963,7 +1963,7 @@ subroutine UpdateIFree(i1,iFree0,iFreeNew)
   iFreeNew%flagBD_CDiag    = 0
   iFreeNew%flagBD_COffDiag = 0
   iFreeNew%flagBD_month    = 0
- 
+
   allocate(iFreeNew%xlabels(1))
   write(iFreeNew%xlabels(1),'(i3.0)') i1
 
@@ -2198,7 +2198,7 @@ subroutine ComputeElasticities
   real(dp), allocatable     :: e2(:)
 
   nprob      = 3
-  SimData1%N = 9  ! simulate and graph for 9 people with varying levels of 
+  SimData1%N = 9  ! simulate and graph for 9 people with varying levels of
                   ! (eta1,eta2)
   call AllocateLocalHHData(SimData1)
   ! Define month
@@ -2276,7 +2276,7 @@ subroutine ComputeElasticities
   q1 = 0.0d0
   qdata=0.0d0
   qhat =0.0d0
- 
+
   ! aggregate demand in raw data
   call ComputeAggregateDemand(HHData%q,HHData%iNonZero,qdata,HHData%nNonZero,0)
 
@@ -2363,7 +2363,7 @@ subroutine ComputeElasticities
   allocate(HHSpending(HHDataSim2%n,ntax),HHUtility(HHDataSim2%n,ntax))
 
   qtax       = 0.0d0
-  ptax       = 0.0d0  
+  ptax       = 0.0d0
   HHSpending = 0.0d0
   HHUtility  = 0.0d0
   do i1=1,ntax
@@ -2382,7 +2382,7 @@ subroutine ComputeElasticities
   ! Write description of tax experiments
   copyfilecommand = "cp " // trim(ParmFiles%TaxparmsFile) // " " // trim(OutDir) // "/taxparms.csv"
   ifail = system(trim(copyfilecommand))
-  
+
   ! Write aggregate results:  baseline (q0,p0) and alternative (qtax,ptax) (J x ...)
   call WriteTaxResults1(q0,p0,qtax,ptax,filename="taxresults_aggregate.csv")
 
@@ -2429,7 +2429,7 @@ subroutine ComputeIndividualDemand(SimData1)
   open(Unit= SimUNit, &
        File= SimFile, &
        action = 'write')
-  
+
   write(fmt1,'(a11,i1,a18,i2,a9,i2,a12,i3,a14)') &
              '(3(i2,","),',parms%dim_eta,'(g12.4,","),i2,","', &
              parms%k,'(i3,","),',parms%k,'(g12.4,","),',       &
@@ -2592,7 +2592,7 @@ subroutine ComputeDemand(HHData1)
   allocate(work(LWORK))
   HHData1%q = 0.0d0
   crit = 1e-4
- 
+
   do i1=1,HHData1%N
     if (parms%model==2) then
       ! if model==2, each HH TempB is a random coefficient
@@ -2602,7 +2602,7 @@ subroutine ComputeDemand(HHData1)
     CVEC = HHData1%p(:,i1) - matmul(transpose(parms%B),HHData1%e(:,i1))
     q = 0.0d0
     ifail = -1
-    ! Compute solution to 
+    ! Compute solution to
     !    min 0.5 * q'*A*q + cvec'*q   subject to q>=0
     !        0.5 * q' * (B'*B) * q + (p - B'*e)' * q
     !  = max  - 0.5 * (Bq-e)' * (Bq-e) - p'*q + 0.5 * e'*e
@@ -2694,9 +2694,38 @@ subroutine ComputeInitialGuess(parms,iFree,x)
       x(iFree%xBD_COffDiag) = parms%BD_COffDiag(iFree%BD_COffDiag)
     end if
   end if
- 
+
 end subroutine ComputeInitialGuess
 
+
+! Choose all parameters for column j
+! find all parameters that affect column j of B matrix
+! BD_beta   (J)   BD_beta(j)
+! BD_CDiag  (J)   BD_CDiag(j)
+! BD_COffDiag (R*(R-1)/2 + (R-1)*(J-R))
+!             2<=j<=R
+!             BD_COffDiag(i1)     i1 = (j-1)*(j-2)/2+(1:j-1)
+!             j>R
+!             BD_COffDiag(i1)     i1 = R*(R-1)/2 + (j-R-1)*(R-1) + (1:R-1)
+! BC_beta  (K*(K-1)/2 + (J-K)* (K-1))
+!          2<=j<=K
+!          BC_beta(i1)            i1 = (j-1)*(j-2)/2 + (1:j-1)
+!          j>K
+!          BC_beta(i1)            i1 = K*(K-1)/2 + (j-K-1)*(K-1) + (1:K-1)
+! BC_CDiag  (K*(K-1)/2 + (J-K)*(K-1))
+!           2<=j<=K
+!           BC_CDiag(i1)          i1 = (j-1)*(j-2)/2 + (1:j-1)
+!           j>K
+!           BC_CDiag(i1)          i1 = K*(K-1)/2 + (j-K-1)*(K-1) + (1:K-1)
+! BC_COffDiag (R*(R-1)/2 + (NC-R)*(R-1) )
+!             NC = K*(K-1)/2 + (J-K)*(K-1)
+!             2<=j<=K
+!            i1 = (j-1)*(j-2)/2 + (1:j-1)
+!            do i2=min(i1),max(i1)
+!              2<=i2<=R
+!              BC_COffDiag(i3)    i3 = (i2-1)*(i2-2)/2 + (1:i2-1)
+!              i2>R
+!              BC_COffDiag(i3)    i3 = R*(R-1)/2 + (i2-R-1)*(R-1) + (1:R-1)
 subroutine SelectFreeParameters(parms,iFree)
   use nrtype
   use GlobalModule, only : ParmsStructure,SelectFreeType
@@ -2705,7 +2734,7 @@ subroutine SelectFreeParameters(parms,iFree)
   type(ParmsStructure), intent(in)    :: parms
   type(SelectFreeType), intent(inout) :: iFree
 
-  integer(i4b) :: i1,fruit,month,ix
+  integer(i4b) :: i1,fruit,month,ix,jcol,n1
 
   !  FreeFlags.D           = 1;
   !  FreeFlags.C           = 1;
@@ -2790,8 +2819,8 @@ subroutine SelectFreeParameters(parms,iFree)
   end if
   iFree%nall=iFree%nall+iFree%nInvCDiag
 
-  ! parms%InvCOffDiag  = (K*(K-1)/2 x 1)  angles from spherical representation of 
-  !                                    Cholesky decomposition of inverse of Sig 
+  ! parms%InvCOffDiag  = (K*(K-1)/2 x 1)  angles from spherical representation of
+  !                                    Cholesky decomposition of inverse of Sig
   ! iFree%xInvCOffDiag = elements of xFree corresponding to InvCOffDiag
   ! iFree%InvCOffDiag  = elements of InvCOffDiag that are free
   if (iFree%flagInvCOffDiag==1) then
@@ -2812,7 +2841,7 @@ subroutine SelectFreeParameters(parms,iFree)
     iFree%nBC_beta     = 0
     iFree%nBC_CDiag    = 0
     iFree%nBC_COffDiag = 0
-    iFree%nBD_month    = 0 
+    iFree%nBD_month    = 0
 
     if (iFree%flagBD_beta==1) then
       iFree%nBD_beta = parms%BD_z_dim - ifree%bd_beta1 + 1
@@ -2820,6 +2849,13 @@ subroutine SelectFreeParameters(parms,iFree)
       allocate(iFree%xBD_beta(iFree%nBD_beta))
       iFree%BD_beta = (/(ix,ix=ifree%bd_beta1,parms%BD_z_dim)/)
       iFree%xBD_beta = iFree%nAll + (/(ix,ix=1,ifree%nbd_beta)/)
+      iFree%nall = iFree%nall + iFree%nBD_beta
+    else if (ifree%flagBD_beta>10) Then
+      ifree%nBD_beta = 1
+      allocate(iFree%BD_beta(iFree%nBD_beta))
+      allocate(iFree%xBD_beta(iFree%nBD_beta))
+      iFree%BD_beta = iFree%flagBD_beta-10
+      iFree%xBD_beta = iFree%nAll + 1
       iFree%nall = iFree%nall + iFree%nBD_beta
     end if
 
@@ -2830,6 +2866,26 @@ subroutine SelectFreeParameters(parms,iFree)
       iFree%BC_beta = (/(ix,ix=ifree%bc_beta1,parms%BC_z_dim)/)
       iFree%xBC_beta = iFree%nAll + (/(ix,ix=1,ifree%nbc_beta)/)
       iFree%nall = iFree%nall + iFree%nBC_beta
+    else if (iFree%flagBC_beta>10) then
+      jcol = iFree%flagBC_beta-10
+      if (jcol>1 .and. jcol<=parms%K) then
+        ifree%nbc_beta = jcol - 1
+        allocate(iFree%BC_beta(iFree%nBC_beta))
+        allocate(iFree%xBC_beta(iFree%nBC_beta))
+        n1 = (jcol-1)*(jcol-2)/2
+        iFree%BC_beta = (/(ix,ix=n1 + 1,n1 + jcol-1)/)
+        iFree%xBC_beta = iFree%nAll + (/(ix,ix=1,ifree%nbc_beta)/)
+        iFree%nall = iFree%nall + iFree%nBC_beta
+      else if (jcol>K) then
+        ifree%nbc_beta = K - 1
+        allocate(iFree%BC_beta(iFree%nBC_beta))
+        allocate(iFree%xBC_beta(iFree%nBC_beta))
+        n1 = K*(K-1)/2 + (jcol-K-1)*(K-1)
+        iFree%BC_beta = (/(ix,ix=n1+1,n1+jcol-1)/)
+      iFree%xBC_beta = iFree%nAll + (/(ix,ix=1,ifree%nbc_beta)/)
+      iFree%nall = iFree%nall + iFree%nBC_beta
+
+      end if
     end if
 
     if (iFree%flagBD_CDiag==1) then
@@ -2987,7 +3043,7 @@ subroutine ComputeBayes(x,L,Grad,Hess,ierr)
   ! moments of x: zero, one and two
   real(dp)              :: m0
   real(dp), allocatable :: m1(:),m2(:,:)
-  
+
   mode=0
   nx = size(x)
   allocate(m1(nx))
@@ -3059,10 +3115,10 @@ subroutine MaximizeLikelihood1(x,LValue,Grad,Hess,ierr)
   real(dp), allocatable       :: A(:,:)
 
   ! LOWER AND UPPER BOUNDS for optimisation
-  real(dp), allocatable       :: BL(:),BU(:)            
+  real(dp), allocatable       :: BL(:),BU(:)
 
   ! MULTIPLIERS ON CONSTRAINTS
-  REAL(DP), allocatable       :: CLAMBDA(:)                          
+  REAL(DP), allocatable       :: CLAMBDA(:)
 
   ! PARAMETERS FOR E04WCF and E04WDF (constrained optimisation subroutines from NAG)
   INTEGER(I4B)                :: IFAIL,iter,nstate
@@ -3073,11 +3129,11 @@ subroutine MaximizeLikelihood1(x,LValue,Grad,Hess,ierr)
   character(99)               :: E04File   ! file name for E04WDF options file
   character(99)               :: OutFile   ! file name for E04WDF options file
   character(20)               :: SaveFreqString
- 
+
 ! Workspace for E04WCF and E04WDF (constrained optimisation subroutines from NAG)
   real(dp)                    :: RW(lenrw)
   integer(i4b)                :: IW(leniw)
-  
+
   ! E04WDF outputs
   !real(DP)                  :: OBJF
 
@@ -3088,9 +3144,9 @@ subroutine MaximizeLikelihood1(x,LValue,Grad,Hess,ierr)
   ! used to test NAGConstraintWrapper
   integer(i4b)                :: mode_constraint
   integer(i4b), allocatable   :: needc(:)
-    
+
   ! Dimensions of maximization problem
-  nx=size(x,1)    
+  nx=size(x,1)
   allocate(x0(nx))
   x0 = x
 
@@ -3099,7 +3155,7 @@ subroutine MaximizeLikelihood1(x,LValue,Grad,Hess,ierr)
   ruser    = 0.0d0
 
 #if USE_MPI==1
-  ! broadcast (nx,iuser,ruser) 
+  ! broadcast (nx,iuser,ruser)
   call mpi_bcast(nx,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr)
   ! broadcast length of iuser
   call mpi_bcast(2,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr)
@@ -3136,7 +3192,7 @@ subroutine MaximizeLikelihood1(x,LValue,Grad,Hess,ierr)
   ! linear constraints:   BL <= A*x <= BU
   !     NONE
   !  A is not referenced when nclin==0
-  ! lower and upper bounds on xFree 
+  ! lower and upper bounds on xFree
   BL = -5.0d0
   !-huge(1.0d0)
   BU = 5.0d0
@@ -3156,9 +3212,9 @@ subroutine MaximizeLikelihood1(x,LValue,Grad,Hess,ierr)
     ! test gradient of likelihood
     call TestGrad(LikeFunc,nx,x,nstate,iuser,ruser)
   else if (ControlOptions%TestLikeFlag==2) then
-    ! plot likelihood function 
+    ! plot likelihood function
     call PlotLike(LikeFunc,nx,x,iFree%xlabels,BL(1:nx),BU(1:nx),nstate,iuser,ruser)
-  else if (ControlOptions%TestLikeFlag==0 .or. ControlOptions%TestLikeFlag>2) then 
+  else if (ControlOptions%TestLikeFlag==0 .or. ControlOptions%TestLikeFlag>2) then
     ! Initialize E04WDF by calling E04WCF
     ifail=-1
     call e04wcf(IW,LENIW,RW,LENRW,ifail)
@@ -3209,7 +3265,7 @@ subroutine MaximizeLikelihood1(x,LValue,Grad,Hess,ierr)
     end do
 
     if (ControlOptions%TestLikeFlag==0) then
-       ! Maximise likelihood 
+       ! Maximise likelihood
        print *,'Begin maximization.'
        if (ControlOptions%OutputFlag >0) then
           call ComputeHess(x0,LValue0,GRAD,Hess,iuser,ruser)
@@ -3268,7 +3324,7 @@ subroutine MaximizeLikelihood1(x,LValue,Grad,Hess,ierr)
     if (ControlOptions%OutputFlag==1) then
       call ComputeStats(x,LValue,Grad,Hess,HHData%N,LikeStats)
       call SaveOutputs(x,LValue,Grad,Hess,LikeStats)
-    else 
+    else
       OutFile = trim(OutDir) // '/results.txt'
       open(unit = 130,file = OutFile,action = 'write')
       write(130,'(a20,3a25)') 'Var. Name','x0','x','Gradient'
@@ -3318,14 +3374,14 @@ subroutine BayesLikelihood1(x,LValue,Grad,Hess,ierr)
   integer(i4b)                :: nx,iter,task
 
   ! LOWER AND UPPER BOUNDS for optimisation
-  real(dp), allocatable       :: BL(:),BU(:)            
+  real(dp), allocatable       :: BL(:),BU(:)
 
   ! User INPUTS TO OBJECTIVE FUNCTION
   REAL(DP)                    :: RUSER(1)
   INTEGER(I4B)                :: iuser(2)
 
   ! Dimensions of maximization problem
-  nx=size(x,1)    
+  nx=size(x,1)
 
   allocate(BL(nx),BU(nx))
 
@@ -3386,7 +3442,7 @@ subroutine MaximizePenalizedLikelihood(x,LValue,Grad,Hess,ierr)
   integer(i4b), parameter   :: leniw=600,lenrw=600
   integer(i4b), parameter   :: eflag=1
   integer(i4b)              :: eunit
-  integer(i4b)              :: E04Unit 
+  integer(i4b)              :: E04Unit
   character(len=30)         :: E04File
 
   ! used to transmit completion message to worker in MPI version
@@ -3400,21 +3456,21 @@ subroutine MaximizePenalizedLikelihood(x,LValue,Grad,Hess,ierr)
   real(dp), allocatable     :: A(:,:)
 
   ! LOWER AND UPPER BOUNDS for optimisation
-  real(dp), allocatable     :: BL(:),BU(:)            
+  real(dp), allocatable     :: BL(:),BU(:)
 
   ! MULTIPLIERS ON CONSTRAINTS
-  REAL(DP), allocatable     :: CLAMBDA(:)                          
+  REAL(DP), allocatable     :: CLAMBDA(:)
 
   ! PARAMETERS FOR E04WCF and E04WDF (constrained optimisation subroutines from NAG)
   INTEGER(I4B)              :: IFAIL,iter
   integer(i4b), allocatable :: ISTATE(:)
   real(dp), allocatable     :: ccon(:)
   real(dp), allocatable     :: cjac(:,:)
-  
+
   ! Workspace for E04WCF and E04WDF (constrained optimisation subroutines from NAG)
   real(dp)                  :: RW(lenrw)
   integer(i4b)              :: IW(leniw)
-  
+
   ! E04WDF outputs
   real(DP)                  :: OBJF
 
@@ -3425,8 +3481,8 @@ subroutine MaximizePenalizedLikelihood(x,LValue,Grad,Hess,ierr)
   ! Control parameter for saving intermediate results
   !   0 DO NOT SAVE intermediate results
   !   1 SAVE intermediate results
-  integer(i4b), parameter   :: NAG_SAVE=0    
-  
+  integer(i4b), parameter   :: NAG_SAVE=0
+
   ! Dimensions of maximization problem
   nxP   = Penalty%nxP
   nclin = Penalty%nx2
@@ -3464,7 +3520,7 @@ subroutine MaximizePenalizedLikelihood(x,LValue,Grad,Hess,ierr)
     A(i1,Penalty%xP_index2(i1)) = 1.0d0
     A(i1,Penalty%xP_index_xPlus(i1)) = -1.0d0
     A(i1,Penalty%xP_index_xMinus(i1)) = 1.0d0
-  end do  
+  end do
 
   ! lower and upper bounds on xP
   ! x1L  <= x1              <= x1H
@@ -3481,7 +3537,7 @@ subroutine MaximizePenalizedLikelihood(x,LValue,Grad,Hess,ierr)
   ! set bounds on (xPlus,xMinus)
   BU(Penalty%xP_index_xPlus)  = BU(Penalty%xP_index2)
   BU(Penalty%xP_index_xMinus) = -BL(Penalty%xP_index2)
- 
+
   ! set options for E04WDF
   E04Unit = 50
   E04File = trim(InputDir) // '/E04WDF.opt'
@@ -3492,7 +3548,7 @@ subroutine MaximizePenalizedLikelihood(x,LValue,Grad,Hess,ierr)
   call E04WEF(E04Unit,IW,RW,ifail)
   close(E04Unit)
 
-  if (NAG_SAVE==1) then  
+  if (NAG_SAVE==1) then
       open(101,FILE = 'output/NewBasis1.txt',ACTION='WRITE')
       open(103,FILE = 'output/BackupBasis1.txt',ACTION='WRITE')
       call E04WFF('New Basis File = 101',iw,rw,ifail)   ! unit number to save intermediate results
@@ -3503,7 +3559,7 @@ subroutine MaximizePenalizedLikelihood(x,LValue,Grad,Hess,ierr)
   ifail=-1
   iuser(1) = 1
   ruser    = 0.0d0
- 
+
   LValue = 0.0D0
   Grad   = 0.0d0
   Hess   = 0.0d0
@@ -3525,7 +3581,7 @@ subroutine MaximizePenalizedLikelihood(x,LValue,Grad,Hess,ierr)
     xP(Penalty%xP_index_xMinus(i1)) = max(-x(Penalty%x_index2(i1)),0.0d0)
   end do
 
- ! Maximise likelihood 
+ ! Maximise likelihood
   if (ControlOptions%TestLikeFlag==1) then
     call TestGrad(LikeFunc,nxP,xP,1,iuser,ruser)
   else
@@ -3567,14 +3623,14 @@ subroutine LikeFunc(mode,nx,x,L,GradL,nstate,iuser,ruser)
   use nrtype
   use GlobalModule, only : Penalty
   implicit none
-  integer(i4b), intent(inout) :: mode 
+  integer(i4b), intent(inout) :: mode
   integer(i4b), intent(in)    :: nx,nstate
   integer(i4b), intent(inout) :: iuser(*)
   real(dp), intent(in)        :: x(nx)
   real(dp), intent(inout)     :: ruser(*)
   real(dp), intent(out)       :: L
   real(dp), intent(inout)     :: GradL(nx)
-  
+
   integer(i4b)                :: model,N
 
   model = iuser(1)
@@ -3603,11 +3659,11 @@ subroutine LikeFunc(mode,nx,x,L,GradL,nstate,iuser,ruser)
     L = L/real(N,dp)
     if (mode>0) then
       ! GradL = GradL/real(N,dp)
-    end if  
+    end if
   end if
 #endif
 end subroutine LikeFunc
- 
+
 ! PenalizedLikelihood:
 !  compute objective function for penalized likelihood for model == iuser(1)
 subroutine PenalizedLikelihood(mode,nxP,xP,LP,GradLP,nstate,iuser,ruser)
@@ -3617,7 +3673,7 @@ subroutine PenalizedLikelihood(mode,nxP,xP,LP,GradLP,nstate,iuser,ruser)
 ! xP       =  (nxP x 1) free parameters
 !
 ! Revision history
-! 19sep2012 LN   created subroutine 
+! 19sep2012 LN   created subroutine
 
   integer(i4b), intent(inout)        :: mode
   integer(i4b), intent(in)           :: nxP
@@ -3648,8 +3704,8 @@ subroutine PenalizedLikelihood(mode,nxP,xP,LP,GradLP,nstate,iuser,ruser)
   if (Penalty%nx2>0) then
     x(Penalty%x_index2) = xP(Penalty%xP_index2)
   end if
-  
-  if (model==1) then 
+
+  if (model==1) then
     ! Logit model
     call Like1(mode,Penalty%nx,x,L,GradL,nstate,iuser,ruser)
   end if
@@ -3729,7 +3785,7 @@ subroutine TestGrad(LikeFunc,nx,x,nstate,iuser,ruser)
 
   mode=2
   call LikeFunc(mode,nx,x,L0,GradL0,nstate,iuser,ruser)
-  
+
   open(UNIT   = 1033, &
        File   = MakeFullFileName('TestGrad.txt'), &
        action = 'write')
@@ -3810,7 +3866,7 @@ subroutine ComputeHess2(x,L,Grad,Hess)
   real(dp)                  :: h
   integer(i4b)              :: TotalTime
   integer(i4b), allocatable :: SubTime(:)
-  character(len=10)         :: StartTime 
+  character(len=10)         :: StartTime
 
   ! when nx >50, break up computation into iterations
   ! compute in max block size of 50 x 50
@@ -3823,7 +3879,7 @@ subroutine ComputeHess2(x,L,Grad,Hess)
   allocate(GradLHH(HHData%n,nmax))
   allocate(GradLHH1(HHData%n))
   allocate(x1(nx))
-  allocate(SubTime(nx)) 
+  allocate(SubTime(nx))
 
   L       = 0.0d0
   Grad    = 0.0d0
@@ -3947,14 +4003,14 @@ subroutine ComputeHess2(x,L,Grad,Hess,ComputeHessFlag)
   real(dp)                  :: h
   integer(i4b)              :: TotalTime
   integer(i4b), allocatable :: SubTime(:)
-  character(len=10)         :: StartTime 
+  character(len=10)         :: StartTime
 
   nx = size(x,1)
 
   allocate(LHH0(HHData%n),LHH1(HHData%n))
   allocate(GradLHH(HHData%n,nx))
   allocate(x1(nx))
-  allocate(SubTime(nx)) 
+  allocate(SubTime(nx))
 
   L       = 0.0d0
   Grad    = 0.0d0
@@ -3996,7 +4052,7 @@ subroutine ComputeHess2(x,L,Grad,Hess,ComputeHessFlag)
 
   call Like2Hess(nx,x,LHH0)
   L  = sum(LHH0)/real(HHData%n,dp)
-  
+
   if (ComputeHessFlag==1) then
     TotalTime = time()
     SubTime   = 0.0d0
@@ -4056,7 +4112,7 @@ subroutine SetBounds(x,BL,BU)
   real(dp), intent(out) :: BU(:)
   integer(i4b)          :: lastindex,index1(1)
   ! transpose(BC_C) = (KC x JC)
-  ! transpose(BD_C) = (KC x JD)  
+  ! transpose(BD_C) = (KC x JD)
   integer(i4b) :: KC,KD,JC,JD,i1
 
   BL = x-10.0d0
@@ -4075,10 +4131,10 @@ subroutine SetBounds(x,BL,BU)
     !           upper bound = pi_d otherwise
     do i1=2,parms%K
       ! Find elements for which upper bound is 2*pi
-      lastindex = (i1*(i1-1))/2 
+      lastindex = (i1*(i1-1))/2
       if (any(iFree%BC==lastindex)) then
         index1 = pack(iFree%xBC,iFree%BC==lastindex)
-        BU(index1) = 1.9d0 * pi_d 
+        BU(index1) = 1.9d0 * pi_d
       end if
     end do
     do i1=parms%K+1,parms%J
@@ -4114,9 +4170,9 @@ subroutine SetBounds(x,BL,BU)
         index1 = pack(iFree%xInvCOffDiag,iFree%InvCOffDiag==lastindex)
         BU(index1) = parms%InvCOffDiag_HI * 2.0d0*pi_d
       end if
-    end do 
+    end do
   end if
-  
+
   if (iFree%nBD_beta>0) then
     BL(iFree%xBD_beta) = max(x(iFree%xBD_beta)-2.0d0,parms%BD_beta_lo)
     BU(iFree%xBD_beta) = min(x(iFree%xBD_beta)+1.0d0,parms%BD_beta_hi)
@@ -4131,7 +4187,7 @@ subroutine SetBounds(x,BL,BU)
     BL(iFree%xBC_beta) = max(x(iFree%xBC_beta)-2.0d0,parms%BC_beta_lo)
     BU(iFree%xBC_beta) = min(x(iFree%xBC_beta)+3.0d0,parms%BC_beta_hi)
   end if
- 
+
   if (iFree%nBC_CDiag>0) then
     ! BC   = norminv( BC_beta * z + BC_C * eta
     !        want diag of BC_C to be between [0,0.8]
@@ -4140,7 +4196,7 @@ subroutine SetBounds(x,BL,BU)
     !        also note: Like(BC_CDiag= -x) = Like(BC_CDiag = x)
     BL(iFree%xBC_CDiag) = max(x(iFree%xBC_CDiag)-1.0d0,-1.0d0)
     BU(iFree%xBC_CDiag) = min(x(iFree%xBC_CDiag)+1.0d0,1.0d0)
-  end if 
+  end if
   if (iFree%nBD_CDiag>0) then
     ! log(BD) = BD_Beta * z + BD_C * eta
     !           want diag of BD_C between 0.0  and  1.0
@@ -4149,7 +4205,7 @@ subroutine SetBounds(x,BL,BU)
     !        also note: Like(BD_CDiag= -x) = Like(BD_CDiag = x)
     BL(iFree%xBD_CDiag) = max(x(iFree%xBD_CDiag)-1.0d0,-1.0d0)
     BU(iFree%xBD_CDiag) = min(x(iFree%xBD_CDiag)+1.0d0,1.0d0)
-  end if 
+  end if
 
   if (iFree%nBC_COffDiag>0) then
     BL(iFree%xBC_COffDiag) = 0.10d0*pi_d
@@ -4171,7 +4227,7 @@ subroutine SetBounds(x,BL,BU)
       end if
     end do
   end if
-  
+
   if (iFree%nBD_COffDiag>0) then
     BL(iFree%xBD_COffDiag) = 0.10d0*pi_d
     BU(iFree%xBD_COffDiag) = 0.90d0*pi_d
@@ -4254,13 +4310,13 @@ subroutine PlotLike(LikeFunc,nx,x,xlabels,xlo,xhi,nstate,iuser,ruser)
   real(dp), allocatable :: x1(:),xplot(:,:),L(:,:),GradL(:)
   integer(i4b)          :: plot_unit
   character(200)        :: plot_file
-  ! 
+  !
   plot_unit = 50
-  plot_file = trim(OutDir) // '/LikeData.txt' 
+  plot_file = trim(OutDir) // '/LikeData.txt'
   open(UNIT = plot_unit,  &
        FILE = plot_file,  &
        ACTION = 'write')
-  mode = 0 
+  mode = 0
   n=30
   allocate(x1(nx),xplot(n,nx),L(n,nx),GradL(nx))
   x1 = x
@@ -4297,7 +4353,7 @@ subroutine Constraint(x,mode,F,GradF)
 !  constraints:
 !      p2>= B2'*inv(B1')*p1
 !
-! for households that choose nNonZero<K, the constraint is that 
+! for households that choose nNonZero<K, the constraint is that
 !
 !    Pr(  p2 >= B2'*(B1*q1 - e) ) > 0
 !
@@ -4321,7 +4377,7 @@ subroutine Constraint(x,mode,F,GradF)
 !                           GradB_phi(:,i1) = gradient of column j(i1) of B
 !                           w.r.t. phi(i1)
 ! parms%GradB_D   = (K x J) gradient of B w.r.t. D
-!                           GradB_D(:,i1) = gradient of column i1 of B 
+!                           GradB_D(:,i1) = gradient of column i1 of B
 !                           w.r.t. D(i1)
 ! Revision history
 ! 2015JUN07 LN  major overhaul to clean up and make like TechnicalAppendix.tex
@@ -4379,7 +4435,7 @@ n1=0
 n2=0
 
 do i1=1,HHData%N
-  d1 = HHData%nNonZero(i1)  ! number of items purchased 
+  d1 = HHData%nNonZero(i1)  ! number of items purchased
   d2 = parms%K-d1           ! K - d1
   d3 = parms%J-d1           ! number of items NOT purchased
   allocate(B1(parms%K,d1),B2(parms%K,d3))
@@ -4389,13 +4445,13 @@ do i1=1,HHData%N
   B2 = parms%B(:,HHData%iZero(1:d3,i1))
   p1 = HHData%p(HHData%iNonZero(1:d1,i1),i1)
   p2 = HHData%p(HHData%iZero(1:d3,i1),i1)
-   
+
   ! c(index) = constraints corresponding to household i1
   if (d1==parms%K) then
     allocate(index(JK))
     index = n1 + (/1:JK/)
     n1=n1+JK
-    !------------------------------------------------------------------------  
+    !------------------------------------------------------------------------
     ! Case 1:   K products were purchased
     !           (HHData%nNonZero == K)
     !           -p2 + B2.'* (B1.')\p1 <=0
@@ -4408,12 +4464,12 @@ do i1=1,HHData%N
     call F04BAF(d1,1,B1,d1,iPivot,temp1,d1,rCond,errBound,ifail)
     c1(index) = - p2 + matmul(transpose(B2),temp1)
     deallocate(temp1,iPivot)
-    deallocate(index) 
+    deallocate(index)
   elseif (d1<parms%K .and. d1>0) then
     allocate(index(1))
     index = n2+1
     n2=n2+1
-    !------------------------------------------------------------------------  
+    !------------------------------------------------------------------------
     ! Case 2:   d1 < K products were purchased
     !           (HHData%nNonZero == d1 and d1 < K)
     !
@@ -4475,7 +4531,7 @@ do i1=1,HHData%N
     !  size( inv(Omega22)*Omega12' ) = (d2 x d1)
     Psi = Omega11 - matmul(Omega12,temp2)
     deallocate(temp2,iPivot)
-   
+
     allocate(CPsi(d1,d1))
     ! Cholesky decomposition of omega11: lower triangular form
     !      CPsi * CPsi' = Psi
@@ -4507,14 +4563,14 @@ do i1=1,HHData%N
     !   epsilon1 = inv(S1)*VT*p1 + S1*VT*q1
     !   DTilde   = p2 - B21Tilde.'*inv(S1)*VT*p1 - B22Tilde.'*S1*VT*q1
     Temp1 = Temp1/S(1:d1)
-    
+
     epsilon1 = Temp1
     DTilde  = HHData%p(HHData%iZero(1:d3,i1),i1)               &
              - matmul(transpose(B21Tilde),Temp1)
 
     Temp1 = matmul(VT,HHData%q(1:d1,i1))
     Temp1 = Temp1*S(1:d1)
-    
+
     epsilon1 = epsilon1 + Temp1
     DTilde = DTilde - matmul(transpose(B2Tilde),Temp1)
     deallocate(Temp1)
@@ -4530,7 +4586,7 @@ do i1=1,HHData%N
     call ComputeLQ(d3,d2,M1,R,Q,ifail)
 
     ! Prob = integral of DensityFunc over region of x satisfying R*x<=M2_tilda
-    ! 
+    !
     Integrand = 2
 
     allocate(RowGroup(d3))
@@ -4545,7 +4601,7 @@ do i1=1,HHData%N
     ! Prob>=small
     ! small - Prob<=0
     c2(index) = small - Prob
-   
+
     deallocate(index)
     deallocate(index1,index2)
     deallocate(U,S,VT)
@@ -4558,7 +4614,7 @@ do i1=1,HHData%N
     deallocate(iPivot,temp2)
     deallocate(R,Q)
     deallocate(RowGroup)
-    !------------------------------------------------------------------------  
+    !------------------------------------------------------------------------
     ! Case 3:   d == 0 products were purchased
     !           (HHData%nNonZero == d and d == 0)
     !           Mapping from 0 to e is NOT one-to-one
@@ -4582,14 +4638,14 @@ do i1=1,HHData%N
     !    R = (d3 x d2) lower triangular
     call ComputeLQ(d3,d2,M1,R,Q,ifail)
     DTilde = p2 - matmul(transpose(parms%B),parms%MuE)
-      
+
     ! Prob = integral of DensityFunc over region of x satisfying R*x<=M2_tilda
-    ! 
+    !
     Integrand = 3
-    
+
     allocate(RowGroup(d3))
     call ComputeRowGroup(R,d3,d2,RowGroup)
-   
+
     call ComputeProb(Prob,IntRule%rule(d2)%nodes,IntRule%rule(d2)%weights, &
                      RowGroup,R,DTilde,Integrand)
     c2(index) = small - Prob
@@ -4599,7 +4655,7 @@ do i1=1,HHData%N
     deallocate(R ,Q)
     deallocate(RowGroup)
   end if       ! if HHData%nNonZero(i1)==parms%k
-  
+
    deallocate(B1,B2)
    deallocate(p1,p2)
 end do         ! do i1=1,HHData%N
@@ -4739,7 +4795,7 @@ subroutine Max_E04JCF(x,LValue,Grad,Hess,ierr)
   !rhobeg = 0.1d0  ! initial lower boubnd on the value of trust region
   !rhoend = 1.0e-4  ! final lower bound on value of trust region
   !maxcal = 5000    ! maximum number of calls to objective function
- 
+
   ierr = -1
 
   ! initialize last_x for use by monfun_E04JCF
