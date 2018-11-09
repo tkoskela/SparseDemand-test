@@ -2726,6 +2726,15 @@ end subroutine ComputeInitialGuess
 !              BC_COffDiag(i3)    i3 = (i2-1)*(i2-2)/2 + (1:i2-1)
 !              i2>R
 !              BC_COffDiag(i3)    i3 = R*(R-1)/2 + (i2-R-1)*(R-1) + (1:R-1)
+!            end do
+!            j>K
+!            i1 = K*(K-1)/2 + (j-K-1)*(K-1) + (1:K-1)
+!            do i2=min(i1),max(i1)
+!              2<=i2<=R
+!              BC_COffDiag(i3)    i3 = (i2-1)*(i2-2)/2 + (1:i2-1)
+!              i2>R
+!              BC_COffDiag(i3)    i3 = R*(R-1)/2 + (i2-R-1)*(R-1) + (1:R-1)
+!            end do
 subroutine SelectFreeParameters(parms,iFree)
   use nrtype
   use GlobalModule, only : ParmsStructure,SelectFreeType
@@ -2882,9 +2891,8 @@ subroutine SelectFreeParameters(parms,iFree)
         allocate(iFree%xBC_beta(iFree%nBC_beta))
         n1 = K*(K-1)/2 + (jcol-K-1)*(K-1)
         iFree%BC_beta = (/(ix,ix=n1+1,n1+jcol-1)/)
-      iFree%xBC_beta = iFree%nAll + (/(ix,ix=1,ifree%nbc_beta)/)
-      iFree%nall = iFree%nall + iFree%nBC_beta
-
+        iFree%xBC_beta = iFree%nAll + (/(ix,ix=1,ifree%nbc_beta)/)
+        iFree%nall = iFree%nall + iFree%nBC_beta
       end if
     end if
 
@@ -2895,6 +2903,14 @@ subroutine SelectFreeParameters(parms,iFree)
       iFree%BD_CDiag = (/(ix,ix=ifree%bd_cdiag1,parms%J)/)
       iFree%xBD_CDiag = iFree%nAll + (/(ix,ix=1,ifree%nbd_cdiag)/)
       iFree%nall = iFree%nall + iFree%nBD_CDiag
+    else if (ifree%flagBD_cdiag>10) then
+      jcol = ifree%flagBD_cdiag-10
+      ifree%nbd_cdiag = 1
+      allocate(iFree%BD_CDiag(iFree%nBD_CDiag))
+      allocate(iFree%xBD_CDiag(iFree%nBD_CDiag))
+      iFree%BD_CDiag = jcol
+      iFree%xBD_CDiag = iFree%nAll + 1
+      iFree%nall = iFree%nall + iFree%nBD_CDiag
     end if
 
     if (iFree%flagBD_COffDiag==1) then
@@ -2904,6 +2920,25 @@ subroutine SelectFreeParameters(parms,iFree)
       iFree%BD_COffDiag = (/(ix,ix=ifree%bd_coffdiag1,size(parms%bd_coffdiag))/)
       iFree%xBD_COffDiag = iFree%nAll + (/(ix,ix=1,ifree%nbd_coffdiag)/)
       iFree%nall = iFree%nall + iFree%nBD_COffDiag
+    else if (ifree%bd_coffdiag>10) then
+      jcol = ifree%bd_coffdiag-10
+      if (jcol>1 .and. jcol<=parms%dim_eta) then
+        iFree%nBD_COffDiag = jcol-1
+        allocate(iFree%BD_COffDiag(iFree%nBD_COffDiag))
+        allocate(iFree%xBD_COffDiag(iFree%nBD_COffDiag))
+        n1 = (jcol-1)*(jcol-2)/2
+        iFree%BD_COffDiag = (/(ix,ix=n1+1,n1+jcol-1)/)
+        iFree%xBD_COffDiag = iFree%nAll + (/(ix,ix=1,ifree%nbd_coffdiag)/)
+        iFree%nall = iFree%nall + iFree%nBD_COffDiag
+      else if (jcol>parms%dim_eta) then
+        iFree%nBD_COffDiag = parms%dim_eta-1
+        allocate(iFree%BD_COffDiag(iFree%nBD_COffDiag))
+        allocate(iFree%xBD_COffDiag(iFree%nBD_COffDiag))
+        n1 = parms%dim_eta*(parms%dim_eta-1)/2 + (jcol-parms%dim_eta-1)*(parms%dim_eta-1)
+        iFree%BD_COffDiag = (/(ix,ix=n1+1,n1+parms%dim_eta-1)/)
+        iFree%xBD_COffDiag = iFree%nAll + (/(ix,ix=1,ifree%nbd_coffdiag)/)
+        iFree%nall = iFree%nall + iFree%nBD_COffDiag
+      end if
     end if
 
     if (iFree%flagBC_CDiag==1) then
@@ -2913,6 +2948,25 @@ subroutine SelectFreeParameters(parms,iFree)
       iFree%BC_CDiag = (/(ix,ix=ifree%bc_cdiag1,parms%nbc)/)
       iFree%xBC_CDiag = iFree%nAll + (/(ix,ix=1,ifree%nbc_cdiag)/)
       iFree%nall = iFree%nall + iFree%nBC_CDiag
+    else if (iFree%flagBC_cdiag>10) then
+      jcol = ifree%flagBC_coffdiag-10
+      if (jcol>=2 .and. jcol<parms%K) then
+        ifree%nbc_cdiag=jcol-1
+        allocate(iFree%BC_CDiag(iFree%nBC_CDiag))
+        allocate(iFree%xBC_CDiag(iFree%nBC_CDiag))
+        n1 = (jcol-1)*(jcol-2)/2
+        iFree%BC_CDiag = (/(ix,ix=n1+1,n1+jcol-1)/)
+        iFree%xBC_CDiag = iFree%nAll + (/(ix,ix=1,ifree%nbc_cdiag)/)
+        iFree%nall = iFree%nall + iFree%nBC_CDiag
+      else if (jcol>parms%K) then
+        ifree%nbc_cdiag=parms%K-1
+        allocate(iFree%BC_CDiag(iFree%nBC_CDiag))
+        allocate(iFree%xBC_CDiag(iFree%nBC_CDiag))
+        n1 = parms%K*(parms%K-1)/2 + (jcol-parms%K-1)*(parms%k-1)
+        iFree%BC_CDiag = (/(ix,ix=n1+1,n1+parms%K-1)/)
+        iFree%xBC_CDiag = iFree%nAll + (/(ix,ix=1,ifree%nbc_cdiag)/)
+        iFree%nall = iFree%nall + iFree%nBC_CDiag
+      end if
     end if
 
     if (iFree%flagBC_COffDiag==1) then
@@ -2922,6 +2976,41 @@ subroutine SelectFreeParameters(parms,iFree)
       iFree%BC_COffDiag = (/(ix,ix=ifree%bc_coffdiag1,size(parms%bc_coffdiag))/)
       iFree%xBC_COffDiag = iFree%nAll + (/(ix,ix=1,size(parms%bc_coffdiag))/)
       iFree%nall = iFree%nall + iFree%nBC_COffDiag
+    else if (ifree%flagbc_coffdiag>10) Then
+      jcol = ifree%flagbc_coffdiag-10
+      if (jcol>=2 .and. jcol<=parms%K) then
+        n1 = (jcol-1)*(jcol-2)/2
+        ifree%nbc_coffdiag = 0
+        do i1=n1+1,n1+jcol-1
+          if (i1>=2 .and. i1<=parms%dim_eta) then
+            ifree%nbc_coffdiag=ifree%nbc_coffdiag+i1-1
+          else if (i1>parms%dim_eta) then
+            ifree%nbc_coffdiag=ifree%nbc_coffdiag+parms%dim_eta-1
+          end if
+        end do
+        allocate(iFree%BC_COffDiag(iFree%nBC_COffDiag))
+        allocate(iFree%xBC_COffDiag(iFree%nBC_COffDiag))
+        i1 = n1*(n1-2)/2
+        iFree%BC_COffDiag = (/(ix,ix=i1+1,i1+iFree%nbc_coffdiag)/)
+        iFree%xBC_COffDiag = iFree%nAll + (/(ix,ix=1,ifree%nbc_coffdiag)/)
+        iFree%nall = iFree%nall + iFree%nBC_CDiag
+      else if (jcol>parms%K) then
+        n1 = parms%K*(parms%K-1)/2 + (jcol-parms%K-1)*(parms%K-1)
+        ifree%nbc_coffdiag = 0
+        do i1=n1+1,n1+jcol-1
+          if (i1>=2 .and. i1<=parms%dim_eta) then
+            ifree%nbc_coffdiag=ifree%nbc_coffdiag+i1-1
+          else if (i1>parms%dim_eta) then
+            ifree%nbc_coffdiag=ifree%nbc_coffdiag+parms%dim_eta-1
+          end if
+        end do
+        allocate(iFree%BC_COffDiag(iFree%nBC_COffDiag))
+        allocate(iFree%xBC_COffDiag(iFree%nBC_COffDiag))
+        i1 = n1*(n1-2)/2
+        iFree%BC_COffDiag = (/(ix,ix=i1+1,i1+iFree%nbc_coffdiag)/)
+        iFree%xBC_COffDiag = iFree%nAll + (/(ix,ix=1,ifree%nbc_coffdiag)/)
+        iFree%nall = iFree%nall + iFree%nBC_CDiag
+      end if ! jcol<=parms%K
     end if
 
     ! MONTH 1 is ALWAYS BASE CATEGORY
