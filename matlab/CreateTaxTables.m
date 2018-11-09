@@ -24,63 +24,7 @@ disp('\usepackage{epstopdf}');
 disp('');
 disp('\begin{document}');
 
-%% Table 1: results on quantities
-disp('');
-disp('\begin{table}[h]');
-disp('\caption{Percentage change in demand due to tax/price change}');
-disp('\label{table:tax impact 1}');
-disp('\begin{center}');
-% Number of columns = 2 + ntax
-disp('\resizebox{1 \textwidth}{!}{')
-str1 = '\begin{tabular}{lc';
-for t1=1:ntax
-  str1 = strcat(str1,'c');
-end
-str1 = [str1,'} \hline \hline'];
-disp(str1);
-
-% column labels
-str1 = ' & ';
-str2 = 'Fruit & Baseline (kg)';
-for i1=1:ntax
-  str1 = [str1, ' & Scenario ',int2str(i1)];
-  str2 = strcat(str2,' & ',TaxLabel{i1});
-end
-str1 = [str1,' \\ '];
-str2 = [str2,' \\ \hline'];
-disp(str1);
-disp(str2);
-
-irow = 0;
-for j1=1:J
-    
-  str1 = strcat(productlabels{j1},' & ',num2str(q0(j1)/N,prec));
-  for i1=1:ntax
-    % percent change in demand
-    x1 = 100*(qtax(j1,i1)/q0(j1)-1)  ;
-    str1 = strcat(str1,' & ',num2str(x1,prec),'\%');
-  end
-  str1 = strcat(str1,' \\');
-  disp(str1);
-  irow=irow+1;
-  if irow==5
-    disp('\hline')
-    irow=0;
-  end
-end
-disp(' \hline \hline')
-str1 = ['\multicolumn{',int2str(2+ntax),'}{p{1.0 \textwidth}}{',...
-        'Note: The first column shows baseline demand for each fruit ', ...
-        '(kilograms per household per shopping trip). The remaining ',...
-        'columns show the percentage change in demand resulting from the ',...
-        'change in tax or prices.}'];
-disp(str1)
-disp('\end{tabular}}');
-disp('\end{center}');
-disp('\end{table}');
-disp('');
-
-%% Table 2: impacts on prices
+%% Table 1: impacts on prices
 disp('\begin{table}[h]');
 disp('\caption{Percentage change in price due to tax/price change}');
 disp('\label{table:tax impact 2}');
@@ -132,6 +76,63 @@ disp('\end{tabular}}');
 disp('\end{center}');
 disp('\end{table}');
 disp('');
+
+%% Table 2: results on quantities
+disp('');
+disp('\begin{table}[h]');
+disp('\caption{Percentage change in demand due to tax/price change}');
+disp('\label{table:tax impact 1}');
+disp('\begin{center}');
+% Number of columns = 2 + ntax
+disp('\resizebox{1 \textwidth}{!}{')
+str1 = '\begin{tabular}{lc';
+for t1=1:ntax
+  str1 = strcat(str1,'c');
+end
+str1 = [str1,'} \hline \hline'];
+disp(str1);
+
+% column labels
+str1 = ' & ';
+str2 = 'Fruit & Baseline (kg)';
+for i1=1:ntax
+  str1 = [str1, ' & Scenario ',int2str(i1)];
+  str2 = strcat(str2,' & ',TaxLabel{i1});
+end
+str1 = [str1,' \\ '];
+str2 = [str2,' \\ \hline'];
+disp(str1);
+disp(str2);
+
+irow = 0;
+for j1=1:J
+    
+  str1 = strcat(productlabels{j1},' & ',num2str(q0(j1),prec));
+  for i1=1:ntax
+    % percent change in demand
+    x1 = 100*(qtax(j1,i1)/q0(j1)-1)  ;
+    str1 = strcat(str1,' & ',num2str(x1,prec),'\%');
+  end
+  str1 = strcat(str1,' \\');
+  disp(str1);
+  irow=irow+1;
+  if irow==5
+    disp('\hline')
+    irow=0;
+  end
+end
+disp(' \hline \hline')
+str1 = ['\multicolumn{',int2str(2+ntax),'}{p{1.0 \textwidth}}{',...
+        'Note: The first column shows baseline demand for each fruit ', ...
+        '(kilograms per household per shopping trip). The remaining ',...
+        'columns show the percentage change in demand resulting from the ',...
+        'change in tax or prices.}'];
+disp(str1)
+disp('\end{tabular}}');
+disp('\end{center}');
+disp('\end{table}');
+disp('');
+
 
 %% Table 3:  Expenditure and welfare
 disp('\begin{table}[h]');
@@ -212,14 +213,14 @@ disp(str1)
 
 str1 = 'Tax revenue (GBP) & 0.0 ';
 for i1=1:ntax
-  str1 = strcat(str1,' & ',num2str(((ptax(:,i1)-p0).'*qtax(:,i1))/N,prec));
+  str1 = strcat(str1,' & ',num2str(((ptax(:,i1)-p0).'*qtax(:,i1)),prec));
 end
 str1 = strcat(str1,' \\');
 disp(str1);
 
-str1 = ['Firm Revenue & ',num2str((p0'*q0)/N,prec)];
+str1 = ['Firm Revenue & ',num2str((p0'*q0),prec)];
 for i1=1:ntax
-  x1 = (p0'*qtax(:,i1) - (p0'*q0))/N;
+  x1 = (p0'*qtax(:,i1) - (p0'*q0));
   str1 = strcat(str1,' & ',num2str(x1,prec));    
 end
 str1 = strcat(str1,' \\');

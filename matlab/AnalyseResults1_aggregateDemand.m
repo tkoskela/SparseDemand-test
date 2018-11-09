@@ -138,4 +138,4 @@ elas = ImportElasticity(fullfile(FortranOutDir,'elas.csv'),J, 1, J);
 %elas = ImportElasticity2(fullfile(FortranOutDir,'elas.csv'), 1, J);
 
 CreateElasTable(fullfile(OutDir,'elas1.tex'),elas,FruitLabels);
-close all;
+%close all;
