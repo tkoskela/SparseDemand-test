@@ -22,7 +22,7 @@ HotStart         : 1 # 1 to do HotStart, from previous saved output
 
 # Flags
 ComputeHessFlag     : 0  # 1 = compute hessian. 2 = load gradLHH and compute hessian
-OutputFlag          : 1     # 0 don't print output and 1 to print output
+OutputFlag          : 0     # 0 don't print output and 1 to print output
 SaveDataFlag        : 0     # 1 to save data, 0 otherwise
 TestIntegrationFlag : 0 # 1 to test accuracy of integration
 SimulateDataFlag    : 0 # 1 simulate data, 0 = load data from file
@@ -42,7 +42,7 @@ small        : 1.0d-50     # small number to prevent log of zero
 # K     = dimension of demand system
 NMC   : 1
 N     : 26514
-NSIM  : 53028
+NSIM  : 26514
 M     : 201
 J     : 27
 K     : 5

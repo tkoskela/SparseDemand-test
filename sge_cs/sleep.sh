@@ -7,7 +7,7 @@
 #$ -R y
 #$ -cwd
 #$ -V
-#$ -t 1-301
+#$ -t 1-501
 #$ -l tmem=2.4G,h_vmem=2.4G
 ##$ -l h_rt=240:0:0
 ##$ -l hostname="fry*|burns*|larry*|zeppo*"

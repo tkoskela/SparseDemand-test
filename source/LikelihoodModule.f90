@@ -2769,8 +2769,8 @@ subroutine SelectFreeParameters(parms,iFree)
     allocate(iFree%MuE_month(11*parms%K - ifree%mue_month1+1))
     allocate(iFree%xMuE_month(11*parms%K - ifree%mue_month1+1))
     iFree%nmue_month = size(ifree%mue_month)
-    iFree%MuE_month  = (/(ix,ix=1,11*parms%K)/)
-    iFree%xMuE_month = iFree%nall + (/(ix,ix=1,iFree%nmue_month)/)
+    iFree%MuE_month  = (/(ix,ix=ifree%mue_month1,11*parms%K)/)
+    iFree%xMuE_month = iFree%nall + (/(ix,ix=ifre%mue_month1,iFree%nmue_month)/)
   else
     iFree%nMUE_month = 0
   end if
