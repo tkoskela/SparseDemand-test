@@ -37,6 +37,13 @@ else ifeq ($(HOST_ID),vic.local)
   else
     include /home/uctpln0/GeneralCode/config/config.cs.inc
   endif
+else ifeq ($(HOST_ID),wise.local)
+  HOST_ID=$(CS_HPC)
+  ifeq ($(GFORTRAN),1)
+    include /home/uctpln0/GeneralCode/config/gcc.cs.inc
+  else
+    include /home/uctpln0/GeneralCode/config/config.cs.inc
+  endif
 else ifeq ($(HOST_ID),jake.local)
   HOST_ID=$(CS_HPC)
   ifeq ($(GFORTRAN),1)

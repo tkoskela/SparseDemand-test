@@ -2808,7 +2808,7 @@ subroutine SelectFreeParameters(parms,iFree)
     allocate(iFree%xMuE_month(11*parms%K - ifree%mue_month1+1))
     iFree%nmue_month = size(ifree%mue_month)
     iFree%MuE_month  = (/(ix,ix=ifree%mue_month1,11*parms%K)/)
-    iFree%xMuE_month = iFree%nall + (/(ix,ix=ifre%mue_month1,iFree%nmue_month)/)
+    iFree%xMuE_month = iFree%nall + (/(ix,ix=ifree%mue_month1,iFree%nmue_month)/)
   else
     iFree%nMUE_month = 0
   end if
@@ -2885,12 +2885,12 @@ subroutine SelectFreeParameters(parms,iFree)
         iFree%BC_beta = (/(ix,ix=n1 + 1,n1 + jcol-1)/)
         iFree%xBC_beta = iFree%nAll + (/(ix,ix=1,ifree%nbc_beta)/)
         iFree%nall = iFree%nall + iFree%nBC_beta
-      else if (jcol>K) then
-        ifree%nbc_beta = K - 1
+      else if (jcol>parms%K) then
+        ifree%nbc_beta = parms%K - 1
         allocate(iFree%BC_beta(iFree%nBC_beta))
         allocate(iFree%xBC_beta(iFree%nBC_beta))
-        n1 = K*(K-1)/2 + (jcol-K-1)*(K-1)
-        iFree%BC_beta = (/(ix,ix=n1+1,n1+jcol-1)/)
+        n1 = parms%K*(parms%K-1)/2 + (jcol-parms%K-1)*(parms%K-1)
+        iFree%BC_beta = (/(ix,ix=n1+1,n1+parms%K-1)/)
         iFree%xBC_beta = iFree%nAll + (/(ix,ix=1,ifree%nbc_beta)/)
         iFree%nall = iFree%nall + iFree%nBC_beta
       end if
@@ -2920,8 +2920,8 @@ subroutine SelectFreeParameters(parms,iFree)
       iFree%BD_COffDiag = (/(ix,ix=ifree%bd_coffdiag1,size(parms%bd_coffdiag))/)
       iFree%xBD_COffDiag = iFree%nAll + (/(ix,ix=1,ifree%nbd_coffdiag)/)
       iFree%nall = iFree%nall + iFree%nBD_COffDiag
-    else if (ifree%bd_coffdiag>10) then
-      jcol = ifree%bd_coffdiag-10
+    else if (ifree%flagbd_coffdiag>10) then
+      jcol = ifree%flagbd_coffdiag-10
       if (jcol>1 .and. jcol<=parms%dim_eta) then
         iFree%nBD_COffDiag = jcol-1
         allocate(iFree%BD_COffDiag(iFree%nBD_COffDiag))
@@ -2993,7 +2993,7 @@ subroutine SelectFreeParameters(parms,iFree)
         i1 = n1*(n1-2)/2
         iFree%BC_COffDiag = (/(ix,ix=i1+1,i1+iFree%nbc_coffdiag)/)
         iFree%xBC_COffDiag = iFree%nAll + (/(ix,ix=1,ifree%nbc_coffdiag)/)
-        iFree%nall = iFree%nall + iFree%nBC_CDiag
+        iFree%nall = iFree%nall + iFree%nBC_COffDiag
       else if (jcol>parms%K) then
         n1 = parms%K*(parms%K-1)/2 + (jcol-parms%K-1)*(parms%K-1)
         ifree%nbc_coffdiag = 0
@@ -3009,7 +3009,7 @@ subroutine SelectFreeParameters(parms,iFree)
         i1 = n1*(n1-2)/2
         iFree%BC_COffDiag = (/(ix,ix=i1+1,i1+iFree%nbc_coffdiag)/)
         iFree%xBC_COffDiag = iFree%nAll + (/(ix,ix=1,ifree%nbc_coffdiag)/)
-        iFree%nall = iFree%nall + iFree%nBC_CDiag
+        iFree%nall = iFree%nall + iFree%nBC_COffDiag
       end if ! jcol<=parms%K
     end if
 

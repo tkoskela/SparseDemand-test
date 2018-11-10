@@ -9,7 +9,7 @@
 #OutDir : /SAN/economics/Nesheim-IO/FruitDemand/output/A27_2018MAY
 OutDir : /home/uctpln0/FruitDemand/code/fortran/source/output/A27_2018MAY
 InputDir: /home/uctpln0/FruitDemand/code/fortran/inputs/A27_new
-TestLikeFlag : 5     # 0 = maximise likelihood
+TestLikeFlag : 4     # 0 = maximise likelihood
                      # 1 = test likelihood gradient
                      # 2 = plot likelihood
                      # 3 = test non-linear constraint
@@ -21,8 +21,8 @@ SimulateDataFlag : 0 # 1 simulate data, 0 = load data from file
 HotStart         : 1 # 1 to do HotStart, from previous saved output
 
 # Flags
-ComputeHessFlag     : 1  # 1 = compute hessian. 2 = load gradLHH and compute hessian
-OutputFlag          : 1     # 0 don't print output and 1 to print output
+ComputeHessFlag     : 0  # 1 = compute hessian. 2 = load gradLHH and compute hessian
+OutputFlag          : 0     # 0 don't print output and 1 to print output
 SaveDataFlag        : 0     # 1 to save data, 0 otherwise
 TestIntegrationFlag : 0 # 1 to test accuracy of integration
 SimulateDataFlag    : 0 # 1 simulate data, 0 = load data from file
@@ -41,7 +41,7 @@ small        : 1.0d-50     # small number to prevent log of zero
 # J     = number of products
 # K     = dimension of demand system
 NMC   : 1
-N     : 26514
+N     : 50
 NSIM  : 26514
 M     : 201
 J     : 27
@@ -149,17 +149,17 @@ BD_month_hi : 5.0d0
 # select subsets of parameter to be free
 FreeFlagD           : 0   # 1 to be free, 0 to be fixed
 FreeFlagBC          : 0   # 1 to be free, 0 to be fixed
-FreeFlagMUE         : 1   # 1 to be free, 0 to be fixed
-FreeFlagMUE_month   : 1   # 1 to be free, 0 to be fixed
-FreeFlagInvCDiag    : 1   # 1 to be free, 0 to be fixed
-FreeFlagInvCOffDiag : 1   # 1 to be free, 0 to be fixed
+FreeFlagMUE         : 0   # 1 to be free, 0 to be fixed
+FreeFlagMUE_month   : 0   # 1 to be free, 0 to be fixed
+FreeFlagInvCDiag    : 0   # 1 to be free, 0 to be fixed
+FreeFlagInvCOffDiag : 0   # 1 to be free, 0 to be fixed
 
-FreeFlagBD_beta     : 1
-FreeFlagBD_CDiag    : 1
-FreeFlagBD_COffDiag : 1
-FreeFlagBC_beta     : 1
-FreeFlagBC_CDiag    : 1
-FreeFlagBC_COffDiag : 1
+FreeFlagBD_beta     : 17
+FreeFlagBD_CDiag    : 17
+FreeFlagBD_COffDiag : 17
+FreeFlagBC_beta     : 17
+FreeFlagBC_CDiag    : 17
+FreeFlagBC_COffDiag : 17
 FreeFlagBD_month    : 0
 OneAtATime          : 0
 
