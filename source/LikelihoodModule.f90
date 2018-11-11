@@ -885,7 +885,7 @@ subroutine UpdateParms2(x,iFree,parms)
   if (iFree%nBD_CDiag>0 .or. iFree%nBD_COffDiag>0) then
     ! Compute parms%BD_C
     ! size(BD_C) = (J x dim_eta)
-    ! SphereToMatrix creates upper triagular matrix of size
+    ! SphereToMatrix creates upper triangular matrix of size
     !    (dim_eta x J)
     ! BD_C is lower triangular:  we need the transpose as below.
     allocate(temp2(parms%dim_eta,parms%J))
@@ -4216,23 +4216,7 @@ subroutine SetBounds(x,BL,BU)
     BL(iFree%xBC) = 0.1d0 * pi_d
     BU(iFree%xBC) = 0.9d0 * pi_d
     ! BC(:,1:K) column i1 has i1-1 elements in BC
-    !           upper bound = 2*pi_d for element i1-1
-    !           upper bound = pi_d otherwise
-    do i1=2,parms%K
-      ! Find elements for which upper bound is 2*pi
-      lastindex = (i1*(i1-1))/2
-      if (any(iFree%BC==lastindex)) then
-        index1 = pack(iFree%xBC,iFree%BC==lastindex)
-        BU(index1) = 1.9d0 * pi_d
-      end if
-    end do
-    do i1=parms%K+1,parms%J
-      lastindex = (parms%K*(parms%K-1))/2 + (i1-parms%K)*(parms%K-1)
-      if (any(iFree%BC==lastindex)) then
-        index1 = pack(iFree%xBC,iFree%BC==lastindex)
-      end if
-      BU(index1) = 1.9d0 * pi_d
-    end do
+    !           upper bound = pi_d
   end if
 
   if (iFree%nMUE>0) then
@@ -4253,13 +4237,6 @@ subroutine SetBounds(x,BL,BU)
   if (iFree%nInvCOffDiag>0) then
     BL(iFree%xInvCOffDiag) = parms%InvCOffDiag_LO * pi_d
     BU(iFree%xInvCOffDiag) = parms%InvCOffDiag_HI * pi_d
-    do i1=2,parms%K
-      lastindex = (i1*(i1-1))/2
-      if (any(iFree%InvCOffDiag==lastindex)) then
-        index1 = pack(iFree%xInvCOffDiag,iFree%InvCOffDiag==lastindex)
-        BU(index1) = parms%InvCOffDiag_HI * 2.0d0*pi_d
-      end if
-    end do
   end if
 
   if (iFree%nBD_beta>0) then
@@ -4278,64 +4255,29 @@ subroutine SetBounds(x,BL,BU)
   end if
 
   if (iFree%nBC_CDiag>0) then
-    ! BC   = norminv( BC_beta * z + BC_C * eta
-    !        want diag of BC_C to be between [0,0.8]
-    !        harmless to allow for BC_CDiag  in [-1,1]
-    !        need to use care when BC_CDiag <=0
+    ! BC(:,j)   = pid * normcdf( BC_beta * z + BC_C * eta)
+    !        BC_CDiag >= 0.0d0
     !        also note: Like(BC_CDiag= -x) = Like(BC_CDiag = x)
-    BL(iFree%xBC_CDiag) = max(x(iFree%xBC_CDiag)-1.0d0,-1.0d0)
-    BU(iFree%xBC_CDiag) = min(x(iFree%xBC_CDiag)+1.0d0,1.0d0)
+    BL(iFree%xBC_CDiag) = max(x(iFree%xBC_CDiag)-1.0d0,0.0001d0)
+    BU(iFree%xBC_CDiag) = min(x(iFree%xBC_CDiag)+5.0d0,5.0d0)
   end if
+
   if (iFree%nBD_CDiag>0) then
     ! log(BD) = BD_Beta * z + BD_C * eta
-    !           want diag of BD_C between 0.0  and  1.0
-    !        harmless to allow for BD_CDiag  in [-1,1]
-    !        need to use care when BD_CDiag <=0
-    !        also note: Like(BD_CDiag= -x) = Like(BD_CDiag = x)
-    BL(iFree%xBD_CDiag) = max(x(iFree%xBD_CDiag)-1.0d0,-1.0d0)
-    BU(iFree%xBD_CDiag) = min(x(iFree%xBD_CDiag)+1.0d0,1.0d0)
+    !           BD_CDiag>=0.0d0
+    BL(iFree%xBD_CDiag) = max(x(iFree%xBD_CDiag)-1.0d0,0.0001d0)
+    BU(iFree%xBD_CDiag) = min(x(iFree%xBD_CDiag)+5.0d0,5.0d0)
   end if
 
   if (iFree%nBC_COffDiag>0) then
+    % 0.0d0 <= BC_COffDiag <= pi_d
     BL(iFree%xBC_COffDiag) = 0.10d0*pi_d
     BU(iFree%xBC_COffDiag) = 0.90d0*pi_d
-    JC = size(parms%BC_C,1)
-    KC = size(parms%BC_C,2)
-    do i1=2,KC
-      lastindex = (i1*(i1-1))/2
-      if (any(iFree%BC_COffDiag==lastindex)) then
-        index1 = pack(iFree%xBC_COffDiag,iFree%BC_COffDiag==lastindex)
-        BU(index1) = 1.9d0 * pi_d
-      end if
-    end do
-    do i1=KC+1,JC
-      lastindex = (KC*(KC-1))/2 +(i1-KC)*(KC-1)
-      if (any(iFree%xBC_COffDiag==lastindex)) then
-        index1 = pack(iFree%xBC_COffDiag,iFree%BC_COffDiag==lastindex)
-        BU(index1) = 1.9d0 * pi_d
-      end if
-    end do
   end if
 
   if (iFree%nBD_COffDiag>0) then
     BL(iFree%xBD_COffDiag) = 0.10d0*pi_d
     BU(iFree%xBD_COffDiag) = 0.90d0*pi_d
-    JD = size(parms%BD_C,1)
-    KD = size(parms%BD_C,2)
-    do i1=2,KD
-      lastindex = (i1*(i1-1))/2
-      if (any(iFree%BD_COffDiag==lastindex)) then
-        index1 = pack(iFree%xBD_COffDiag,iFree%BD_COffDiag==lastindex)
-        BU(index1) = 1.9d0 * pi_d
-      end if
-    end do
-    do i1=KD+1,JD
-      lastindex = (KD*(KD-1))/2 +(i1-KD)*(KD-1)
-      if (any(iFree%xBD_COffDiag==lastindex)) then
-        index1 = pack(iFree%xBD_COffDiag,iFree%BD_COffDiag==lastindex)
-        BU(index1) = 1.9d0 * pi_d
-      end if
-    end do
   end if
 
   if (MaxOptions%Algorithm==6) then
