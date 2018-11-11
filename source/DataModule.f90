@@ -77,10 +77,10 @@ subroutine CreateData(IMC)
   HHData%month  = ceiling(real(12,dp)*month)
 
   allocate(p1(parms0%J,HHData%M))
- 
+
   PriceFlag = 2
   if (PriceFlag==1) then
-    ! prices are drawn from uniform distribution 
+    ! prices are drawn from uniform distribution
     n = HHData%M * parms0%J
     allocate(p0(n))
     ifail = 0
@@ -131,7 +131,7 @@ subroutine CreateData(IMC)
   allocate(RWSAV(LRWSAV))
   allocate(LWSAV(LLWSAV))
   allocate(CWSAV(LCWSAV))
-  
+
   ! initialize workspace for E04NCA
   call E04WBF(RNAME,CWSAV,LCWSAV,LWSAV,LLWSAV,IWSAV,LIWSAV,RWSAV,LRWSAV,ifail)
 
@@ -148,7 +148,7 @@ subroutine CreateData(IMC)
   call X04ACF(options_unit,options_file,mode,ifail)
   !open(UNIT = ioptions, &
   !     FILE = 'inputs/E04NCA_Options.txt', &
-  !     ACTION = 'read') 
+  !     ACTION = 'read')
   ifail = 0
   call E04NDA(options_unit,LWSAV,IWSAV,RWSAV,ifail)
   !close(ioptions)
@@ -186,7 +186,7 @@ subroutine CreateData(IMC)
   allocate(clamda(N))
   LIWORK = N
   allocate(IWORK(LIWORK))
-  Lwork = 10*N 
+  Lwork = 10*N
   allocate(work(LWORK))
   HHData%q = 0.0d0
   crit = 1e-4
@@ -197,7 +197,7 @@ subroutine CreateData(IMC)
       call ComputeCurrentB(HHData%eta(:,i1),parms0,HHData%month(i1))
     end if
 
-    CVEC = HHData%p(:,i1) - matmul(transpose(parms0%B),HHData%e(:,i1)) 
+    CVEC = HHData%p(:,i1) - matmul(transpose(parms0%B),HHData%e(:,i1))
     x = 0.0d0
     ifail = -1
     ! compute X to solve
@@ -212,7 +212,7 @@ subroutine CreateData(IMC)
            = pack((/(ix,ix=1,parms0%J)/),x>=crit)
     HHData%iZero((/(ix,ix=1,parms0%J-HHData%nNonZero(i1))/),i1) &
         = pack((/(ix,ix=1,parms0%J)/),x<crit)
-    if (HHData%nNonZero(i1)>0) then 
+    if (HHData%nNonZero(i1)>0) then
       HHData%q((/(ix,ix=1,HHData%nNonZero(i1))/),i1) = pack(x,x>=crit)
     end if
 
@@ -288,23 +288,22 @@ subroutine ComputeCurrentB(eta,parms,month)
   use GlobalModule, only : ParmsStructure   ! data type for parms
   use NewTools,     only : SphereToMatrix   ! map spherical coordinates to B
   use nag_library,  only : S15ABF           ! normal CDF
-  
+
   implicit none
   real(dp),             intent(in)          :: eta(:)
   type(ParmsStructure), intent(inout)       :: parms
   integer(i4b),         intent(in),optional :: month
-  
+
   real(dp), allocatable :: GradBC(:,:),GradBD(:,:)
   real(dp), allocatable :: BC(:),D(:)
   integer(i4b)          :: ifail,i1
   integer(i4b)          :: j1,k1,kmax
-  real(dp)              :: lam
-  
+
   allocate(GradBC(parms%K,parms%nBC))
   allocate(GradBD(parms%K,parms%J))
   allocate(BC(parms%nBC))
   allocate(D(parms%J))
-    
+
   ! eta = random coefficients in (BC,BD)
 
   parms%B = 0.0d0
@@ -312,41 +311,19 @@ subroutine ComputeCurrentB(eta,parms,month)
     D = exp(matmul(parms%BD_z,parms%BD_beta)    &
             +matmul(parms%BD_C,eta)             &
             +parms%BD_month(:,month))
-  else 
+  else
     D = exp(matmul(parms%BD_z,parms%BD_beta)    &
             +matmul(parms%BD_C,eta))
   end if
 
   ! Convert (BC_beta*BC_Z + BC_C*eta) into BC_C
-  ! BC_C(i1) = lam * pi_d * normcdf( BC_beta*z + BC_C * eta)
-  ! lam = pi_d or lam = 2*pi_d
+  ! BC_C(i1) = pi_d * normcdf( BC_beta*z + BC_C * eta)
   ! S15ABF = normcdf(x,ifail)
-  do j1=2,parms%J
-    ! column j1 has only kmax free elements
-    kmax = min(j1,parms%K)-1
-    do k1=1,kmax
-      ! map (j1,k1) into i1
-      ! (j1,k1) column and row indices
-      ! i1 row index when BC_C is stored as vector
-      if (j1<=parms%K) then
-        i1 = (j1-1)*(j1-2)/2 + k1
-      else
-        i1 = (parms%K*(Parms%K-1))/2 + (j1-parms%K-1)*(parms%K-1)+k1
-      end if
-      ! lam = 2 if last element in column
-      lam = merge(1.0d0,2.0d0,k1<min(j1-1,parms%K-1))
-      ! (BC_lo,BC_hi) bounds BC_C away from boundary of support to avoid numerical problems.
-      BC(i1) = parms%BC_lo + (parms%BC_hi - parms%BC_lo) * lam * pi_d &
-                           * S15ABF(dot_product(parms%BC_z(i1,:),parms%BC_beta) &
-                                    + dot_product(parms%BC_C(i1,:),eta),ifail)
-     end do
+  do i1=1,parms%nBC
+    BC(i1) = parms%BC_lo + (parms%BC_hi - parms%BC_lo) * pi_d &
+                         * S15ABF(dot_product(parms%BC_z(i1,:),parms%BC_beta) &
+                                  + dot_product(parms%BC_C(i1,:),eta),ifail)
   end do
-  ! Old version: simply loop through elements of BC_C and always use pi_d
-  !do i1=1,parms%nBC
-  !  BC(i1) = parms%BC_lo + (parms%BC_hi - parms%BC_lo) * pi_d &
-  !                       * S15ABF(dot_product(parms%BC_z(i1,:),parms%BC_beta) &
-  !                                + dot_product(parms%BC_C(i1,:),eta),ifail)
-  !end do
   call SphereToMatrix(BC,D,parms%K,parms%J,parms%B,GradBC,GradBD)
   if (any(isnan(parms%B))) then
     print *, "Some values of B are NAN."
@@ -412,17 +389,17 @@ subroutine SendData(pid)
       allocate(temp1(parms%J*N2))
       temp1(1:parms%K*N2) = reshape(HHData%q(:,iHH1:iHH2),(/parms%K*N2/))
       call mpi_send(temp1(1:parms%K*N2),parms%K*N2,MPI_DOUBLE_PRECISION,iw,1,MPI_COMM_WORLD,ierr(1))
-   
-      ! send p 
+
+      ! send p
       temp1 = reshape(HHData%p(:,iHH1:iHH2),(/parms%J*N2/))
       call mpi_send(temp1,parms%J*N2,MPI_DOUBLE_PRECISION,iw,2,MPI_COMM_WORLD,ierr(2))
-  
+
       ! send expenditure
       temp1(1:n2) = HHData%expenditure(iHH1:iHH2)
       call mpi_send(temp1(1:n2),N2,MPI_DOUBLE_PRECISION,iw,3,MPI_COMM_WORLD,ierr(3))
 
       deallocate(temp1)
- 
+
       ! send market
       allocate(itemp1(parms%J*N2))
       itemp1(1:N2) = HHData%market(iHH1:iHH2)
@@ -475,16 +452,16 @@ subroutine SendData(pid)
     ! allocate memory for HHData
     call AllocateHHData
     allocate(temp1(parms%J*N2))
-    
+
     ! receive q
     call mpi_recv(temp1(1:parms%K*N2),parms%K*N2,MPI_DOUBLE_PRECISION,MasterID,1,MPI_COMM_WORLD,stat1,ierr(1))
     HHData%q = reshape(temp1(1:parms%K*N2),(/parms%K,n2/))
-   
-    ! receive p 
+
+    ! receive p
     call mpi_recv(temp1,parms%J*N2,MPI_DOUBLE_PRECISION,MasterID,2,MPI_COMM_WORLD,stat1,ierr(2))
     HHData%p = reshape(temp1,(/parms%J,N2/))
 
-    ! receive expenditure 
+    ! receive expenditure
     call mpi_recv(temp1(1:n2),N2,MPI_DOUBLE_PRECISION,MasterID,3,MPI_COMM_WORLD,stat1,ierr(3))
     HHData%expenditure = temp1(1:n2)
     deallocate(temp1)
@@ -530,7 +507,7 @@ subroutine SendData(pid)
     call mpi_recv(itemp1(1:N2),N2,MPI_INTEGER,MasterID,13,MPI_COMM_WORLD,stat1,ierr(13))
     HHData%month = itemp1(1:N2)
 
-    deallocate(itemp1) 
+    deallocate(itemp1)
     print 433,'receive:',pid,ierr
 433 format(a10,i4,6i3)
     !do i1=1,6
@@ -546,7 +523,7 @@ subroutine SendData(pid)
     ! send expedntiure
   end if
 
-  !call mpi_waitall(12*nworkers,request,stat_array,ierr) 
+  !call mpi_waitall(12*nworkers,request,stat_array,ierr)
   deallocate(stat_array,request)
 end subroutine SendData
 #endif
@@ -566,7 +543,7 @@ subroutine LoadData
   open(unit = DataUnit, &
        file = HHData%RawDataFile, &
        action = 'read')
- 
+
   ! read in variable labels
   read(DataUnit,371) AllLabels
 371 format(a)
@@ -581,7 +558,7 @@ subroutine LoadData
       AllLabels         = AllLabels(icomma+1:400)
       !RawDataLabels(i1) = AllLabels((/(ix,ix=1,iComma-1)/))
       !AllLabels = AllLabels((/(ix,ix=iComma+1,400)/))
-    else 
+    else
       RawDataLabels(i1) = AllLabels
       exit
     end if
