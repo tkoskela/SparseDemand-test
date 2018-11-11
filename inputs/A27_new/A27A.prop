@@ -41,7 +41,7 @@ small        : 1.0d-50     # small number to prevent log of zero
 # J     = number of products
 # K     = dimension of demand system
 NMC   : 1
-N     : 50
+N     : 26514
 NSIM  : 26514
 M     : 201
 J     : 27
@@ -133,8 +133,8 @@ RandomB_nQuad :  7  7  5  5  5  5  5  5  5  5  3  3  3  2  2  2  2  2  2  2  2  
 # BD_z_dim = size(BD_z)    D = Z(j) * beta0 + eta' * beta2 
 BC_z_dim : 98 # default BC_z_dim = (K-1)*(J - K/2)
 BD_z_dim : 27 # default BD_z_dim = J
-BC_lo : 0.10   # minimum value of BC  (ensures B matrix had rank K for all eta)
-BC_hi : 0.85   # maximum value of BC
+BC_lo : 0.10   # minimum value of BC  (ensures B matrix has rank K for all eta)
+BC_hi : 0.90   # maximum value of BC
 BC_beta_lo : -5.0d0
 BC_beta_hi : 5.0d0
 BD_beta_lo : -3.0d0

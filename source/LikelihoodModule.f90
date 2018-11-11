@@ -4270,7 +4270,7 @@ subroutine SetBounds(x,BL,BU)
   end if
 
   if (iFree%nBC_COffDiag>0) then
-    % 0.0d0 <= BC_COffDiag <= pi_d
+    ! 0.0d0 <= BC_COffDiag <= pi_d
     BL(iFree%xBC_COffDiag) = 0.10d0*pi_d
     BU(iFree%xBC_COffDiag) = 0.90d0*pi_d
   end if
