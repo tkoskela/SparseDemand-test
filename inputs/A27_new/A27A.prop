@@ -149,19 +149,19 @@ BD_month_hi : 5.0d0
 # select subsets of parameter to be free
 FreeFlagD           : 0   # 1 to be free, 0 to be fixed
 FreeFlagBC          : 0   # 1 to be free, 0 to be fixed
-FreeFlagMUE         : 0   # 1 to be free, 0 to be fixed
-FreeFlagMUE_month   : 0   # 1 to be free, 0 to be fixed
+FreeFlagMUE         : 1   # 1 to be free, 0 to be fixed
+FreeFlagMUE_month   : 1   # 1 to be free, 0 to be fixed
 FreeFlagInvCDiag    : 0   # 1 to be free, 0 to be fixed
 FreeFlagInvCOffDiag : 0   # 1 to be free, 0 to be fixed
 
-FreeFlagBD_beta     : 17
-FreeFlagBD_CDiag    : 17
-FreeFlagBD_COffDiag : 17
-FreeFlagBC_beta     : 17
-FreeFlagBC_CDiag    : 17
-FreeFlagBC_COffDiag : 17
+FreeFlagBD_beta     : 0
+FreeFlagBD_CDiag    : 0
+FreeFlagBD_COffDiag : 0
+FreeFlagBC_beta     : 0
+FreeFlagBC_CDiag    : 0
+FreeFlagBC_COffDiag : 0
 FreeFlagBD_month    : 0
-OneAtATime          : 0
+OneAtATime          : 1
 
 # index of first free element of vector
 free_mue1         : 1   #5
