@@ -170,8 +170,12 @@ module GlobalModule
     real(dp)              :: InvCOffDiag_HI !BL(InvCOffDiag) = pi * InvCOffDiag_HI 
     real(dp)              :: BC_beta_lo   ! lower bound
     real(dp)              :: BC_beta_hi   ! upper bound
+    real(dp)              :: BC_CDiag_lo   ! lower bound
+    real(dp)              :: BC_CDiag_hi   ! upper bound
     real(dp)              :: BD_beta_lo   ! lower bound
     real(dp)              :: BD_beta_hi   ! upper bound
+    real(dp)              :: BD_CDiag_lo   ! lower bound
+    real(dp)              :: BD_CDiag_hi   ! upper bound
    
     real(dp)              :: BD_month_lo  ! lower bound
     real(dp)              :: BD_month_hi  ! upper bound
@@ -1189,11 +1193,23 @@ subroutine InitializeParameters(InputFile)
     ErrFlag = GetVal(PropList,'BC_beta_hi',cTemp)
     read(cTemp,'(f12.0)') parms%BC_beta_hi
 
+    ErrFlag = GetVal(PropList,'BC_CDiag_lo',cTemp)
+    read(cTemp,'(f12.0)') parms%BC_CDiag_lo
+
+    ErrFlag = GetVal(PropList,'BC_CDiag_hi',cTemp)
+    read(cTemp,'(f12.0)') parms%BC_CDiag_hi
+
     ErrFlag = GetVal(PropList,'BD_beta_lo',cTemp)
     read(cTemp,'(f12.0)') parms%BD_beta_lo
     
     ErrFlag = GetVal(PropList,'BD_beta_hi',cTemp)
     read(cTemp,'(f12.0)') parms%BD_beta_hi
+    
+    ErrFlag = GetVal(PropList,'BD_CDiag_lo',cTemp)
+    read(cTemp,'(f12.0)') parms%BD_CDiag_lo
+   
+    ErrFlag = GetVal(PropList,'BD_CDiag_hi',cTemp)
+    read(cTemp,'(f12.0)') parms%BD_CDiag_hi
 
     ! RandomB parameters: dimension of random elements of C and D
     ErrFlag = GetVal(PropList,'dim_eta',cTemp)
@@ -1834,8 +1850,12 @@ subroutine BroadcastParameters(pid)
     call mpi_bcast(parms%BC_hi,1,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(21))
     call mpi_bcast(parms%BC_beta_lo,1,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(20))
     call mpi_bcast(parms%BC_beta_hi,1,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(21))
+    call mpi_bcast(parms%BC_CDiag_lo,1,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(20))
+    call mpi_bcast(parms%BC_CDiag_hi,1,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(21))
     call mpi_bcast(parms%BD_beta_lo,1,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(20))
     call mpi_bcast(parms%BD_beta_hi,1,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(21))
+    call mpi_bcast(parms%BD_CDiag_lo,1,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(20))
+    call mpi_bcast(parms%BD_CDiag_hi,1,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(21))
     call mpi_bcast(parms%InvCDiag_LO,1,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(21))
     call mpi_bcast(parms%InvCDiag_HI,1,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(21))
     call mpi_bcast(parms%InvCOffDiag_LO,1,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(21))
@@ -2325,14 +2345,17 @@ end subroutine BroadcastIFree
 ! Written :  2015AUG14 LN
 subroutine ReadWriteParameters(LocalParms,LocalAction)
   use NewTools, only : MatrixToSphere,MatrixInverse
+  use IFPORT
   implicit none
   type(ParmsStructure), intent(inout) :: LocalParms
   character(LEN=*),     intent(in)    :: LocalAction
 
-  integer(i4b)                        :: i1
+  integer(i4b)                        :: i1,FileStatus
   character(len=30)                   :: TempString
   character(len=30)                   :: fmt102,fmt103,fmt104,fmt107,fmt108,fmt109  
-
+  character(len=8)                    :: datestring
+  character(len=200)                  :: parms_copy_file
+  character(len=400)                  :: cmd_string
   ! formats for strings in parms.csv
   111 format(a13)   !'model,K,J,nBC'
   112 format(a9)    ! B(K x J)
@@ -2364,7 +2387,14 @@ subroutine ReadWriteParameters(LocalParms,LocalAction)
 
   120 format(a17)      ! mue_month(K x 12)
   121 format(12(f25.16,:,','))
-  
+ 
+  if (LocalAction=='read') then
+    call date_and_time(date=datestring)
+    parms_copy_file = trim(OutDir) // "/parms/parms" // datestring // ".csv"
+    cmd_string = "cp " // LocalParms%file // " " // parms_copy_file
+    FileStatus = system(cmd_string)
+  end if
+
   ! open file for reading or writing
   open(unit=LocalParms%unit,  &
        file=LocalParms%file,  &
@@ -2599,8 +2629,12 @@ subroutine CopyParameters(parms_in,parms_out)
   parms_out%InvCOffDiag_hi  = parms_in%InvCOffDiag_hi
   parms_out%BC_beta_lo  = parms_in%BC_beta_lo
   parms_out%BC_beta_hi  = parms_in%BC_beta_hi
+  parms_out%BC_CDiag_lo  = parms_in%BC_CDiag_lo
+  parms_out%BC_CDiag_hi  = parms_in%BC_CDiag_hi
   parms_out%BD_beta_lo  = parms_in%BD_beta_lo
   parms_out%BD_beta_hi  = parms_in%BD_beta_hi
+  parms_out%BD_CDiag_lo  = parms_in%BD_CDiag_lo
+  parms_out%BD_CDiag_hi  = parms_in%BD_CDiag_hi
   parms_out%BD_month_lo = parms_in%BD_month_lo
   parms_out%BD_month_hi = parms_in%BD_month_hi
 

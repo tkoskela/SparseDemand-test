@@ -4258,15 +4258,15 @@ subroutine SetBounds(x,BL,BU)
     ! BC(:,j)   = pid * normcdf( BC_beta * z + BC_C * eta)
     !        BC_CDiag >= 0.0d0
     !        also note: Like(BC_CDiag= -x) = Like(BC_CDiag = x)
-    BL(iFree%xBC_CDiag) = max(x(iFree%xBC_CDiag)-1.0d0,0.0001d0)
-    BU(iFree%xBC_CDiag) = min(x(iFree%xBC_CDiag)+5.0d0,5.0d0)
+    BL(iFree%xBC_CDiag) = max(x(iFree%xBC_CDiag)-1.0d0,parms%BC_CDiag_lo)
+    BU(iFree%xBC_CDiag) = min(x(iFree%xBC_CDiag)+3.0d0,parms%BC_CDiag_hi)
   end if
 
   if (iFree%nBD_CDiag>0) then
     ! log(BD) = BD_Beta * z + BD_C * eta
     !           BD_CDiag>=0.0d0
-    BL(iFree%xBD_CDiag) = max(x(iFree%xBD_CDiag)-1.0d0,0.0001d0)
-    BU(iFree%xBD_CDiag) = min(x(iFree%xBD_CDiag)+5.0d0,5.0d0)
+    BL(iFree%xBD_CDiag) = max(x(iFree%xBD_CDiag)-1.0d0,parms%BD_CDiag_lo)
+    BU(iFree%xBD_CDiag) = min(x(iFree%xBD_CDiag)+3.0d0,parms%BD_CDiag_hi)
   end if
 
   if (iFree%nBC_COffDiag>0) then
