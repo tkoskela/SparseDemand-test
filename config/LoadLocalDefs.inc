@@ -22,14 +22,17 @@ LAPTOP = 400
 HOST_ID := $(shell hostname)
 
 ifeq ($(HOST_ID),drebin)
-HOST_ID=$(IFS_HPC)
-include ../config/config.ifs.hpc.inc
+  HOST_ID=$(IFS_HPC)
+  include ../config/config.ifs.hpc.inc
+else ifeq ($(HOST_ID),bergerac)
+  HOST_ID=$(IFS_HPC)
+  include ../config/config.ifs.hpc.inc
 else ifeq ($(HOST_ID),sherlock)
-HOST_ID=$(IFS_HPC)
-include ../config/config.ifs.hpc.inc
+  HOST_ID=$(IFS_HPC)
+  include ../config/config.ifs.hpc.inc
 else ifeq ($(HOST_ID),wallander)
-HOST_ID=$(IFS_HPC)
-include ../config/config.ifs.hpc.inc
+  HOST_ID=$(IFS_HPC)
+  include ../config/config.ifs.hpc.inc
 else ifeq ($(HOST_ID),vic.local)
   HOST_ID=$(CS_HPC)
   ifeq ($(GFORTRAN),1)
@@ -52,8 +55,8 @@ else ifeq ($(HOST_ID),jake.local)
     include /home/uctpln0/GeneralCode/config/config.cs.inc
   endif
 else ifeq ($(HOST_ID),Lars-Nesheims-MacBook-Pro.local)
-HOST_ID=$(LAPTOP)
+  HOST_ID=$(LAPTOP)
 else
-HOST_ID=$(UCL_HPC)
-include /data/uctpln0/GeneralCode/config/config.ucl.hpc.inc
+  HOST_ID=$(UCL_HPC)
+  include /data/uctpln0/GeneralCode/config/config.ucl.hpc.inc
 endif
