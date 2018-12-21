@@ -5,7 +5,7 @@ Begin
   Derivative Level = 0
 # Hessian Full Memory
   Iterations Limit = 100000
-  Major Iterations Limit = 5
+  Major Iterations Limit = 20
   Major Print Level = 1
   Major Step Limit = 2.0
   Minimize
