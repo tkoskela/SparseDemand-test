@@ -7,12 +7,13 @@
 #$ -R y
 #$ -cwd
 #$ -V
-#$ -t 1-301
-#$ -l tmem=2.4G,h_vmem=2.4G
+#$ -t 1-400
+#$ -l tmem=1.8G,h_vmem=1.8G
+#$ -l hostname="burns*|zeppo*|fry*|larry*|cheech*|hale*"
 ##$ -l h_rt=240:0:0
 ##$ -l hostname="fry*|burns*|larry*|zeppo*"
 ##$ -l hostname=fry*\|burns-*\|zeppo*\|larry*
-##$ -pe orte 401
+##$ -pe smp 2
 ##  -terse  -R y -t 1-$np -V $res_list 
 
 cd /home/uctpln0/FruitDemand/code/fortran/source

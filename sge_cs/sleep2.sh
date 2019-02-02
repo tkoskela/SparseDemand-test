@@ -2,7 +2,7 @@
 #$ -S /bin/bash
 #$ -wd /home/uctpln0/FruitDemand/code/fortran/sge_cs
 #$ -o /home/uctpln0/FruitDemand/code/fortran/output/sleep2.out
-#$ -N A27A
+#$ -N plotA27A
 #$ -j y
 #$ -R y
 #$ -cwd

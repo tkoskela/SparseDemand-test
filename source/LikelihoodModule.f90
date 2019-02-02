@@ -2949,7 +2949,7 @@ subroutine SelectFreeParameters(parms,iFree)
       iFree%xBC_CDiag = iFree%nAll + (/(ix,ix=1,ifree%nbc_cdiag)/)
       iFree%nall = iFree%nall + iFree%nBC_CDiag
     else if (iFree%flagBC_cdiag>10) then
-      jcol = ifree%flagBC_coffdiag-10
+      jcol = ifree%flagBC_cdiag-10
       if (jcol>=2 .and. jcol<parms%K) then
         ifree%nbc_cdiag=jcol-1
         allocate(iFree%BC_CDiag(iFree%nBC_CDiag))
@@ -2997,7 +2997,7 @@ subroutine SelectFreeParameters(parms,iFree)
       else if (jcol>parms%K) then
         n1 = parms%K*(parms%K-1)/2 + (jcol-parms%K-1)*(parms%K-1)
         ifree%nbc_coffdiag = 0
-        do i1=n1+1,n1+jcol-1
+        do i1=n1+1,n1+parms%K-1
           if (i1>=2 .and. i1<=parms%dim_eta) then
             ifree%nbc_coffdiag=ifree%nbc_coffdiag+i1-1
           else if (i1>parms%dim_eta) then
