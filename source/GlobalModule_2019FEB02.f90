@@ -44,20 +44,19 @@ module GlobalModule
     integer(i4b) :: HotStart  ! 1 = load previous results from file
   end type
 
-  type QuadRuleType
+  type QuadNode
     integer(i4b), allocatable :: nQuad(:)   ! number of nodes in each dim.
     real(dp),     allocatable :: nodes(:,:) ! nAll x dim
     real(dp),     allocatable :: weights(:) ! nAll x 1
     integer(i4b)              :: nall
-    integer(i4b)              :: flag       ! define integration rule
   end type
 
-  type QuadRuleMultiType
-    type(QuadRuleType), allocatable :: rule(:)
-    integer(i4b)                    :: flag
-    integer(i4b)                    :: nQuadAll
-    integer(i4b)                    :: nquadRaw
-  end QuadRuleMultiType
+  type QuadRuleType
+    integer(i4b)                :: dMax
+    integer(i4b), allocatable   :: flag(:)  ! one for each dimension
+    integer(i4b), allocatable   :: nall(:)
+    type(QuadNode), allocatable :: rule(:)
+  end type
 
   type DataStructure
     integer(i4b)                :: NMC       ! number of MC replications
@@ -330,9 +329,8 @@ module GlobalModule
   type(MaxStructure)          :: MaxOptions
 
   type(PenaltyStructureType)  :: Penalty
-  type(QuadRuleMultiType)     :: RandomE(:)  ! RandomE(d) = rule for d-dimensional rule for e
-  type(QuadRuleType), allocatable :: RandomB(:)   ! MC rule: RandomB(i1) = quad rule of household i1
-                                                   ! Gauss rule: RandomB(1) = quad rule
+  type(QuadRuleType)          :: IntRule
+  type(QuadNode)              :: RandomB
   type(SelectFreeType)        :: iFree
   type(ParmsStructure)        :: parms,parms0  ! parms  = current parameters
                                                ! parms0 = true parmaeters
@@ -347,7 +345,6 @@ module GlobalModule
 
   integer(i4b), parameter     :: MasterID=0
   integer(i4b)                :: nWorkers
-  integer(i4b), allocatable   :: G05State(:) ! random number generator state vector
 
   ! Structure holding gradient of DensityFunc2 w.r.t. parameters
   type DensityGradType
@@ -391,6 +388,15 @@ contains
     ! allocate memory for parms
     call AllocateParms(parms)
 
+    ! IntRule
+    !    IntRule%rule(i1) contains details to integrate an i1 dimensional integral
+    !                     over random bliss points
+    !                     diff rule for each i1 <= K
+    IntRule%dMax = parms%K
+    allocate(IntRule%flag(parms%K))
+    allocate(IntRule%nall(parms%K))
+    allocate(IntRule%rule(parms%K))
+   
   end subroutine AllocateGlobalVariables
 
   subroutine AllocateParms(LocalParms)
@@ -808,11 +814,21 @@ subroutine DeallocateGlobalVariables
 
 
   ! Deallocate integration rule
-  deallocate(RandomE)
-
+  deallocate(IntRule%flag)
+  deallocate(IntRule%nall)
+  
+  do i1=1,parms%K
+    deallocate(IntRule%rule(i1)%nQuad)
+    deallocate(IntRule%rule(i1)%nodes)
+    deallocate(IntRule%rule(i1)%weights)
+  end do
+  deallocate(IntRule%rule)
+  
   ! deallocate RandomB
   if (parms%model==2) then
-    deallocate(RandomB)
+    deallocate(RandomB%nQuad)
+    deallocate(RandomB%nodes)
+    deallocate(RandomB%weights)
   end if
 
   call DeallocateIFree(iFree)
@@ -1219,47 +1235,9 @@ subroutine InitializeParameters(InputFile)
   !          and (parms%MuE,parms%InvCDiag,parms%InvCOffDiag)
   call ReadParameters
 
-  ! Read in integration rule parameters
-  allocate(RandomE(parms%K))
-  ErrFlag = GetVal(PropList,'IntegrationFlag',cTemp)
-  write(fmt1,'(a1,i2,a3)') '(',parms%K,'i2)'
-  read(cTemp,fmt1) RandomE%flag
-
-  ErrFlag = GetVal(PropList,'nQuadAll',cTemp)
-  write(fmt1,'(a1,i2,a3)') '(',parms%K,'i4)'
-  read(cTemp,fmt1) RandomE%nAll
-
-  ErrFlag = GetVal(PropList,'nQuad',cTemp)
-  write(fmt1,'(a1,i2,a3)') '(',parms%K,'i3)'
-  read(cTemp,fmt1) RandomE%nQuadRaw
-
-  if (parms%model==2) then
-    allocate(RandomB(1))
-    ! Define RandomB rule
-    ErrFlag = GetVal(PropList,'RandomB_flag',cTemp)
-    read(cTemp,'(i2)') RandomB(1)%flag
-
-    ErrFlag = GetVal(PropList,'RandomB_nall',cTemp)
-    read(cTemp,'(i4)') RandomB(1)%nall
-
-    allocate(RandomB(1)%nQuad(parms%dim_eta))
-    RandomB(1)%nQuad = 3
-    ErrFlag = GetVal(PropList,'RandomB_nQuad',cTemp)
-    nRead = min(parms%dim_eta,10)
-    write(fmt1,'(a1,i2,a3)') '(',nread,'i3)'
-    read(cTemp,fmt1) RandomB(1)%nQuad(1:nRead)
-
-  end if ! (parms%model==2) then
-
-  ! initialize random number generator for:
-  !   1) pseudo-MC integration rule
-  !   2) simulate data for monte carlo study
-  !   this subroutine sets G05State
-  call InitializeG05
-
   ! define integration rule
-  ! Define RandomE and RandomB
-!  call DefineIntegrationRule
+  ! Define IntRule and RandomB
+  call DefineIntegrationRule
 
   ! read in flags to select free parameters
   if (parms%model==1) then
@@ -1575,39 +1553,14 @@ end subroutine InitializeParameters
     
 end subroutine ReadParameters
 
-subroutine CreateQuadRule(pid,nprocs)
+subroutine DefineIntegrationRule
   implicit none
-  integer(i4b), intent(in) :: pid,nprocs
-  integer(i4b)             :: N1,R,nskip
-  if (nprocs>1)
-    N1 = HHData%N / nworkers
-    R  = HHData%N - nworkers*N1
-    ! skip ahead number for random number generator
-    ! to ensure independent integration rules
-    nskip = (pid-1) * (HHData%N/(nprocs-1)+1) &
-           * sum(RandomeE%nall) * (parms%K*(parms%K+1))/2
-
-    if (pid>MasterID) then
-      N1 = merge(N1+1,N1,pid<=R)
-      call DefineIntegrationRule(N1,pid,nskip)
-    end if
-  else
-    N1 = HHData%N
-    call DefineIntegrationRule(N1,pid,nskip)
-  end if
-end subroutine CreateQuadRule
-
-subroutine DefineIntegrationRule(N1,pid,nskip)
-  use nag_library, only : G05KJF
-  implicit none
-  integer(i4b), intent(in)   :: N1,pid,nskip
-  integer(i4b)               :: ErrFlag,flag,nall
-  integer(i4b)               :: n,i1,j1
+  integer(i4b)               :: ErrFlag
+  integer(i4b)               :: n,i1
   character(len=PL_VAL_LEN)  :: cTemp      ! temporary character string
   integer(i4b), allocatable  :: nQuad(:)
-  integer(i4b)               :: nRead
+  integer(i4b)               :: RandomB_flag,RandomB_nall,RandomB_dim,nRead
   character(len=20)          :: fmt1
-  integer(i4b)               :: nrules
 
   ! integration rule
   ! 0 = Gauss hermite            0 : not working
@@ -1617,66 +1570,71 @@ subroutine DefineIntegrationRule(N1,pid,nskip)
   ! 6 = Gauss-Legendre on (-1,1) 6 : working
   ! 7 = pseudo-MC on (-1,1)      7 : working
 
-  ! skip ahead random number generator to ensure all rules are independent
-  call G05KJF(nskip,G05State,ErrFlag)
+  ErrFlag = GetVal(PropList,'IntegrationFlag',cTemp)
+  write(fmt1,'(a1,i2,a3)') '(',parms%K,'i2)'
+  read(cTemp,fmt1) IntRule%flag
+ 
+  ErrFlag = GetVal(PropList,'nQuadAll',cTemp)
+  write(fmt1,'(a1,i2,a3)') '(',parms%K,'i4)'
+  read(cTemp,fmt1) IntRule%nAll
+
+  allocate(nQuad(parms%K))
+  ErrFlag = GetVal(PropList,'nQuad',cTemp)
+  write(fmt1,'(a1,i2,a3)') '(',parms%K,'i3)'
+  read(cTemp,fmt1) nQuad
 
   do i1=1,parms%K
-    if (RandomE(i1)%flag==0 .or. RandomE(i1)%flag==6) then
+    allocate(IntRule%rule(i1)%nQuad(i1))
+    IntRule%rule(i1)%nQuad = nQuad(1:i1)
+    if (IntRule%flag(i1)==0 .or. IntRule%flag(i1)==6) then
       ! Tensor product rules
-      ! same rule for all households
-      nrules = 1
-      allocate(RandomE(i1)%rule(nrules))
-      allocate(RandomeE(i1)%rule(1)%nQuad(i1))
-      RandomE(i1)%rule(1)%nQuad = RandomeE(i1)%nQuadRaw
-      n = product(RandomE(i1))%rule(1)%nQuad)
+      n = product(IntRule%rule(i1)%nQuad)
     else
       ! Monte Carlo rules
-      ! different rule for each household
-      nrules = N1
-      allocate(RandomE(i1)%rule(nrules))
-      n = RandomE(i1)%nall
-    end if
-    do j1=1,nrules
-      allocate(RandomE(i1)%rule(j1)%nodes(n,i1))
-      allocate(RandomE(i1)%rule(j1)%weights(n))
-      call DefineIntegrationNodes(i1,RandomE(i1)%flag,RandomE(i1)%rule(j1)%nQuad, &
-                                  RandomE(i1)%nAll, &
-                                  RandomE(i1)%rule(j1)%nodes,RandomE(i1)%rule(j1)%weights)
-    end do
+      n = IntRule%nall(i1)
+    end if 
+    allocate(IntRule%rule(i1)%nodes(n,i1))
+    allocate(IntRule%rule(i1)%weights(n))
+    call DefineIntegrationNodes(i1,IntRule%flag(i1),IntRule%rule(i1)%nQuad,IntRule%nAll(i1), &
+                                IntRule%rule(i1)%nodes,IntRule%rule(i1)%weights)
   end do
 
+  deallocate(nQuad)
+
   if (parms%model==2) then
-    if (RandomB(1)%flag==0 .or. RandomB(1)%flag==6) then
+    ! Define RandomB rule
+    ErrFlag = GetVal(PropList,'RandomB_flag',cTemp)
+    read(cTemp,'(i2)') RandomB_flag
+  
+    ErrFlag = GetVal(PropList,'RandomB_nall',cTemp)
+    read(cTemp,'(i4)') RandomB_nall
+
+    RandomB_dim = parms%dim_eta 
+
+    allocate(RandomB%nQuad(RandomB_dim))
+    RandomB%nQuad = 3
+    ErrFlag = GetVal(PropList,'RandomB_nQuad',cTemp)
+    nRead = min(RandomB_dim,10)
+    write(fmt1,'(a1,i2,a3)') '(',nread,'i3)'
+    read(cTemp,fmt1) RandomB%nQuad(1:nRead)
+ 
+    if (RandomB_flag==0 .or. RandomB_flag==6) then
       ! Tensor product rule
-      RandomB(1)%nall =product(RandomB(1)%nQuad)
-      nrules = 1
+      RandomB%nall =product(RandomB%nQuad)
     else
-      ! Monte Carlo rules
-      nrules = N1
-      flag = RandomB(1)%flag
-      nall = RandomB(1)%nall
-      allocate(nquad(parms%dim_eta))
-      nquad = RandomB(1)%nquad
-      deallocate(RandomB)
-      allocate(RandomB(nrules))
-      RandomB%flag = flag
-      RandomB%nall = nall
+      RandomB%nall = RandomB_nall
     end if
-    do i1=1,N1
-      allocate(RandomB(i1)%nodes(RandomB(i1)%nall,parms%dim_eta))
-      allocate(RandomB(i1)%weights(RandomB(i1)%nall))
-      call DefineIntegrationNodes(parms%dim_eta,RandomB(i1)%flag, &
-                                  nquad, &
-                                  RandomB(i1)%nall, &
-                                  RandomB(i1)%nodes,RandomB(i1)%weights)
-    end do
+  
+    allocate(RandomB%nodes(RandomB%nall,RandomB_dim),RandomB%weights(RandomB%nall))
+    call DefineIntegrationNodes(RandomB_Dim,RandomB_flag,RandomB%nQuad, &
+                                RandomB%nall, &
+                                RandomB%nodes,RandomB%weights)
   end if ! (parms%model==2) then
 end subroutine DefineIntegrationRule 
 
 subroutine DefineIntegrationNodes(d,flag,n1,nAll,nodes,weights)
   use ToolsModule, only : kron1
   use nr, only : gauher,gauleg
-  use nag_library, only : G05KFF,G05SAF,G05RZF
   implicit none
   ! 0 : Gauss-Hermite               1 : Working
   ! 1 : Sparse-Hermite              2 : NOT working
@@ -1701,6 +1659,9 @@ subroutine DefineIntegrationNodes(d,flag,n1,nAll,nodes,weights)
   real(dp)                  :: mu(d)
   real(dp), allocatable     :: C(:,:),R(:)
 
+  external G05KFF  ! NAG routine to initialize random number generator
+  external G05SAF  ! NAG routine to generate uniform random numbers
+  external G05RZF  ! NAG routine to generate normal random numbers
   nodes   = 0.0d0
   weights = 1.0d0
   if (flag==0) then
@@ -1752,6 +1713,18 @@ elseif (flag==1) then
 !  weights = (pi^(-RCDim/2))*weights';
 elseif (flag==2) then
   ! pseudo-MonteCarlo
+  
+  ! initialize random number generator
+  genid = 3   ! Mersenne twister algorithm
+  subid = 0   ! not used when genid==3
+  lseed = 1   ! number of seeds needed for genid==3
+  allocate(seed(lseed))
+  seed = 9824
+  lstate = 1260  ! min value for genid==3
+  allocate(state(lstate))
+  ifail = 0
+  call G05KFF(genid,subid,seed,lseed,state,lstate,ifail)
+
   ! generate random numbers
   mode  = 2
   ifail = 0
@@ -1765,9 +1738,11 @@ elseif (flag==2) then
   end do
   LR = d*(d+1)+1
   allocate(R(LR))
-  call G05RZF(mode,nall,d,MU,C,d,R,LR,G05State, &
+  call G05RZF(mode,nall,d,MU,C,d,R,LR,state, &
               nodes,nAll,ifail)
   weights = 1.0d0/dble(nAll)
+  deallocate(seed)
+  deallocate(state)
   deallocate(C,R)
 elseif (flag==6) then
   ! Gauss-Legendre on (-1,1)
@@ -1808,14 +1783,27 @@ elseif (flag==6) then
     end do
 elseif (flag==7) then
   ! 7 : pseudo-MC on (-1,1)         7 : working
+  
+  ! initialize random number generator
+  genid = 3   ! Mersenne twister algorithm
+  subid = 0   ! not used when genid==3
+  lseed = 1   ! number of seeds needed for genid==3
+  allocate(seed(lseed))
+  seed = 9824
+  lstate = 633  ! min value for genid==3
+  allocate(state(lstate))
+  ifail = 0
+  call G05KFF(genid,subid,seed,lseed,state,lstate,ifail)
 
   ! generate random numbers
   ifail = 0
   allocate(x(nall*d))
-  call G05SAF(nall*d,G05State,x,ifail)
+  call G05SAF(nall*d,state,x,ifail)
   x = 2.0d0*x-1.0d0
   nodes = reshape(x,(/nall,d/))
   deallocate(x)
+  deallocate(seed)
+  deallocate(state)
 
 end if
 
@@ -1829,7 +1817,7 @@ subroutine BroadcastParameters(pid)
   integer(i4b), intent(in)  :: pid
   integer(i4b)              :: ierr(30),i1,i2,nerr,ierr_barrier
   integer(i4b), allocatable :: ierr_quad(:),ierr_B(:)
-  integer(i4b)              :: n  ! size of matrix for RandomB and RandomD
+  integer(i4b)              :: n,d  ! size of matrix for RandomB and RandomD
   character(len=20)         :: fmt1
   ! Broadcast OutDir and Control Flags
   ierr = 0
@@ -1901,24 +1889,64 @@ subroutine BroadcastParameters(pid)
   call BroadcastParms(parms,pid)
 
   ! broadcast information on integration rule
-  if (pid>masterID) allocate(RandomE(parms%K))
-  call mpi_bcast(RandomE%flag,parms%K,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr(25))
-  call mpi_bcast(RandomE%nAll,parms%K,MPI_INteger,MasterID,MPI_COMM_WORLD,ierr(26))
-  call mpi_bcast(RandomE%nquadRaw,parms%K,MPI_INteger,MasterID,MPI_COMM_WORLD,ierr(26))
+  call mpi_bcast(IntRule%flag,parms%K,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr(25))
+  call mpi_bcast(IntRule%nAll,parms%K,MPI_INteger,MasterID,MPI_COMM_WORLD,ierr(26))
 
-  if (pid>MasterID) allocate(RandomB(1))
-  if (pid>MasterID) allocate(RandomB(1)%nquad(parms%dim_eta))
-  call mpi_bcast(RandomB%flag,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr(25))
-  call mpi_bcast(RandomB%nAll,1,MPI_INteger,MasterID,MPI_COMM_WORLD,ierr(26))
-  call mpi_bcast(RandomB%nQuad,parms%dim_eta,MPI_INteger,MasterID,MPI_COMM_WORLD,ierr(26))
-
-  if (pid==MasterID) n = size(G05State)
-  call mpi_bcast(n,1,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr(26))
-  if (pid>MasterID) allocate(G05State(n))
-  call mpi_bcast(G05State,n,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr(26))
-
+  nerr = 2*parms%K+parms%K*parms%K
+  allocate(ierr_quad(nerr))  
+  ierr_quad = 0
+  do i1=1,parms%K
+    ! rule(i1)%nodes
+    ! rule(i1)%weights
+    ! rule(i1)%nQuad
+    call mpi_barrier(MPI_COMM_WORLD,ierr_barrier)
+    if (pid>MasterID) then
+      allocate(IntRule%rule(i1)%nQuad(i1))
+      allocate(IntRule%rule(i1)%nodes(IntRule%nAll(i1),i1))
+      allocate(IntRule%rule(i1)%weights(IntRule%nAll(i1)))
+    end if
+    call mpi_barrier(MPI_COMM_WORLD,ierr_barrier)
+    call mpi_bcast(IntRule%rule(i1)%nQuad,i1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr_quad(i1))
+    call mpi_bcast(IntRule%rule(i1)%weights,IntRule%nAll(i1),MPI_DOUBLE_PRECISION, &
+                MasterID,MPI_COMM_WORLD,ierr_quad(parms%K+i1))
+    do i2=1,i1
+      call mpi_bcast(IntRule%rule(i1)%nodes(:,i2),IntRule%nAll(i1),                &
+                     MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr_quad(2*parms%K+parms%K*(i1-1)+i2))
+    end do            
+  end do
+  write(fmt1,'(a8,i2,a3)') '(a10,i3,',nerr,'i3)'
+  print fmt1,'ierr_quad',pid,ierr(25:26),ierr_quad
+!1596 format(a10,i4,2i3,<nerr>i3)
+  deallocate(ierr_quad)
   call mpi_barrier(MPI_COMM_WORLD,ierr_barrier)
 
+  ! broadcast information on integration rule for RandomB
+  call mpi_bcast(RandomB%nall,1,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr(27))
+  if (pid==MasterID) then
+    n = size(RandomB%nodes,1)
+    d = size(RandomB%nodes,2)
+  end if
+  call mpi_bcast(n,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr(28))
+  call mpi_bcast(d,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr(29))
+  allocate(ierr_B(d+2))
+  ierr_B = 0
+  if (pid>MasterID) then
+    allocate(RandomB%nodes(n,d))
+    allocate(RandomB%weights(n))
+    allocate(RandomB%nQuad(d))
+  end if
+ 
+  call mpi_barrier(MPI_COMM_WORLD,ierr_barrier) 
+  call mpi_bcast(RandomB%weights,n,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr_B(1))
+  call mpi_bcast(RandomB%nQuad,d,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr(2))
+  do i1=1,d
+    call mpi_bcast(RandomB%nodes(:,i1),n,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr_B(2+i1))
+  end do
+  write(fmt1,'(a7,i1,a3)') '(a7,a4,',d+2,'i3)'
+  print fmt1,'ierr_B',pid,ierr_B
+!1619 format(a7,i4,<d+2>i3)
+  deallocate(ierr_B)
+  call mpi_barrier(MPI_COMM_WORLD,ierr_barrier)
 end subroutine BroadcastParameters
 
 subroutine BroadcastParms(LocalParms,pid)
@@ -2714,68 +2742,5 @@ subroutine LoadTaxParameters(taxid,taxlabel,taxtype,tax)
 
   close(TaxParmsUnit)
 end subroutine LoadTaxParameters
-
-! initialize random number generator
-subroutine  InitializeG05
-  use nag_library, only : G05KFF
-  implicit none
-  integer(i4b)              :: ifail
-  integer(i4b)              :: genid,subid,lseed,lstate
-  integer(i4b), allocatable :: seed(:)
-
-  ! initialize random number generator
-  genid = 3   ! Mersenne twister algorithm
-  subid = 0   ! not used when genid==3
-  lseed = 624 ! number of seeds needed for genid==3
-  allocate(seed(lseed))
-  call SetSeed(seed)
-
-  lstate = 0
-  allocate(G05State(lstate))
-  ifail=0
-  call G05KFF(genid,subid,seed,lseed,G05State,lstate,ifail)
-  deallocate(G05State)
-  allocate(G05State(lstate))
-
-  ifail = 0
-  call G05KFF(genid,subid,seed,lseed,G05State,lstate,ifail)
-  deallocate(seed)
-end subroutine InitializeG05
-
-! create random sequence of integers to use as seed for random number generator
-subroutine SetSeed(seed)
-  use nag_library, only : G05KFF,G05TLF
-  implicit none
-  integer(i4b), intent(out) :: seed(:)
-  integer(i4b)              :: n
-  integer(i4b)              :: a,b
-  integer(i4b)              :: ifail
-
-  integer(i4b) :: genid,subid,lseed,lstate
-  integer(i4b), allocatable :: seed0(:),state(:)
-
-  n = size(seed,1)
-  genid = 1
-  subid = 0
-  ifail = 0
-  lseed = 1
-  allocate(seed0(lseed))
-  seed0 = 14620580
-
-  lstate = 0
-  allocate(state(lstate))
-  ifail = 0
-  call G05KFF(genid,subid,seed0,lseed,state,lstate,ifail)
-  deallocate(state)
-  allocate(state(lstate))
-  ifail = 0
-  call G05KFF(genid,subid,seed0,lseed,state,lstate,ifail)
-
-  a     = 1
-  b     = 9999999
-  call G05TLF(n,a,b,state,seed,ifail)
-
-  deallocate(seed0,state)
-end subroutine SetSeed
 
 end module GlobalModule

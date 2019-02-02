@@ -8,7 +8,8 @@ program SparseDemand
   use GlobalModule,     only : GetInputFile,InitializeParameters, &
                                ControlOptions,HHData,ComputeNMC,  &
                                DeallocateGlobalVariables,         &
-                               MasterID,nWorkers
+                               MasterID,nWorkers,                 &
+                               CreateQuadRule
   use OutputModule,     only : DefineFileNames,CopyInputFilename
   use LikelihoodModule, only : RunMonteCarlo,AnalyseResults
   use IFPORT,           only : system
@@ -80,6 +81,8 @@ program SparseDemand
   if (nprocs>1) then
     call BroadcastParameters(pid)
   end if
+  ! create integration rule
+  call CreateQuadRule(pid,nprocs)
   print 101,'Process ',pid,': finish BroadcastParameters: ', &
             'day = ',DateTime(3),' time = ',DateTime(5),':',DateTime(6)
 #endif

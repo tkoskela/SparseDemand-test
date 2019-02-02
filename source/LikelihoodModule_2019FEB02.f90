@@ -1712,9 +1712,6 @@ subroutine RunMonteCarlo(IMC1,IMC2,pid)
 #if USE_MPI==1
     call SendData(pid)
 #endif
-    if (IMC==IMC1) then
-      call CreateQuadRule(pid)
-    end if
 
     if (iFree%OneAtATime==1) then
        call MaxOneAtTime(pid)
