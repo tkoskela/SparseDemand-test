@@ -41,8 +41,8 @@ small        : 1.0d-50     # small number to prevent log of zero
 # J     = number of products
 # K     = dimension of demand system
 NMC   : 1
-N     : 26514
-NSIM  : 26514
+N     : 15000
+NSIM  : 15000
 M     : 201
 J     : 27
 K     : 5
@@ -104,7 +104,7 @@ MaxLambda : 0.050
 # 7 = pseudo-MC on (-1,1)
 #                 1 2 3 4 5 6 7 8 9 101112131415161718192021222324252627282930
 #                 010101010101010101010101010101010101010101010101010101010101
-IntegrationFlag : 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 
+IntegrationFlag : 6 6 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 
 # Number of quadrature nodes in each dimension
 #          1  2  3  4  5  6  7  8  9  10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30
 #          012012012012012012012012012012012012012012012012012012012012012012012012012012012012012012
@@ -126,7 +126,7 @@ dim_eta : 2        # dimension of random coefficients in (BC,BD)
 #  RandomB_nQuad = number of points in each dimension
 #                1  2  3  4  5  6  7  8  9  10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 
 #                123123123123123123123123123123123123123123123123123123123123123123123123123123123123123123 
-RandomB_nQuad :  10 10 5  5  5  5  5  5  5  5  3  3  3  2  2  2  2  2  2  2  2  2  2  2  2  2  2  2  2  2     
+RandomB_nQuad :  7  7  5  5  5  5  5  5  5  5  3  3  3  2  2  2  2  2  2  2  2  2  2  2  2  2  2  2  2  2     
 
 # parameter for RC model
 # BC_z_dim = size(BC_z)    C = Z(k,j) * gamma0 + eta' * gamma2
@@ -136,13 +136,13 @@ BD_z_dim : 27 # default BD_z_dim = J
 BC_lo : 0.10   # minimum value of BC  (ensures B matrix has rank K for all eta)
 BC_hi : 0.90   # maximum value of BC
 BC_beta_lo : -2.0d0
-BC_beta_hi : 2.5d0
-BC_CDiag_lo : -2.0d0
-BC_CDiag_hi : 2.0d0
+BC_beta_hi : 2.0d0
+BC_CDiag_lo : 0.0001d0
+BC_CDiag_hi : 1.2d0
 BD_beta_lo : -2.0d0
 BD_beta_hi : 2.0d0
-BD_CDiag_lo : -2.0d0
-BD_CDiag_hi : 2.0d0
+BD_CDiag_lo : 0.0001d0
+BD_CDiag_hi : 1.2d0
 InvCDiag_LO : 0.2d0  # BL = InvCDiag_LO
 InvCDiag_HI : 2.5d0  # BU = x + InvCDiag_HI
 InvCOffDiag_LO : 0.05d0   # BL = pi * InvCOffDiag_LO
@@ -153,17 +153,17 @@ BD_month_hi : 2.0d0
 # select subsets of parameter to be free
 FreeFlagD           : 0   # 1 to be free, 0 to be fixed
 FreeFlagBC          : 0   # 1 to be free, 0 to be fixed
-FreeFlagMUE         : 0   # 1 to be free, 0 to be fixed
-FreeFlagMUE_month   : 0   # 1 to be free, 0 to be fixed
-FreeFlagInvCDiag    : 0   # 1 to be free, 0 to be fixed
-FreeFlagInvCOffDiag : 0   # 1 to be free, 0 to be fixed
+FreeFlagMUE         : 1   # 1 to be free, 0 to be fixed
+FreeFlagMUE_month   : 1   # 1 to be free, 0 to be fixed
+FreeFlagInvCDiag    : 1   # 1 to be free, 0 to be fixed
+FreeFlagInvCOffDiag : 1   # 1 to be free, 0 to be fixed
 
-FreeFlagBD_beta     : 0 
-FreeFlagBD_CDiag    : 1   
-FreeFlagBD_COffDiag : 0  
-FreeFlagBC_beta     : 0  
-FreeFlagBC_CDiag    : 0  
-FreeFlagBC_COffDiag : 0 
+FreeFlagBD_beta     : 1 
+FreeFlagBD_CDiag    : 1      
+FreeFlagBD_COffDiag : 1     
+FreeFlagBC_beta     : 1     
+FreeFlagBC_CDiag    : 1 
+FreeFlagBC_COffDiag : 1   
 FreeFlagBD_month    : 0
 OneAtATime          : 0
 
