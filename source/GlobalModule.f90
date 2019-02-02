@@ -55,9 +55,9 @@ module GlobalModule
   type QuadRuleMultiType
     type(QuadRuleType), allocatable :: rule(:)
     integer(i4b)                    :: flag
-    integer(i4b)                    :: nQuadAll
+    integer(i4b)                    :: nAll
     integer(i4b)                    :: nquadRaw
-  end QuadRuleMultiType
+  end type
 
   type DataStructure
     integer(i4b)                :: NMC       ! number of MC replications
@@ -330,8 +330,8 @@ module GlobalModule
   type(MaxStructure)          :: MaxOptions
 
   type(PenaltyStructureType)  :: Penalty
-  type(QuadRuleMultiType)     :: RandomE(:)  ! RandomE(d) = rule for d-dimensional rule for e
-  type(QuadRuleType), allocatable :: RandomB(:)   ! MC rule: RandomB(i1) = quad rule of household i1
+  type(QuadRuleMultiType), allocatable :: RandomE(:)  ! RandomE(d) = rule for d-dimensional rule for e
+  type(QuadRuleType),  allocatable     :: RandomB(:)   ! MC rule: RandomB(i1) = quad rule of household i1
                                                    ! Gauss rule: RandomB(1) = quad rule
   type(SelectFreeType)        :: iFree
   type(ParmsStructure)        :: parms,parms0  ! parms  = current parameters
@@ -934,6 +934,7 @@ subroutine InitializeParameters(InputFile)
     integer(i4b)                    :: nRead      ! number of values read
     integer(i4b)                    :: i1,DirStatus
     character(Len=100)              :: TempDir,TempFile,cmd_string
+    character(len=20)  :: fmt1
 
     ! read parameters from property file
     ErrFlag = LoadPropertyFile(PropList,InputFile)
@@ -1223,15 +1224,15 @@ subroutine InitializeParameters(InputFile)
   allocate(RandomE(parms%K))
   ErrFlag = GetVal(PropList,'IntegrationFlag',cTemp)
   write(fmt1,'(a1,i2,a3)') '(',parms%K,'i2)'
-  read(cTemp,fmt1) RandomE%flag
+  read(cTemp,fmt1) RandomE(1:parms%k)%flag
 
   ErrFlag = GetVal(PropList,'nQuadAll',cTemp)
   write(fmt1,'(a1,i2,a3)') '(',parms%K,'i4)'
-  read(cTemp,fmt1) RandomE%nAll
+  read(cTemp,fmt1) RandomE(1:parms%k)%nAll
 
   ErrFlag = GetVal(PropList,'nQuad',cTemp)
   write(fmt1,'(a1,i2,a3)') '(',parms%K,'i3)'
-  read(cTemp,fmt1) RandomE%nQuadRaw
+  read(cTemp,fmt1) RandomE(1:parms%k)%nQuadRaw
 
   if (parms%model==2) then
     allocate(RandomB(1))
@@ -1579,13 +1580,13 @@ subroutine CreateQuadRule(pid,nprocs)
   implicit none
   integer(i4b), intent(in) :: pid,nprocs
   integer(i4b)             :: N1,R,nskip
-  if (nprocs>1)
+  if (nprocs>1) then
     N1 = HHData%N / nworkers
     R  = HHData%N - nworkers*N1
     ! skip ahead number for random number generator
     ! to ensure independent integration rules
     nskip = (pid-1) * (HHData%N/(nprocs-1)+1) &
-           * sum(RandomeE%nall) * (parms%K*(parms%K+1))/2
+           * sum(RandomE%nall) * (parms%K*(parms%K+1))/2
 
     if (pid>MasterID) then
       N1 = merge(N1+1,N1,pid<=R)
@@ -1626,21 +1627,20 @@ subroutine DefineIntegrationRule(N1,pid,nskip)
       ! same rule for all households
       nrules = 1
       allocate(RandomE(i1)%rule(nrules))
-      allocate(RandomeE(i1)%rule(1)%nQuad(i1))
-      RandomE(i1)%rule(1)%nQuad = RandomeE(i1)%nQuadRaw
-      n = product(RandomE(i1))%rule(1)%nQuad)
+      allocate(RandomE(i1)%rule(1)%nQuad(i1))
+      RandomE(i1)%rule(1)%nQuad = RandomE(i1)%nQuadRaw
+      nall = product(RandomE(i1)%rule(1)%nQuad)
     else
       ! Monte Carlo rules
       ! different rule for each household
       nrules = N1
       allocate(RandomE(i1)%rule(nrules))
-      n = RandomE(i1)%nall
+      nall = RandomE(i1)%nall
     end if
     do j1=1,nrules
-      allocate(RandomE(i1)%rule(j1)%nodes(n,i1))
-      allocate(RandomE(i1)%rule(j1)%weights(n))
-      call DefineIntegrationNodes(i1,RandomE(i1)%flag,RandomE(i1)%rule(j1)%nQuad, &
-                                  RandomE(i1)%nAll, &
+      allocate(RandomE(i1)%rule(j1)%nodes(nall,i1))
+      allocate(RandomE(i1)%rule(j1)%weights(nall))
+      call DefineIntegrationNodes(i1,RandomE(i1)%flag,RandomE(i1)%rule(j1)%nQuad,nall, &
                                   RandomE(i1)%rule(j1)%nodes,RandomE(i1)%rule(j1)%weights)
     end do
   end do
@@ -1649,6 +1649,8 @@ subroutine DefineIntegrationRule(N1,pid,nskip)
     if (RandomB(1)%flag==0 .or. RandomB(1)%flag==6) then
       ! Tensor product rule
       RandomB(1)%nall =product(RandomB(1)%nQuad)
+      allocate(nquad(parms%dim_eta))
+      nquad = RandomB(1)%nquad
       nrules = 1
     else
       ! Monte Carlo rules
@@ -1662,7 +1664,7 @@ subroutine DefineIntegrationRule(N1,pid,nskip)
       RandomB%flag = flag
       RandomB%nall = nall
     end if
-    do i1=1,N1
+    do i1=1,nrules
       allocate(RandomB(i1)%nodes(RandomB(i1)%nall,parms%dim_eta))
       allocate(RandomB(i1)%weights(RandomB(i1)%nall))
       call DefineIntegrationNodes(parms%dim_eta,RandomB(i1)%flag, &
@@ -1901,7 +1903,9 @@ subroutine BroadcastParameters(pid)
   call BroadcastParms(parms,pid)
 
   ! broadcast information on integration rule
-  if (pid>masterID) allocate(RandomE(parms%K))
+  if (pid>masterID) then
+    allocate(RandomE(parms%K))
+  end if
   call mpi_bcast(RandomE%flag,parms%K,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr(25))
   call mpi_bcast(RandomE%nAll,parms%K,MPI_INteger,MasterID,MPI_COMM_WORLD,ierr(26))
   call mpi_bcast(RandomE%nquadRaw,parms%K,MPI_INteger,MasterID,MPI_COMM_WORLD,ierr(26))
@@ -1910,7 +1914,7 @@ subroutine BroadcastParameters(pid)
   if (pid>MasterID) allocate(RandomB(1)%nquad(parms%dim_eta))
   call mpi_bcast(RandomB%flag,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr(25))
   call mpi_bcast(RandomB%nAll,1,MPI_INteger,MasterID,MPI_COMM_WORLD,ierr(26))
-  call mpi_bcast(RandomB%nQuad,parms%dim_eta,MPI_INteger,MasterID,MPI_COMM_WORLD,ierr(26))
+  call mpi_bcast(RandomB(1)%nQuad,parms%dim_eta,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr(26))
 
   if (pid==MasterID) n = size(G05State)
   call mpi_bcast(n,1,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr(26))

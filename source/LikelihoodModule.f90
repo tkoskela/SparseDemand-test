@@ -176,7 +176,7 @@ subroutine Like2(mode,nx,x,L,GradL,nstate,iuser,ruser)
   integer(i4b), intent(in)           :: iuser(*)
   real(dp),     intent(in)           :: ruser(*)
 
-  integer(i4b)                       :: d1,d2,d3,iHH,iq
+  integer(i4b)                       :: d1,d2,d3,iHH,iq,ib
   real(dp)                           :: L0,L1
   real(dp), allocatable              :: GradL0(:),GradL1(:)
 
@@ -196,14 +196,14 @@ subroutine Like2(mode,nx,x,L,GradL,nstate,iuser,ruser)
     d1 = HHData%nNonZero(iHH)
     d2 = parms%K - d1
     d3 = parms%J-d1
-
-    do iq=1,RandomB%nall
+    ib = merge(ihh,1,size(RandomB)>1)
+    do iq=1,RandomB(ib)%nall
       ! update parms%B
-      call ComputeCurrentB(RandomB%nodes(iq,:),parms,HHData%month(iHH))
+      call ComputeCurrentB(RandomB(ib)%nodes(iq,:),parms,HHData%month(iHH))
       call Like1_wrapper(iHH,d1,d2,d3,parms,mode,L1,GradL1)
       if (L1>0.0d0) then
-        L0 = L0 + RandomB%weights(iq)*L1
-        GradL0 = GradL0 + RandomB%weights(iq)*GradL1
+        L0 = L0 + RandomB(ib)%weights(iq)*L1
+        GradL0 = GradL0 + RandomB(ib)%weights(iq)*GradL1
       end if
     end do
     ! avoid log of zero
@@ -235,7 +235,7 @@ subroutine Like2Hess(nx,x,L)
   real(dp),     intent(in)           :: x(:)
   real(dp),     intent(out)          :: L(:)
 
-  integer(i4b)                       :: d1,d2,d3,iHH,iq
+  integer(i4b)                       :: d1,d2,d3,iHH,iq,ib
   real(dp)                           :: L1
   real(dp), allocatable              :: GradL1(:)
 
@@ -256,13 +256,13 @@ subroutine Like2Hess(nx,x,L)
     d1 = HHData%nNonZero(iHH)
     d2 = parms%K - d1
     d3 = parms%J-d1
-
-    do iq=1,RandomB%nall
+    ib = merge(ihh,1,size(RandomB)>1)
+    do iq=1,RandomB(ib)%nall
       ! update parms%B
-      call ComputeCurrentB(RandomB%nodes(iq,:),parms,HHData%month(iHH))
+      call ComputeCurrentB(RandomB(ib)%nodes(iq,:),parms,HHData%month(iHH))
       call Like1_wrapper(iHH,d1,d2,d3,parms,mode,L1,GradL1)
       if (L1>0.0d0) then
-        L(iHH) = L(iHH) + RandomB%weights(iq)*L1
+        L(iHH) = L(iHH) + RandomB(ib)%weights(iq)*L1
       end if
     end do
     ! avoid log of zero
@@ -312,7 +312,7 @@ end subroutine Like1_wrapper
 !-----------------------------------------------------------------------------
 subroutine Like1C(i1,parms,mode,L,GradL)
   use nrtype
-  use GlobalModule, only : ParmsStructure,HHData,IntRule
+  use GlobalModule, only : ParmsStructure,HHData,RandomE
   use NewTools,     only : ComputeLQ
   implicit none
   integer(i4b),         intent(in)    :: i1
@@ -329,7 +329,7 @@ subroutine Like1C(i1,parms,mode,L,GradL)
   integer(i4b)              :: RowGroup(parms%J)
 
   integer(i4b)              :: integrand
-  integer(i4b)              :: ifail
+  integer(i4b)              :: ifail,irule
 
   M1 = matmul(transpose(parms%B),parms%CSig)
 
@@ -345,8 +345,8 @@ subroutine Like1C(i1,parms,mode,L,GradL)
   ! size(RowGroup) = d2 = parms%J
   ! RowGroup(j1) = max(i1) s.t.  R(i1,j1) .ne. 0.0d0
   call ComputeRowGroup(R,parms%J,parms%K,RowGroup)
-
-  call ComputeProb(L,IntRule%rule(parms%K)%nodes,IntRule%rule(parms%K)%weights, &
+   irule = merge(i1,1,size(RandomE(parms%K)%rule)>1)
+  call ComputeProb(L,RandomE(parms%K)%rule(irule)%nodes,RandomE(parms%K)%rule(irule)%weights, &
                    RowGroup,R,DTilde,Integrand)
 
   if (mode>0) then
@@ -360,7 +360,7 @@ end subroutine Like1C
 !--------------------------------------
 subroutine Like1B(iHH,d1,d2,d3,parms,mode,L,GradL)
   use nrtype
-  use GlobalModule, only : ParmsStructure,HHData,IntRule
+  use GlobalModule, only : ParmsStructure,HHData,RandomE
   use NewTools,     only : ComputeSVD,ComputeInverse_LU,ComputeLQ
   use nag_library,  only : F07FDF,F04BAF
   ! F07FDF = Cholesky decomposition
@@ -380,7 +380,7 @@ subroutine Like1B(iHH,d1,d2,d3,parms,mode,L,GradL)
   integer(i4b), allocatable :: ipivot(:)
   real(dp),     allocatable :: temp2(:,:)
 
-  integer(i4b)              :: i1,i2,ix
+  integer(i4b)              :: i1,i2,ix,irule
   integer(i4b), allocatable :: index1(:),index2(:)
   real(dp),     allocatable :: B1(:,:)
   real(dp),     allocatable :: U(:,:),S(:),VT(:,:)
@@ -541,7 +541,8 @@ subroutine Like1B(iHH,d1,d2,d3,parms,mode,L,GradL)
   allocate(RowGroup(d3))
   call ComputeRowGroup(R,d3,d2,RowGroup)
 
-  call ComputeProb(L,IntRule%rule(d2)%nodes,IntRule%rule(d2)%weights, &
+  irule = merge(i1,1,size(RandomE(d2)%rule)>1)
+  call ComputeProb(L,RandomE(d2)%rule(irule)%nodes,RandomE(d2)%rule(irule)%weights, &
                    RowGroup,R,DTilde,Integrand,           &
                    epsilon1,nu(index1),Omega12,C2,CPsi,Q,S(index1),     &
                    d1,d2)
@@ -1712,9 +1713,6 @@ subroutine RunMonteCarlo(IMC1,IMC2,pid)
 #if USE_MPI==1
     call SendData(pid)
 #endif
-    if (IMC==IMC1) then
-      call CreateQuadRule(pid)
-    end if
 
     if (iFree%OneAtATime==1) then
        call MaxOneAtTime(pid)
@@ -4372,7 +4370,7 @@ end subroutine PlotLike
 
 subroutine Constraint(x,mode,F,GradF)
   use nrtype
-  use GlobalModule, only : parms,iFree,HHData,IntRule
+  use GlobalModule, only : parms,iFree,HHData,RandomE
   use nag_library,  only : F04BAF,F07FDF
   use NewTools,     only : ComputeSVD,ComputeInverse_LU,ComputeLQ
   implicit none
@@ -4422,7 +4420,7 @@ integer(i4b)              :: n
 integer(i4b)              :: JK
 real(dp),     allocatable :: c1(:),c2(:)
 integer(i4b)              :: n1,n2
-integer(i4b)              :: i1,i2
+integer(i4b)              :: i1,i2,irule
 
 integer(i4b)              :: d1,d2,d3
 real(dp),     allocatable :: B1(:,:),B2(:,:)
@@ -4626,8 +4624,9 @@ do i1=1,HHData%N
     allocate(RowGroup(d3))
     call ComputeRowGroup(R,d3,d2,RowGroup)
 
+    irule = merge(i1,1,size(RandomE(d2)%rule)>1)
     call ComputeProb(Prob,                                            &
-                     IntRule%rule(d2)%nodes,IntRule%rule(d2)%weights, &
+                     RandomE(d2)%rule(irule)%nodes,RandomE(d2)%rule(irule)%weights, &
                      RowGroup,R,DTilde,Integrand,                     &
                      epsilon1,nu(index1),Omega12,C22,CPsi,Q(1:d2,:),S(index1),         &
                      d1,d2)
@@ -4680,7 +4679,9 @@ do i1=1,HHData%N
     allocate(RowGroup(d3))
     call ComputeRowGroup(R,d3,d2,RowGroup)
 
-    call ComputeProb(Prob,IntRule%rule(d2)%nodes,IntRule%rule(d2)%weights, &
+    irule = merge(i1,1,size(RandomE(d2)%rule)>1)
+    call ComputeProb(Prob,RandomE(d2)%rule(irule)%nodes, &
+                     RandomE(d2)%rule(irule)%weights, &
                      RowGroup,R,DTilde,Integrand)
     c2(index) = small - Prob
     deallocate(index)
