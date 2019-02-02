@@ -87,14 +87,14 @@ end subroutine Like2_master
 subroutine WorkerTask(model,pid)
   use nrtype
   use mpi
-  use GlobalModule, only : MasterID,nWorkers
+  use GlobalModule, only : MasterID,nWorkers,hhdata
   implicit none
 
   integer(i4b), intent(in)  :: model,pid
 
   integer(i4b)              :: task,mode,ierr
   real(dp)                  :: L
-  real(dp),     allocatable :: x(:),GradL(:)
+  real(dp),     allocatable :: x(:),GradL(:),VectorL(:)
   integer(i4b)              :: stat(MPI_STATUS_SIZE)
   integer(i4b), allocatable :: iuser(:)
   real(dp),     allocatable :: ruser(:)
@@ -114,7 +114,7 @@ subroutine WorkerTask(model,pid)
 
   task=1
 
-  do while (task==1)
+  do while (task>0)
     ! task : dictates which job worker should do
     ! task = 1 : compute likelihood
     ! task = 0 : finish
@@ -135,6 +135,18 @@ subroutine WorkerTask(model,pid)
           call mpi_send((/L,GradL/),nx+1,MPI_DOUBLE_PRECISION,MasterID,mode,MPI_COMM_WORLD,ierr)
         end if
       end if
+    else if (task==2) then
+      ! evaluate Like2Hess
+      ! broadcast parameter vector x and mode
+      call mpi_bcast(x,nx,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr)
+      call mpi_bcast(mode,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr)
+
+      allocate(VectorL(HHData%N))
+      if (model==2) then
+        call Like2Hess(nx,x,VectorL)
+        call mpi_send(VectorL,size(VectorL),MPI_DOUBLE_PRECISION,MasterID,mode,MPI_COMM_WORLD,ierr)
+      end if
+      deallocate(VectorL)
     end if
   end do
 
@@ -218,6 +230,45 @@ subroutine Like2(mode,nx,x,L,GradL,nstate,iuser,ruser)
 
 end subroutine Like2
 
+#if USE_MPI>0
+subroutine Like2Hess_master(nx,x,L)
+  use nrtype
+  use mpi
+  use GlobalModule, only : MasterID,nWorkers,HHData
+  implicit none
+  integer(i4b), intent(in)           :: nx
+  real(dp),     intent(in)           :: x(:)
+  real(dp),     intent(out)          :: L(:)
+
+  integer(i4b) :: ierr,task,received,N1,N2,R,source,i1
+  integer(i4b), allocatable :: index1(:),index2(:)
+  real(dp), allocatable :: TempL(:)
+
+  task = 2
+  N1 = HHData%N/nworkers
+  N2 = N1 + 1
+  R  = HHData%N - nworkers*N1
+  allocate(TempL(N2))
+  allocate(index1(N1))
+  allocate(index2(N2))
+
+  call mpi_bcast(task,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr)
+  call mpi_bcast(x,nx,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr)
+
+  do while (received<nworkers)
+    call mpi_recv(TempL,N2,MPI_DOUBLE_PRECISION,MPI_ANY_SOURCE,MPI_ANY_TAG,MPI_COMM_WORLD,stat,ierr)
+    source = stat(MPI_SOURCE)
+    if (source<=R) then
+      index2 = (/(i1=N2*(source-1)+1,N2*source)/)
+      L(index2) = TempL(1:N2)
+    else
+      index1 = (/(i1=N2*R+N1*(source-R-1)+1,N2*R+N1*(source-R))/)
+      L(index1) = TempL(1:N1)
+    end if
+    received = received +1
+  end do
+end subroutine Like2Hess_master(nx,x,L)
+#endif
 !-----------------------------------------------------------------------------
 !
 !  LIKE2Hess:   Compute vector of log-likelihood values:
@@ -4140,7 +4191,11 @@ subroutine ComputeHess2(x,L,Grad,Hess,ComputeHessFlag)
     print *,'ifree%xBC_COffDiag:',iFree%xBC_COffDiag(1),maxval(iFree%xBC_COffDiag)
   end if
 
+#if USE_MPI==0
   call Like2Hess(nx,x,LHH0)
+#elif USE_MPI==1
+  call Like2Hess(nx,x,LHH0)
+#endif
   L  = sum(LHH0)/real(HHData%n,dp)
 
   if (ComputeHessFlag==1) then
