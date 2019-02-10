@@ -42,7 +42,7 @@ subroutine Like2_master(mode,nx,x,L,GradL,nstate,iuser,ruser)
   integer(i4b)                       :: task,ierr,received
   real(dp)                           :: L1
   real(dp), allocatable              :: result(:)
-  integer(i4b)                       :: status(MPI_STATUS_SIZE)
+  integer(i4b)                       :: stat(MPI_STATUS_SIZE)
   integer(i4b)                       :: mode_in
 
   mode_in=mode
@@ -64,10 +64,10 @@ subroutine Like2_master(mode,nx,x,L,GradL,nstate,iuser,ruser)
   do while (received<nWorkers)
     if (mode==0) then
       ! level of likelihood only
-      call mpi_recv(L1,1,MPI_DOUBLE_PRECISION,MPI_ANY_SOURCE,MPI_ANY_TAG,MPI_COMM_WORLD,status,ierr)
+      call mpi_recv(L1,1,MPI_DOUBLE_PRECISION,MPI_ANY_SOURCE,MPI_ANY_TAG,MPI_COMM_WORLD,stat,ierr)
       L = L+L1
     elseif (mode>0) then
-      call mpi_recv(result,nx+1,MPI_DOUBLE_PRECISION,MPI_ANY_SOURCE,MPI_ANY_TAG,MPI_COMM_WORLD,status,ierr)
+      call mpi_recv(result,nx+1,MPI_DOUBLE_PRECISION,MPI_ANY_SOURCE,MPI_ANY_TAG,MPI_COMM_WORLD,stat,ierr)
       L  = L + result(1)
     !  GradL = GradL + result(2:nx+1)
     end if
@@ -139,7 +139,6 @@ subroutine WorkerTask(model,pid)
       ! evaluate Like2Hess
       ! broadcast parameter vector x and mode
       call mpi_bcast(x,nx,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr)
-      call mpi_bcast(mode,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr)
 
       allocate(VectorL(HHData%N))
       if (model==2) then
@@ -243,6 +242,7 @@ subroutine Like2Hess_master(nx,x,L)
   integer(i4b) :: ierr,task,received,N1,N2,R,source,i1
   integer(i4b), allocatable :: index1(:),index2(:)
   real(dp), allocatable :: TempL(:)
+  integer(i4b)          :: stat(MPI_STATUS_SIZE)
 
   task = 2
   N1 = HHData%N/nworkers
@@ -259,15 +259,15 @@ subroutine Like2Hess_master(nx,x,L)
     call mpi_recv(TempL,N2,MPI_DOUBLE_PRECISION,MPI_ANY_SOURCE,MPI_ANY_TAG,MPI_COMM_WORLD,stat,ierr)
     source = stat(MPI_SOURCE)
     if (source<=R) then
-      index2 = (/(i1=N2*(source-1)+1,N2*source)/)
+      index2 = (/(i1,i1=N2*(source-1)+1,N2*source)/)
       L(index2) = TempL(1:N2)
     else
-      index1 = (/(i1=N2*R+N1*(source-R-1)+1,N2*R+N1*(source-R))/)
+      index1 = (/(i1,i1=N2*R+N1*(source-R-1)+1,N2*R+N1*(source-R))/)
       L(index1) = TempL(1:N1)
     end if
     received = received +1
   end do
-end subroutine Like2Hess_master(nx,x,L)
+end subroutine Like2Hess_master
 #endif
 !-----------------------------------------------------------------------------
 !
@@ -592,7 +592,7 @@ subroutine Like1B(iHH,d1,d2,d3,parms,mode,L,GradL)
   allocate(RowGroup(d3))
   call ComputeRowGroup(R,d3,d2,RowGroup)
 
-  irule = merge(i1,1,size(RandomE(d2)%rule)>1)
+  irule = merge(ihh,1,size(RandomE(d2)%rule)>1)
   call ComputeProb(L,RandomE(d2)%rule(irule)%nodes,RandomE(d2)%rule(irule)%weights, &
                    RowGroup,R,DTilde,Integrand,           &
                    epsilon1,nu(index1),Omega12,C2,CPsi,Q,S(index1),     &
@@ -4060,7 +4060,11 @@ subroutine ComputeHess2(x,L,Grad,Hess)
     print *,'ifree%xBC_COffDiag:',iFree%xBC_COffDiag(1),maxval(iFree%xBC_COffDiag)
   end if
 
+#if USE_MPI==0 
   call Like2Hess(nx,x,LHH0)
+#else
+  call Like2Hess_master(nx,x,LHH0)
+#endif
   L  = sum(LHH0)/real(HHData%n,dp)
   TotalTime = time()
   SubTime   = 0.0d0
@@ -4078,7 +4082,11 @@ subroutine ComputeHess2(x,L,Grad,Hess)
       SubTime(i1) = time()
       x1=x
       x1(blockindex(i1)) = x(blockindex(i1))+h
+#if USE_MPI==0
       call Like2Hess(nx,x1,LHH1)
+#else
+      call Like2Hess_master(nx,x1,LHH1)
+#endif
       GradLHH(:,i1) = (LHH1-LHH0)/(x1(blockIndex(i1))-x(blockIndex(i1)))
       Grad(blockIndex(i1)) = sum(GradLHH(:,i1))/real(HHData%N,dp)
       do i2=1,i1
@@ -4100,7 +4108,11 @@ subroutine ComputeHess2(x,L,Grad,Hess)
         SubTime(i1) = time()
         x1=x
         x1(i1) = x(i1)+h
+#if USE_MPI==0
         call Like2Hess(nx,x1,LHH1)
+#else
+        call Like2Hess_master(nx,x1,LHH1)
+#endif
         GradLHH1 = (LHH1-LHH0)/(x1(i1)-x(i1))
         Grad(i1) = sum(GradLHH1)/real(HHData%N,dp)
         do i2=1,nmax
@@ -4194,7 +4206,7 @@ subroutine ComputeHess2(x,L,Grad,Hess,ComputeHessFlag)
 #if USE_MPI==0
   call Like2Hess(nx,x,LHH0)
 #elif USE_MPI==1
-  call Like2Hess(nx,x,LHH0)
+  call Like2Hess_master(nx,x,LHH0)
 #endif
   L  = sum(LHH0)/real(HHData%n,dp)
 
@@ -4211,7 +4223,11 @@ subroutine ComputeHess2(x,L,Grad,Hess,ComputeHessFlag)
       SubTime(i1) = time()
       x1=x
       x1(i1) = x(i1)+h
+#if USE_MPI==0
       call Like2Hess(nx,x1,LHH1)
+#else
+      call Like2Hess_master(nx,x1,LHH1)
+#endif
       GradLHH(:,i1) = (LHH1-LHH0)/(x1(i1)-x(i1))
       Grad(i1) = sum(GradLHH(:,i1))/real(HHData%N,dp)
       do i2=1,i1
