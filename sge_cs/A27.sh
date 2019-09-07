@@ -18,6 +18,5 @@ date
 which mpirun
 source
 mpirun -perhost 1 -np $NSLOTS -env I_MPI_FABRICS tcp ./SparseDemand_mpi.exe ../inputs/A27_new/A27A.prop
-#mpirun -perhost 1 -np $NSLOTS -env I_MPI_FABRICS shm:tcp ./SparseDemand_mpi.exe ../inputs/A27_new/A27A.prop
 date
 
