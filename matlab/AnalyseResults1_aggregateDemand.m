@@ -7,8 +7,8 @@ addpath('ImportTools')
 %FortranOutDir = '/SAN/economics/Nesheim-IO/FruitDemand/output/A27_20171116';
 %FortranOutDir = '/SAN/economics/Nesheim-IO/FruitDemand/output/A27_20180101';
 %FortranOutDir = '../output/A27_2018MAY/fortran_output';
-FortranOutDir = '../source/output/A27_201805';
-OutDir        = '../source/output/A27_201805/figures';
+FortranOutDir = '../output/A27_201811';
+OutDir        = '../output/A27_201811/figures';
 N       = 50000;
 J       = 27;
 K       = 5;

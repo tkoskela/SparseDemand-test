@@ -6,8 +6,7 @@
 #
 # Frequently changing options
 #  Name of output directory
-#OutDir : /SAN/economics/Nesheim-IO/FruitDemand/output/A27_2018MAY
-OutDir : /home/uctpln0/FruitDemand/code/fortran/source/output/A27_2018MAY
+OutDir : /home/uctpln0/FruitDemand/code/fortran/output/A27_201811
 InputDir: /home/uctpln0/FruitDemand/code/fortran/inputs/A27_new
 TestLikeFlag : 6     # 0 = maximise likelihood
                      # 1 = test likelihood gradient
