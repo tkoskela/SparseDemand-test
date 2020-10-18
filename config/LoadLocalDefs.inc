@@ -4,13 +4,9 @@
 #
 # modification history
 # --------------------
+# 2020OCT18 LN update for myriad
 # 11JUN2016 LN  update to new paths on UCL and CS clusters
 # 08DEC2014 LN  hostname doesn't work on cs cluster
-# 15NOV2014 LPN edit to work on CS cluster
-# 23JAN2014 LN  edit to work on legion
-# 16jun2011 LPN changed hostname for IFS
-# 08feb2008 bss fixed host specification logic
-# 07feb2008 bss written.
 #
 # Define possible host ID's
 ECON_HPC = 100
@@ -23,45 +19,15 @@ MYRIAD = 500
 HOST_ID := $(shell hostname)
 HOST_ID := $(if $(findstring login,$(HOST_ID)),myriad,$(HOST_ID))
 
-ifeq ($(HOST_ID),drebin)
-  HOST_ID=$(IFS_HPC)
-  include ../config/config.ifs.inc
-else ifeq ($(HOST_ID),myriad)
+GeneralCode=/home/uctpln0/GeneralCode
+ 
+ifeq ($(HOST_ID),myriad)
   HOST_ID=$(MYRIAD)
-  include /home/uctpln0/GeneralCode/config/config.myriad.inc 
-else ifeq ($(HOST_ID),bergerac)
-  HOST_ID=$(IFS_HPC)
-  include ../config/config.ifs.inc
-else ifeq ($(HOST_ID),sherlock)
-  HOST_ID=$(IFS_HPC)
-  include ../config/config.ifs.inc
-else ifeq ($(HOST_ID),wallander)
-  HOST_ID=$(IFS_HPC)
-  include ../config/config.ifs.inc
-else ifeq ($(HOST_ID),vic.local)
+  include $(GeneralCode)/config/myriad.inc 
+else ifeq ($(HOST_ID,peacock.local)
   HOST_ID=$(CS_HPC)
-  ifeq ($(GFORTRAN),1)
-    include /home/uctpln0/GeneralCode/config/gcc.cs.inc
-  else
-    include /home/uctpln0/GeneralCode/config/config.cs.inc
-  endif
-else ifeq ($(HOST_ID),wise.local)
-  HOST_ID=$(CS_HPC)
-  ifeq ($(GFORTRAN),1)
-    include /home/uctpln0/GeneralCode/config/gcc.cs.inc
-  else
-    include /home/uctpln0/GeneralCode/config/config.cs.inc
-  endif
+  include $(GeneralCode)/config/cs.inc
 else ifeq ($(HOST_ID),jake.local)
   HOST_ID=$(CS_HPC)
-  ifeq ($(GFORTRAN),1)
-    include /home/uctpln0/GeneralCode/config/gcc.cs.inc
-  else
-    include /home/uctpln0/GeneralCode/config/config.cs.inc
-  endif
-else ifeq ($(HOST_ID),Lars-Nesheims-MacBook-Pro.local)
-  HOST_ID=$(LAPTOP)
-else
-  HOST_ID=$(ECON_HPC)
-  include /data/uctpln0/GeneralCode/config/config.econ.inc
+  include $(GeneralCode)/config/jake.inc
 endif
