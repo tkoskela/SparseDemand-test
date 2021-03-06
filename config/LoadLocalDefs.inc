@@ -4,9 +4,8 @@
 #
 # modification history
 # --------------------
+# 2021MAR06 LN update paths
 # 2020OCT18 LN update for myriad
-# 11JUN2016 LN  update to new paths on UCL and CS clusters
-# 08DEC2014 LN  hostname doesn't work on cs cluster
 #
 # Define possible host ID's
 ECON_HPC = 100
@@ -18,16 +17,25 @@ MYRIAD = 500
 # Select correct Platform-specific parameters
 HOST_ID := $(shell hostname)
 HOST_ID := $(if $(findstring login,$(HOST_ID)),myriad,$(HOST_ID))
+USER    := $(shell whoami)
 
-GeneralCode=/home/uctpln0/GeneralCode
- 
+
 ifeq ($(HOST_ID),myriad)
   HOST_ID=$(MYRIAD)
-  include $(GeneralCode)/config/myriad.inc 
-else ifeq ($(HOST_ID,peacock.local)
+  ifeq ($(USER),uctpln0)
+    WorkDir = /home/uctpln0/FruitDemand/code/fortran
+  endif
+  include $(WorkDir)/config/myriad.inc 
+else ifeq ($(HOST_ID,peacock.cs.ucl.ac.uk)
   HOST_ID=$(CS_HPC)
-  include $(GeneralCode)/config/cs.inc
+  ifeq ($(USER),uctpln0)
+    WorkDir = /home/uctpln0/FruitDemand/code/fortran
+  endif
+  include $(WorkDir)/config/cs.inc
 else ifeq ($(HOST_ID),jake.local)
   HOST_ID=$(CS_HPC)
-  include $(GeneralCode)/config/jake.inc
+  ifeq ($(USER),uctpln0)
+    WorkDir = /home/uctpln0/FruitDemand/code/fortran
+  endif
+  include $(WorkDir)/config/jake.inc
 endif
