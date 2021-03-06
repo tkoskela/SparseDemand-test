@@ -1089,7 +1089,7 @@ subroutine InitializeParameters(InputFile)
   read(cTemp,'(i2)') MaxOptions%LoadBasis
 
   ErrFlag = GetVal(PropList,'SaveBasisFreq',cTemp)
-  read(cTemp,'(i3)') MaxOptions%SaveBasisFreq
+  read(cTemp,'(i5)') MaxOptions%SaveBasisFreq
 
   ErrFlag = GetVal(PropList,'BasisFile',cTemp)
   MaxOptions%BasisFile = trim(OutDir) // '/' // trim(cTemp)

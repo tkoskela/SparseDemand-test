@@ -4292,13 +4292,13 @@ subroutine SetBounds(x,BL,BU)
   end if
 
   if (iFree%nMUE>0) then
-    BL(iFree%xMUE) = x(iFree%xmue)-10.0d0
-    BU(iFree%xmue) = x(iFree%xmue)+10.0d0
+    BL(iFree%xMUE) = x(iFree%xmue)-15.0d0
+    BU(iFree%xmue) = x(iFree%xmue)+15.0d0
   end if
 
   if (iFree%nMUE_month>0) then
-    BL(iFree%xMUE_month) = x(iFree%xmue_month)-10.0d0
-    BU(iFree%xmue_month) = x(iFree%xmue_month)+10.0d0
+    BL(iFree%xMUE_month) = x(iFree%xmue_month)-15.0d0
+    BU(iFree%xmue_month) = x(iFree%xmue_month)+15.0d0
   end if
 
   if (iFree%nInvCDiag>0) then
@@ -4312,17 +4312,17 @@ subroutine SetBounds(x,BL,BU)
   end if
 
   if (iFree%nBD_beta>0) then
-    BL(iFree%xBD_beta) = max(x(iFree%xBD_beta)-2.0d0,parms%BD_beta_lo)
-    BU(iFree%xBD_beta) = min(x(iFree%xBD_beta)+1.0d0,parms%BD_beta_hi)
+    BL(iFree%xBD_beta) = max(x(iFree%xBD_beta)-3.0d0,parms%BD_beta_lo)
+    BU(iFree%xBD_beta) = min(x(iFree%xBD_beta)+3.0d0,parms%BD_beta_hi)
   end if
 
   if (iFree%nBD_month>0) then
-    BL(iFree%xBD_month) = max(x(iFree%xBD_month)-2.0d0,parms%BD_month_lo)
-    BU(iFree%xBD_month) = max(x(iFree%xBD_month)+1.0d0,parms%BD_month_hi)
+    BL(iFree%xBD_month) = max(x(iFree%xBD_month)-3.0d0,parms%BD_month_lo)
+    BU(iFree%xBD_month) = max(x(iFree%xBD_month)+3.0d0,parms%BD_month_hi)
   end if
 
   if (iFree%nBC_beta>0) then
-    BL(iFree%xBC_beta) = max(x(iFree%xBC_beta)-2.0d0,parms%BC_beta_lo)
+    BL(iFree%xBC_beta) = max(x(iFree%xBC_beta)-3.0d0,parms%BC_beta_lo)
     BU(iFree%xBC_beta) = min(x(iFree%xBC_beta)+3.0d0,parms%BC_beta_hi)
   end if
 
@@ -4330,14 +4330,14 @@ subroutine SetBounds(x,BL,BU)
     ! BC(:,j)   = pid * normcdf( BC_beta * z + BC_C * eta)
     !        BC_CDiag >= 0.0d0
     !        also note: Like(BC_CDiag= -x) = Like(BC_CDiag = x)
-    BL(iFree%xBC_CDiag) = max(x(iFree%xBC_CDiag)-1.0d0,parms%BC_CDiag_lo)
+    BL(iFree%xBC_CDiag) = max(x(iFree%xBC_CDiag)-3.0d0,parms%BC_CDiag_lo)
     BU(iFree%xBC_CDiag) = min(x(iFree%xBC_CDiag)+3.0d0,parms%BC_CDiag_hi)
   end if
 
   if (iFree%nBD_CDiag>0) then
     ! log(BD) = BD_Beta * z + BD_C * eta
     !           BD_CDiag>=0.0d0
-    BL(iFree%xBD_CDiag) = max(x(iFree%xBD_CDiag)-1.0d0,parms%BD_CDiag_lo)
+    BL(iFree%xBD_CDiag) = max(x(iFree%xBD_CDiag)-3.0d0,parms%BD_CDiag_lo)
     BU(iFree%xBD_CDiag) = min(x(iFree%xBD_CDiag)+3.0d0,parms%BD_CDiag_hi)
   end if
 
