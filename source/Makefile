@@ -9,7 +9,7 @@
 #
 #   all	  	 - builds everything
 #   clean	 - deletes all .o, .a, binaries, etc.
-#   nuke     - clean + clean all dependencies
+#   cleanall     - clean + clean all dependencies
 #   exe		 - optimized application
 #   dbg		 - application with debug symbols
 #
@@ -35,6 +35,7 @@
 #
 # modification history
 # --------------------
+# 2021MAR06 LN   move GeneralCode source code to subdirectory of project
 # 2018JUL25 LN   clean up and edit
 # 09OCT2013 LN   load ApproximationModule.o before ValueModule.o since the latter uses the former
 # 29jun2011 LPN  rename *_module to *Module
@@ -138,7 +139,7 @@ dbg:    $(TGT).dbg
 
 all: clean dbg exe
 
-nuke:	cleantools cleannr clean
+cleanall:	cleantools cleannr clean
 
 #-----------------------------
 # Rule to build libraries
@@ -149,16 +150,16 @@ nuke:	cleantools cleannr clean
 #-----------------------------
 
 $(NR_DIR)/libnr.a : $(patsubst %, $(NR_DIR)/%, $(NR_SRC) )
-	cd $(NR_DIR) ; make libnr.a
+	make -C $(NR_DIR) libnr.a
 
 $(NR_DIR)/libnr_d.a : $(patsubst %, $(NR_DIR)/%, $(NR_SRC) )
-	cd $(NR_DIR) ; make libnr_d.a
+	make -C $(NR_DIR) libnr_d.a
 
 $(TOOLS_DIR)/libtools.a : $(patsubst %, $(TOOLS_DIR)/%, $(TOOLS_SRC) )
-	cd $(TOOLS_DIR) ; make libtools.a
+	make -C $(TOOLS_DIR) libtools.a
 
 $(TOOLS_DIR)/libtools_d.a : $(patsubst %, $(TOOLS_DIR)/%, $(TOOLS_SRC) )
-	cd $(TOOLS_DIR) ; make libtools_d.a
+	make -C $(TOOLS_DIR) libtools_d.a
 
 #-----------------------------
 # Rules to build application
