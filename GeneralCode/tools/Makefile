@@ -3,14 +3,15 @@
 #
 # modification history
 # --------------------
-# 2021MAR06 LN edit path names 
+# 2021MAR06 LN edit path names
 # 2018AUG20 LN update to work with Intel 2018
 #              add option to compile Test InverseNormal
 
 .SUFFIXES: .o .f95 .f90 .mod .a
 
 # Select Corrent Platform-specific parameters
-include ../../config/LoadLocalDefs.inc
+WorkDir:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))/../..
+include $(WorkDir)/config/LoadLocalDefs.inc
 
 # Fortran Compiler
 FC = $(LOCAL_FC)

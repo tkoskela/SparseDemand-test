@@ -15,8 +15,8 @@
 #
 # Options:
 #
-#   USE_MPI	- defaults to 0 (no MPI).  If defined to 1, build 
-#                 application with MPI libraries for execution on 
+#   USE_MPI	- defaults to 0 (no MPI).  If defined to 1, build
+#                 application with MPI libraries for execution on
 #                 multiple processors
 #
 # Example:
@@ -44,7 +44,8 @@
 .SUFFIXES: .a .o .f95 .f90 .mod
 
 # Select correct Macros based on platform in use
-include ../config/LoadLocalDefs.inc
+WorkDir:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))/..
+include $(WorkDir)/config/LoadLocalDefs.inc
 
 # Compiler toolkit
 
@@ -71,22 +72,22 @@ AR_FLAGS = $(LOCAL_AR_FLAGS)
 NR_DIR = $(LOCAL_NR_DIR)
 TOOLS_DIR = $(LOCAL_TOOLS_DIR)
 MKL_DIR = ${LOCAL_MKL_DIR}
-NAG_DIR = ${LOCAL_NAG_DIR}
+NAG_BLOCKS = ${LOCAL_NAG_BLOCKS}
 OUT_DIR = ../lib
 
 # Compiler and linker options
-FL_LIBS = $(LOCAL_FL_LIBS) 
-FC_FLAGS = $(LOCAL_FC_FLAGS) -I${MKL_DIR} -I$(NR_DIR) -I$(TOOLS_DIR) -I${NAG_DIR}/nag_interface_blocks -DHOST_ID=$(HOST_ID)
+FL_LIBS = $(LOCAL_FL_LIBS)
+FC_FLAGS = $(LOCAL_FC_FLAGS) -I${MKL_DIR} -I$(NR_DIR) -I$(TOOLS_DIR) -I${NAG_BLOCKS} -DHOST_ID=$(HOST_ID)
 
-# Add the following line to FC_FLAGS to use profiling data to 
+# Add the following line to FC_FLAGS to use profiling data to
 # improve compiler optimization:
 #		 -prof-use -prof-dir ./profdata
-# 
+#
 # Add the following line to FC_FLAGS to generate profile data
 #
 #		 -prof-genx -prof-dir ./profdata
 
-FC_DEBUG_FLAGS = $(LOCAL_FC_DEBUG_FLAGS) -I${MKL_DIR} -I$(NR_DIR) -I$(TOOLS_DIR) -I${NAG_DIR}/nag_interface_blocks -DHOST_ID=$(HOST_ID) 
+FC_DEBUG_FLAGS = $(LOCAL_FC_DEBUG_FLAGS) -I${MKL_DIR} -I$(NR_DIR) -I$(TOOLS_DIR) -I${NAG_BLOCKS} -DHOST_ID=$(HOST_ID)
 
 #---------------------------------------
 # Source code for numerical recipes library
@@ -107,7 +108,7 @@ MOD_OBJS = \
 	GlobalModule.o \
 	OutputModule.o \
 	DataModule.o \
-	LikelihoodModule.o 
+	LikelihoodModule.o
 
 # The main program
 PRG_OBJS = main.o
@@ -144,7 +145,7 @@ cleanall:	cleantools cleannr clean
 #-----------------------------
 # Rule to build libraries
 
-# The codes $(patsubst ...) adds a prefix to 
+# The codes $(patsubst ...) adds a prefix to
 # each source file defining the path where it is stored
 # This section also builds the libraries (libnr,libtools) if they have not yet already been built.
 #-----------------------------
@@ -186,9 +187,8 @@ cleannr:
 
 # Pattern Rules
 
-$(OBJS) : %.o : %.f90 
+$(OBJS) : %.o : %.f90
 	$(FC) $(FC_FLAGS) -c $< -o $@
 
-$(DEBUG_OBJS) : %_d.o : %.f90 
+$(DEBUG_OBJS) : %_d.o : %.f90
 	$(FC) $(FC_DEBUG_FLAGS) -c $< -o $@
-

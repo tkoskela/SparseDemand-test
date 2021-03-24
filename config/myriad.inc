@@ -8,12 +8,19 @@
 # 2019AUG29 LN  edit for myriad cluster
 # 23JAN2014 LN  edit to work on legion, adapt from ucl.config.inc
 #
+# On myriad use modules to set paths to libraries.
+# tested with the following module environment (TK March 2021):
+# module purge
+# module load default-modules/2018
+# module load compilers/intel/2018/update3
+# module load nag/fortran/mark26/intel-2017
+#
 #-------------------
 # Local MPI settings
 # mpif90 sets all other flags.
-LOCAL_MPI_DIR         = /shared/ucl/apps/intel/2018.Update3/compilers_and_libraries_2018.3.222/linux/mpi/intel64/bin
+LOCAL_MPI_DIR         = $(MPI_HOME)/intel64/bin
 LOCAL_MPI_LIBS        =
-LOCAL_MPI_FLAGS       = -DUSE_MPI=1 
+LOCAL_MPI_FLAGS       = -DUSE_MPI=1
 LOCAL_MPI_DEBUG_FLAGS = -debug parallel -DUSE_MPI=1
 LOCAL_MPI_FC          = mpiifort
 LOCAL_MPI_CC          = mpicc
@@ -22,16 +29,10 @@ LOCAL_MPI_CC          = mpicc
 # Local NAG settings
 
 # Library locations
-LOCAL_MKL_DIR     = /shared/ucl/apps/intel/2018.Update3/compilers_and_libraries_2018.3.222/linux/mkl/include
-# fll6i26dcl:   intel fortran compiler version
-# fll6i26dfl:   gfortran compiler version
-LOCAL_NAG_DIR     = /shared/ucl/apps/NAG/fortran-library/fll6i26dcl
-LOCAL_NAG_BLOCKS  = $(LOCAL_NAG_DIR)/nag_interface_blocks
+LOCAL_MKL_DIR     = $(MKLROOT)/include
+LOCAL_NAG_BLOCKS  = $(NAG_DIR)/nag_interface_blocks
 LOCAL_NR_DIR      = $(WorkDir)/GeneralCode/nr
 LOCAL_TOOLS_DIR   = $(WorkDir)/GeneralCode/tools
-LOCAL_KNITRO_DIR  = /shared/ucl/apps/econ/knitro/10.0.1-z
-LOCAL_KNITRO_LIBS = $(LOCAL_KNITRO_DIR)/lib/libknitro.so
-KNITRORELEASE = 1001
 USE_NAG = 1
 
 #-------------------
@@ -45,13 +46,7 @@ LOCAL_AR_FLAGS = rc
 LOCAL_RANLIB   = ranlib
 
 # Compiler and linker options
-LOCAL_FL_LIBS = $(LOCAL_NAG_DIR)/lib/libnag_mkl.a \
-                -Wl,--start-group \
-                ${LOCAL_NAG_DIR}/mkl_intel64_11.3.3/lib/libmkl_core.a \
-                ${LOCAL_NAG_DIR}/mkl_intel64_11.3.3/lib/libmkl_intel_lp64.a \
-                ${LOCAL_NAG_DIR}/mkl_intel64_11.3.3/lib/libmkl_intel_thread.a -Wl,--end-group \
-                -liomp5 -lpthread -lm -shared-intel \
-                -ldl -lstdc++
+LOCAL_FL_LIBS = -lnag_mkl -lmkl_core -lmkl_intel_lp64 -lmkl_intel_thread -liomp5 -lpthread -lm -shared-intel -ldl -lstdc++
 LOCAL_CC_LIBS = -ldl -lstdc++
 
 # Fortran compiler flags
@@ -75,5 +70,4 @@ LOCAL_FC_FLAGS = -fpp -cxxlib -align all -allow nofpp_comments -assume realloc_l
 
 LOCAL_FC_DEBUG_FLAGS = -fpp -cxxlib -align all -allow nofpp_comments -assume realloc_lhs \
                        -g -debug extended -gdwarf-2 -check bounds
-LOCAL_CC_DEBUG_FLAGS = -fopenmp -cxxlib -align -g -debug extended 
-
+LOCAL_CC_DEBUG_FLAGS = -fopenmp -cxxlib -align -g -debug extended

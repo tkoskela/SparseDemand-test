@@ -21,7 +21,8 @@
 # Define macros for Makefile
 
 # Select Current Platform-specific parameters
-include ../../config/LoadLocalDefs.inc
+WorkDir:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))/../..
+include $(WorkDir)/config/LoadLocalDefs.inc
 
 # Compiler toolkit
 
@@ -53,8 +54,8 @@ FL_LIBS = $(LOCAL_FL_LIBS) -I${MKL_DIR}
 #
 
 # Note: optimization removes symbols from the .o.
-FC_FLAGS = $(LOCAL_FC_FLAGS) 
-FC_DEBUG_FLAGS = $(LOCAL_FC_DEBUG_FLAGS) 
+FC_FLAGS = $(LOCAL_FC_FLAGS)
+FC_DEBUG_FLAGS = $(LOCAL_FC_DEBUG_FLAGS)
 
 #---------------------------------------
 # Source code for numerical recipies library
@@ -83,13 +84,13 @@ dbg: libnr_d.a
 # The stuff with $(patsubst ...) below is 'syntactic sugar' to
 # prefix each source file with the path to where it is stored
 libnr.a : $(OBJS)
-#	$(FC) -fpic -c $^ 
+#	$(FC) -fpic -c $^
 	$(AR) $(AR_FLAGS) $@ $(OBJS)
 	$(RANLIB) $@
 
 libnr_d.a : $(DEBUG_OBJS)
-#	$(FC) -fpic $(FC_DEBUG_FLAGS) -c $^ 
-#	$(FC) -fpic -c $^ 
+#	$(FC) -fpic $(FC_DEBUG_FLAGS) -c $^
+#	$(FC) -fpic -c $^
 	$(AR) $(AR_FLAGS) $@ $(DEBUG_OBJS)
 	$(RANLIB) $@
 
@@ -100,9 +101,8 @@ clean:
 
 # Pattern Rules
 
-$(OBJS) : %.o : %.f90 
+$(OBJS) : %.o : %.f90
 	$(FC) -fpic $(FC_FLAGS) -c $< -o $@
 
-$(DEBUG_OBJS) : %_d.o : %.f90 
+$(DEBUG_OBJS) : %_d.o : %.f90
 	$(FC) -fpic $(FC_DEBUG_FLAGS) -c $< -o $@
-

@@ -19,23 +19,13 @@ HOST_ID := $(shell hostname)
 HOST_ID := $(if $(findstring login,$(HOST_ID)),myriad,$(HOST_ID))
 USER    := $(shell whoami)
 
-
 ifeq ($(HOST_ID),myriad)
   HOST_ID=$(MYRIAD)
-  ifeq ($(USER),uctpln0)
-    WorkDir = /home/uctpln0/FruitDemand/code/fortran
-  endif
-  include $(WorkDir)/config/myriad.inc 
+  include $(WorkDir)/config/myriad.inc
 else ifeq ($(HOST_ID,peacock.cs.ucl.ac.uk)
   HOST_ID=$(CS_HPC)
-  ifeq ($(USER),uctpln0)
-    WorkDir = /home/uctpln0/FruitDemand/code/fortran
-  endif
   include $(WorkDir)/config/cs.inc
 else ifeq ($(HOST_ID),jake.local)
   HOST_ID=$(CS_HPC)
-  ifeq ($(USER),uctpln0)
-    WorkDir = /home/uctpln0/FruitDemand/code/fortran
-  endif
   include $(WorkDir)/config/jake.inc
 endif
