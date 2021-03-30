@@ -33,6 +33,9 @@ LOCAL_MKL_DIR     = $(MKLROOT)/include
 LOCAL_NAG_BLOCKS  = $(NAG_DIR)/nag_interface_blocks
 LOCAL_NR_DIR      = $(WorkDir)/GeneralCode/nr
 LOCAL_TOOLS_DIR   = $(WorkDir)/GeneralCode/tools
+LOCAL_KNITRO_DIR  = /shared/ucl/apps/Knitro/knitro-12.0.0-z-Linux-64
+LOCAL_KNITRO_LIBS = $(LOCAL_KNITRO_DIR)/lib/libknitro.so
+KNITRORELEASE = 1200
 USE_NAG = 1
 
 #-------------------
