@@ -29,9 +29,9 @@ LOCAL_NAG_DIR     = /shared/ucl/apps/NAG/fortran-library/fll6i26dcl
 LOCAL_NAG_BLOCKS  = $(LOCAL_NAG_DIR)/nag_interface_blocks
 LOCAL_NR_DIR      = $(WorkDir)/GeneralCode/nr
 LOCAL_TOOLS_DIR   = $(WorkDir)/GeneralCode/tools
-LOCAL_KNITRO_DIR  = /shared/ucl/apps/econ/knitro/10.0.1-z
+LOCAL_KNITRO_DIR  = /shared/ucl/apps/Knitro/knitro-12.0.0-z-Linux-64
 LOCAL_KNITRO_LIBS = $(LOCAL_KNITRO_DIR)/lib/libknitro.so
-KNITRORELEASE = 1001
+KNITRORELEASE = 1200
 USE_NAG = 1
 
 #-------------------
