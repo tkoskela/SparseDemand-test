@@ -4,7 +4,7 @@ function CreateParameters2(J,K,OutDir)
 % 3) MUE.raw         (K x 1)
 % 4) InvCDiag.raw    (K x 1)
 % 5) InvCOffDiag.raw (nInvC x 1)  K*(K-1)/2 
-% 6A) BC_Z  (nBC x nBC)
+% 6A) BC_Z           (nBC x nBC)
 % 6B) BC_beta        (nBC x 1)
 % 7A  BD_Z           (J x BD_z_dim)
 % 7B) BD_beta        (BD_z_dim x 1)
@@ -22,7 +22,6 @@ end
 if nargin<3
   OutDir='.';
 end
-
 
 nBC = K*(K-1)/2 + (J-K)*(K-1);
 BC_z_dim   = nBC;

@@ -26,6 +26,7 @@ OutputFlag          : 0     # 0 don't print output and 1 to print output
 SaveDataFlag        : 0     # 1 to save data, 0 otherwise
 TestIntegrationFlag : 0 # 1 to test accuracy of integration
 SimulateDataFlag    : 0 # 1 simulate data, 0 = load data from file
+BICFlag             : 0 # 1 to minimize BIC
 MPIFlag             : 1 # 1 = each processor, subset of data
                         # 2 = each processor, subset of MC replications
  
@@ -39,8 +40,7 @@ small        : 1.0d-50     # small number to prevent log of zero
 # NSIM  = number of simulations
 # M     = number of markets
 # J     = number of products
-# K     = dimension of demand systema
-# N = 26514
+# K     = dimension of demand system
 NMC   : 1
 N     : 26514
 NSIM  : 26514
