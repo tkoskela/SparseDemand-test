@@ -1,3 +1,3 @@
-J = 27;
-K = 5;
+J = 5;
+K = 3;
 OutDir = 'rawparms';
