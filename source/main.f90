@@ -81,11 +81,11 @@ program SparseDemand
   if (nprocs>1) then
     call BroadcastParameters(pid)
   end if
-  ! create integration rule
-  call CreateQuadRule(pid,nprocs)
   print 101,'Process ',pid,': finish BroadcastParameters: ', &
             'day = ',DateTime(3),' time = ',DateTime(5),':',DateTime(6)
 #endif
+  ! create integration rule
+  call CreateQuadRule(pid,nprocs)
 
   if (CONTROLOPTIONS%MPIFLAG==1) then
     ! each processor, uses subset of data

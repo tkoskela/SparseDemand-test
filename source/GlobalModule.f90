@@ -1243,8 +1243,7 @@ subroutine InitializeParameters(InputFile)
     ErrFlag = GetVal(PropList,'RandomB_nall',cTemp)
     read(cTemp,'(i4)') RandomB(1)%nall
 
-    allocate(RandomB(1)%nQuad(parms%dim_eta))
-    RandomB(1)%nQuad = 3
+    allocate(RandomB(1)%nQuad(parms%dim_eta),source=3)
     ErrFlag = GetVal(PropList,'RandomB_nQuad',cTemp)
     nRead = min(parms%dim_eta,10)
     write(fmt1,'(a1,i2,a3)') '(',nread,'i3)'

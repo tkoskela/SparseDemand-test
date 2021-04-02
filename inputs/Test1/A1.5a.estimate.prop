@@ -3,7 +3,7 @@
 #
 # Frequently changing options
 #  Name of output directory
-OutDir : /home/uctpln0/Scratch/FruitDemand/output/2021.test1
+OutDir : /home/uctpln0/Scratch/FruitDemand/output/2021.Test1
 InputDir: /home/uctpln0/FruitDemand/code/fortran/inputs/Test1
 TestLikeFlag : 4     # 0 = maximise likelihood
                      # 1 = test likelihood gradient
