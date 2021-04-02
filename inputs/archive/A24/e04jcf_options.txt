@@ -1,0 +1,5 @@
+maxcal,rhobeg,rhoend,npt
+50000
+0.1d0
+1.0e-6
+0
