@@ -40,8 +40,8 @@ NMC   : 1
 N     : 1000
 NSIM  : 1000
 M     : 1000
-J     : 5
-K     : 3
+J     : 3
+K     : 2
 
 RawData_FILE  :  /home/uctpln0/Scratch/FruitDemand/data/Fruit20171109B.csv
 nRawVars      : 90  # number of variables in raw data file

@@ -5,8 +5,8 @@
 %  J      = number of products
 %  K      = maximum number purchased
 %  OutDir = subdirectory to store parameters 
-J = 5;
-K = 3;
+J = 3;
+K = 2;
 OutDir = '../rawparms';
 if exist(OutDir,'dir')==0
   system(['mkdir ',OutDir]);
