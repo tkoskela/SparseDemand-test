@@ -13,8 +13,6 @@ TestLikeFlag : 4     # 0 = maximise likelihood
                      # 4 = no non-linear constraints
                      # 5 = only compute hessian
                      # 6 = analyse results
-BICFlag          : 0 # 1 to minimize BIC
-SimulateDataFlag : 1 # 1 simulate data, 0 = load data from file
 HotStart         : 1 # 1 to do HotStart, from previous saved output
 
 # Flags
@@ -23,6 +21,7 @@ OutputFlag          : 0     # 0 don't print output and 1 to print output
 SaveDataFlag        : 1     # 1 to save data, 0 otherwise
 TestIntegrationFlag : 0 # 1 to test accuracy of integration
 SimulateDataFlag    : 1 # 1 simulate data, 0 = load data from file
+BICFlag             : 0 # 1 to minimize BIC
 MPIFlag             : 1 # 1 = each processor, subset of data
                         # 2 = each processor, subset of MC replications
  
