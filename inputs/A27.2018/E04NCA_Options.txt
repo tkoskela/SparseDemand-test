@@ -1,0 +1,7 @@
+Begin
+  No List
+  Monitoring File = -1
+  Print Level = 0
+  Problem Type = QP2
+End
+

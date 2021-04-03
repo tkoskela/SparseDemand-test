@@ -1,4 +1,10 @@
 function CreateParameters2(J,K,OutDir)
+% Create vectors of parameters for multiple discrete choice model
+% based on Lewbel and Nesheim (2019)
+% J      = number of products
+% K      = maximum number of products purchased
+% OutDir = directory to store parameters
+%
 % 1) C.raw           (nC x 1)  nC = K*(K-1)/2 + (J-K)*(K-1)   
 % 2) D.raw           (J x 1)
 % 3) MUE.raw         (K x 1)

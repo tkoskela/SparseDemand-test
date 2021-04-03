@@ -1,32 +1,33 @@
 # Revision history
 # 2021.04.01 LN update to create test data and to estimate
 #
-# Frequently changing options
-#  Name of output directory
-OutDir : /home/uctpln0/Scratch/FruitDemand/output/2020.10
-InputDir: /home/uctpln0/FruitDemand/code/fortran/inputs/A27.2020.10
-TestLikeFlag : 4     # 0 = maximise likelihood
+#  Name of input directory, output directory, and raw data file
+InputDir: ../inputs/Test1
+OutDir : /home/uctpln0/Scratch/FruitDemand/output/2021.Test1
+RawData_FILE  :  /home/uctpln0/Scratch/FruitDemand/data/Fruit20171109B.csv
+
+TestLikeFlag : 2     # 0 = maximise likelihood
                      # 1 = test likelihood gradient
                      # 2 = plot likelihood
                      # 3 = test non-linear constraint
                      # 4 = no non-linear constraints
                      # 5 = only compute hessian
                      # 6 = analyse results
+BICFlag          : 0 # 1 to minimize BIC
+SimulateDataFlag : 1 # 1 simulate data, 0 = load data from file
 HotStart         : 1 # 1 to do HotStart, from previous saved output
 
 # Flags
 ComputeHessFlag     : 0  # 1 = compute hessian. 2 = load gradLHH and compute hessian
 OutputFlag          : 0     # 0 don't print output and 1 to print output
-SaveDataFlag        : 0     # 1 to save data, 0 otherwise
+SaveDataFlag        : 1     # 1 to save data, 0 otherwise
 TestIntegrationFlag : 0 # 1 to test accuracy of integration
-SimulateDataFlag    : 0 # 1 simulate data, 0 = load data from file
-BICFlag             : 0 # 1 to minimize BIC
 MPIFlag             : 1 # 1 = each processor, subset of data
                         # 2 = each processor, subset of MC replications
  
 InitialModel : 2    # first model to estimate
 FinalModel   : 2    # last model to estimate
-small        : 1.0d-50     # small number to prevent log of zero
+small        : 1.0d-20     # small number to prevent log of zero
 #
 # Problem size
 # NMC   = number of Monte Carlo repetitions
@@ -36,11 +37,11 @@ small        : 1.0d-50     # small number to prevent log of zero
 # J     = number of products
 # K     = dimension of demand system
 NMC   : 1
-N     : 26514
-NSIM  : 26514
-M     : 201
-J     : 27
-K     : 5
+N     : 1000
+NSIM  : 1000
+M     : 1000
+J     : 3
+K     : 2
 
 nRawVars      : 90  # number of variables in raw data file
 RawDataFormat : 20171109 # 1 = pre-2016 format
@@ -58,7 +59,7 @@ RawDataFormat : 20171109 # 1 = pre-2016 format
 #InitialGuess2_FILE : InitialGuess2.txt
 
 # Simulation and estimation seeds
-SimulationSeed : 1
+SimulationSeed : 453  # seed used to analyse results, after estimation
 EstimationSeed : 1
 
 #            : 01
@@ -98,35 +99,35 @@ MaxLambda : 0.050
 # 7 = pseudo-MC on (-1,1)
 #                 1 2 3 4 5 6 7 8 9 101112131415161718192021222324252627282930
 #                 010101010101010101010101010101010101010101010101010101010101
-IntegrationFlag : 6 6 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 
+IntegrationFlag : 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 
 # Number of quadrature nodes in each dimension
 #          1  2  3  4  5  6  7  8  9  10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30
 #          012012012012012012012012012012012012012012012012012012012012012012012012012012012012012012
-nQuad    : 10 10 10 10 10 5  5  5  2  2  2  2  2  2  2  2  2  2  2  2  2  2  2  2  2  2  2  2  2  2 
+nQuad    : 5  5  5  5  5  5  5  5  2  2  2  2  2  2  2  2  2  2  2  2  2  2  2  2  2  2  2  2  2  2 
 # nQuadAll : total number of quadrature nodes for use when flag ==2,3,or 7
 #
 #          1   2   3   4   5   6   7   8   9   10  11  12  13  14  15  16  17  18  19  20  21  22  23  24  25  26  27  28  29  30
 #          012301230123012301230123012301230123012301230123012301230123012301230123012301230123012301230123012301230123012301230123 
-nQuadAll : 200 200 200 200 200 100 100 100 100 100 100 100 100 100 100 100 100 100 100 100 100 100 100 100 100 100 100 100 100 100
+nQuadAll : 100 100 100 200 200 100 100 100 100 100 100 100 100 100 100 100 100 100 100 100 100 100 100 100 100 100 100 100 100 100
 
 model : 2    # 1 for baseline, 2 = random coefficients
 
 # parameters for random matrix B
 # Integration rule for random B
-RandomB_flag : 0   # same coding as IntegrationFlag
-RandomB_nall : 100 # total number of quadrature nodes for use when flag =2,3, or 7
+RandomB_flag : 2   # same coding as IntegrationFlag
+RandomB_nall : 100  # total number of quadrature nodes for use when flag =2,3, or 7
 dim_eta : 2        # dimension of random coefficients in (BC,BD)
 
 #  RandomB_nQuad = number of points in each dimension
 #                1  2  3  4  5  6  7  8  9  10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 
 #                123123123123123123123123123123123123123123123123123123123123123123123123123123123123123123 
-RandomB_nQuad :  7  7  5  5  5  5  5  5  5  5  3  3  3  2  2  2  2  2  2  2  2  2  2  2  2  2  2  2  2  2     
+RandomB_nQuad :  10 10 5  5  5  5  5  5  5  5  3  3  3  2  2  2  2  2  2  2  2  2  2  2  2  2  2  2  2  2     
 
 # parameter for RC model
 # BC_z_dim = size(BC_z)    C = Z(k,j) * gamma0 + eta' * gamma2
 # BD_z_dim = size(BD_z)    D = Z(j) * beta0 + eta' * beta2 
-BC_z_dim : 98 # default BC_z_dim = (K-1)*(J - K/2)
-BD_z_dim : 27 # default BD_z_dim = J
+BC_z_dim : 0 # 0 for default: = (K-1)*(J - K/2)
+BD_z_dim : 0 # 0 for default: = J
 BC_lo : 0.10   # minimum value of BC  (ensures B matrix has rank K for all eta)
 BC_hi : 0.90   # maximum value of BC
 BC_beta_lo : -4.0d0
@@ -148,7 +149,7 @@ BD_month_hi : 3.0d0
 FreeFlagD           : 0   # 1 to be free, 0 to be fixed
 FreeFlagBC          : 0   # 1 to be free, 0 to be fixed
 FreeFlagMUE         : 1   # 1 to be free, 0 to be fixed
-FreeFlagMUE_month   : 1   # 1 to be free, 0 to be fixed
+FreeFlagMUE_month   : 0   # 1 to be free, 0 to be fixed
 FreeFlagInvCDiag    : 1   # 1 to be free, 0 to be fixed
 FreeFlagInvCOffDiag : 1   # 1 to be free, 0 to be fixed
 
@@ -158,7 +159,7 @@ FreeFlagBD_COffDiag : 1
 FreeFlagBC_beta     : 1     
 FreeFlagBC_CDiag    : 1 
 FreeFlagBC_COffDiag : 1   
-FreeFlagBD_month    : 1
+FreeFlagBD_month    : 0
 OneAtATime          : 0
 
 # index of first free element of vector
