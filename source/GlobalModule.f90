@@ -301,6 +301,7 @@ module GlobalModule
     integer(i4b)       :: SaveBasis  ! 1 to save basis info in BasisFile
     integer(i4b)       :: LoadBasis  ! 1 to load basis info from OldBasisFile
     integer(i4b)       :: SaveBasisFreq  ! save basis every i1 iterations 
+    real(dp)           :: DeltaX     ! finite difference for gradient approx.
   end type
 
   type BayesType
@@ -1100,6 +1101,9 @@ subroutine InitializeParameters(InputFile)
   ErrFlag = GetVal(PropList,'BackupBasisFile',cTemp)
   MaxOptions%BackupBasisFile = trim(OutDir) // '/' // trim(cTemp)
 
+  ErrFlag = GetVal(PropList,'DeltaX',cTemp)
+  read(cTemp,'(f12.0)') MaxOptions%DeltaX
+
   ! NMC : 0 no MC repetitions
   !     > 0 number of MC repetitions
   ErrFlag = GetVal(PropList,'NMC',cTemp)
@@ -1151,8 +1155,13 @@ subroutine InitializeParameters(InputFile)
   if (parms%model==2) then
     ErrFlag = GetVal(PropList,'BC_z_dim',cTemp)
     read(cTemp,'(i5)') parms%BC_z_dim
+    if (parms%BC_z_dim==0) then
+      parms%BC_z_dim = parms%J*(parms%K-1)-(parms%K*(parms%K-1))/2
+    end if
+
     ErrFlag = GetVal(PropList,'BD_z_dim',cTemp)
     read(cTemp,'(i5)') parms%BD_z_dim
+    parms%BD_z_dim = merge(parms%BD_z_dim,parms%J,parms%BD_z_dim>0)
 
     ErrFlag = GetVal(PropList,'BC_lo',cTemp)
     read(cTemp,'(f12.0)') parms%BC_lo

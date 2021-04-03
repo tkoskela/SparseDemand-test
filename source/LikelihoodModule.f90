@@ -1542,7 +1542,7 @@ subroutine SparseGridBayes(iFree,iuser,ruser)
     call D01ZKF(OPTSTR, IOPTS, LIOPTS, OPTS, LOPTS, IFAIL)
   end if
   ifail = -1
-  call D01ESF(NI, NDIM, IntegrateLikeFunc, MAXDLV, DINEST, ERREST, IVALID, IOPTS, OPTS, IUSER, RUSER, IFAIL)
+  call D01ESF(NI, NDIM, IntegrateLikeFunc0, MAXDLV, DINEST, ERREST, IVALID, IOPTS, OPTS, IUSER, RUSER, IFAIL)
 
   call WriteBayes(DINEST,ERREST,IVALID)
   deallocate(IOPTS)
@@ -1554,7 +1554,7 @@ subroutine SparseGridBayes(iFree,iuser,ruser)
 
 end subroutine SparseGridBayes
 
-SUBROUTINE IntegrateLikeFunc(NI, NDIM, NX, XTR, NNTR, ICOLZP, IROWIX, XS, QS, FM, IFLAG, IUSER, RUSER)
+SUBROUTINE IntegrateLikeFunc0(NI, NDIM, NX, XTR, NNTR, ICOLZP, IROWIX, XS, QS, FM, IFLAG, IUSER, RUSER)
   implicit none
   INTEGER(i4b), intent(in)    ::  NI,NDIM,NX,NNTR,ICOLZP(NX+1),IROWIX(NNTR),QS(NNTR)
   integer(i4b), intent(inout) :: IFLAG, IUSER(*)
@@ -1571,12 +1571,12 @@ SUBROUTINE IntegrateLikeFunc(NI, NDIM, NX, XTR, NNTR, ICOLZP, IROWIX, XS, QS, FM
     x0(irowix(icolzp(i1):icolzp(i1+1)-1)) = xs(icolzp(i1):icolzp(i1+1)-1)
     ! change of variable from x0 to x1
     x1 = ChangeX(x0,ndim,iuser(1))
-    call LikeFunc_QuadWrapper(x1,ndim,iuser,ruser,FM(:,i1))
+    call LikeFunc0_QuadWrapper(x1,ndim,iuser,ruser,FM(:,i1))
     x0(irowix(icolzp(i1):icolzp(i1+1)-1)) = xtr
   end do
 
   deallocate(x0,x1)
-end subroutine IntegrateLikeFunc
+end subroutine IntegrateLikeFunc0
 
 function ChangeX(x0,nx,model) result(x1)
   use nrtype
@@ -1636,7 +1636,7 @@ function ChangeX(x0,nx,model) result(x1)
   end if
 end function ChangeX
 
-subroutine LikeFunc_QuadWrapper(x,nx,iuser,ruser,F)
+subroutine LikeFunc0_QuadWrapper(x,nx,iuser,ruser,F)
   use nrtype
   implicit none
   real(dp),     intent(in)    :: x(nx)
@@ -1651,14 +1651,14 @@ subroutine LikeFunc_QuadWrapper(x,nx,iuser,ruser,F)
   mode=0
   nstate = 0
 
-  call LikeFunc(mode,nx,x,L,GradL,nstate,iuser,ruser)
+  call LikeFunc0(mode,nx,x,L,GradL,nstate,iuser,ruser)
   F(1) = L
   F(2:nx+1) = x*L
   do i1=1,nx
     F(1+nx+i1*(i1-1)/2 + (/(ix,ix=1,i1)/)) = x(i1) * F(2:i1+1)
   end do
 
-end subroutine LikeFunc_QuadWrapper
+end subroutine LikeFunc0_QuadWrapper
 
 #ifdef BAYES
 subroutine SetupBayesPrior(parms,iFree)
@@ -3195,7 +3195,7 @@ subroutine ComputeBayes(x,L,Grad,Hess,ierr)
   m2 = 0.0d0
 
   do i1=1,bayes%nAll
-    call LikeFunc(mode,nx,bayes%x(:,i1),L,GradL,nstate,iuser,ruser)
+    call LikeFunc0(mode,nx,bayes%x(:,i1),L,GradL,nstate,iuser,ruser)
     m0 = m0 + bayes%w(i1) * bayes%prior(i1) * L
     m1 = m1 + bayes%w(i1) * bayes%prior(i1) * L * bayes%x(:,i1)
     do i2=1,nx
@@ -3351,10 +3351,10 @@ subroutine MaximizeLikelihood1(x,LValue,Grad,Hess,ierr)
   nstate = 1
   if (ControlOptions%TestLikeFlag==1) then
     ! test gradient of likelihood
-    call TestGrad(LikeFunc,nx,x,nstate,iuser,ruser)
+    call TestGrad(LikeFunc0,nx,x,nstate,iuser,ruser)
   else if (ControlOptions%TestLikeFlag==2) then
     ! plot likelihood function
-    call PlotLike(LikeFunc,nx,x,iFree%xlabels,BL(1:nx),BU(1:nx),nstate,iuser,ruser)
+    call PlotLike(LikeFunc0,nx,x,iFree%xlabels,BL(1:nx),BU(1:nx),nstate,iuser,ruser)
   else if (ControlOptions%TestLikeFlag==0 .or. ControlOptions%TestLikeFlag>2) then
     ! Initialize E04WDF by calling E04WCF
     ifail=-1
@@ -3724,11 +3724,11 @@ subroutine MaximizePenalizedLikelihood(x,LValue,Grad,Hess,ierr)
 
  ! Maximise likelihood
   if (ControlOptions%TestLikeFlag==1) then
-    call TestGrad(LikeFunc,nxP,xP,1,iuser,ruser)
+    call TestGrad(LikeFunc0,nxP,xP,1,iuser,ruser)
   else
     print *,'Begin maximization.'
     call E04WDF(nxP,NCLIN,NCNLN,LDA,LDCJ,LDH,A,BL,BU,                &
-                E04WDP,LikeFunc,iter,ISTATE,CCON,CJAC,CLAMBDA,     &
+                E04WDP,LikeFunc0,iter,ISTATE,CCON,CJAC,CLAMBDA,     &
                 LValue,GRADP,HESSP,xP,IW,LENIW,RW,LENRW,iuser,RUSER, &
                 IFAIL)
     !call ComputeHess(xP(1:Penalty%nx),LValue,GRAD,Hess,iuser,ruser)
@@ -3756,11 +3756,42 @@ subroutine MaximizePenalizedLikelihood(x,LValue,Grad,Hess,ierr)
   ierr = 0   ! no error in subroutine
 end subroutine MaximizePenalizedLikelihood
 
+! Compute Likefunc0 and its numerical derivative
+subroutine LikeFunc(mode,nx,x,L,GradL,nstate,iuser,ruser)
+  use nrtype
+  use GlobalModule, only : Penalty,MaxOptions
+  implicit none
+  integer(i4b), intent(inout) :: mode
+  integer(i4b), intent(in)    :: nx,nstate
+  integer(i4b), intent(inout) :: iuser(*)
+  real(dp), intent(in)        :: x(nx)
+  real(dp), intent(inout)     :: ruser(*)
+  real(dp), intent(out)       :: L
+  real(dp), intent(inout)     :: GradL(nx)
+
+  integer(i4b) :: i1,mode1
+  real(dp), allocatable :: x1(:),GradL1(:)
+  real(dp)              :: L1
+
+  mode1 = 0
+
+  call LikeFunc0(mode1,nx,x,L,GradL,nstate,iuser,ruser)
+  if (mode>0) then
+    allocate(x1(nx),GradL1(nx),source=0.0d0)
+    x1 = x
+    do i1=1,nx
+      x1(i1) = x(i1)+MaxOptions%DeltaX
+      call LikeFunc0(mode,nx,x1,L1,GradL1,nstate,iuser,ruser)
+      GradL(i1) = (L1-L)/(x1(i1)-x(i1))
+    end do
+  end if
+end subroutine LikeFunc
+
 !------------------------------------------------------------------------------
-! subroutine LikeFunc
+! subroutine LikeFunc0
 !
 !------------------------------------------------------------------------------
-subroutine LikeFunc(mode,nx,x,L,GradL,nstate,iuser,ruser)
+subroutine LikeFunc0(mode,nx,x,L,GradL,nstate,iuser,ruser)
   use nrtype
   use GlobalModule, only : Penalty
   implicit none
@@ -3803,7 +3834,7 @@ subroutine LikeFunc(mode,nx,x,L,GradL,nstate,iuser,ruser)
     end if
   end if
 #endif
-end subroutine LikeFunc
+end subroutine LikeFunc0
 
 ! PenalizedLikelihood:
 !  compute objective function for penalized likelihood for model == iuser(1)
@@ -3895,7 +3926,7 @@ subroutine PenaltyFunction(xPlus,xMinus,P,GradP)
 
 end subroutine PenaltyFunction
 
-subroutine TestGrad(LikeFunc,nx,x,nstate,iuser,ruser)
+subroutine TestGrad(LikeFunc0,nx,x,nstate,iuser,ruser)
   use nrtype
   use OutputModule, only : MakeFullFileName
   implicit none
@@ -3905,7 +3936,7 @@ subroutine TestGrad(LikeFunc,nx,x,nstate,iuser,ruser)
   real(dp),     intent(inout) :: ruser(:)
 
   interface
-    subroutine LikeFunc(mode,n,x,L,GradL,nstate,iuser,ruser)
+    subroutine LikeFunc0(mode,n,x,L,GradL,nstate,iuser,ruser)
       use nrtype
       use GlobalModule, only : Penalty
       integer(i4b), intent(inout) :: mode
@@ -3915,7 +3946,7 @@ subroutine TestGrad(LikeFunc,nx,x,nstate,iuser,ruser)
       real(dp),     intent(inout) :: ruser(*)
       real(dp),     intent(out)   :: L
       real(dp),     intent(inout) :: GradL(n)
-    end subroutine LikeFunc
+    end subroutine LikeFunc0
   end interface
 
   integer(i4b)  :: mode
@@ -3925,7 +3956,7 @@ subroutine TestGrad(LikeFunc,nx,x,nstate,iuser,ruser)
   real(dp)      :: x1(nx),x2(nx)
 
   mode=2
-  call LikeFunc(mode,nx,x,L0,GradL0,nstate,iuser,ruser)
+  call LikeFunc0(mode,nx,x,L0,GradL0,nstate,iuser,ruser)
 
   open(UNIT   = 1033, &
        File   = MakeFullFileName('TestGrad.txt'), &
@@ -3937,8 +3968,8 @@ subroutine TestGrad(LikeFunc,nx,x,nstate,iuser,ruser)
     x1(i1) = x(i1) + 1.0d-6
     x2(i1) = 2.0*x(i1) - x1(i1)
     mode=0
-    call LikeFunc(mode,nx,x1,L1,DummyGrad,nstate,iuser,ruser)
-    call LikeFunc(mode,nx,x2,L2,DummyGrad,nstate,iuser,ruser)
+    call LikeFunc0(mode,nx,x1,L1,DummyGrad,nstate,iuser,ruser)
+    call LikeFunc0(mode,nx,x2,L2,DummyGrad,nstate,iuser,ruser)
     GradL1(i1) = (L1-L2)/(x1(i1)-x2(i1))
 
     write(1033,1033) i1,x(i1),GradL0(i1),GradL1(i1)
@@ -3974,14 +4005,14 @@ subroutine ComputeHess(x,L,GradL,Hess,iuser,ruser)
   mode=1
   nstate=1
   h=1.0d-6
-  call LikeFunc(mode,n,x,L,GradL,nstate,iuser,ruser)
+  call LikeFunc0(mode,n,x,L,GradL,nstate,iuser,ruser)
   do i1=1,n
     x1=x
     x2=x
     x1(i1) = x(i1) + h
     x2(i1) = 2.0d0*x(i1) - x1(i1)
-    call LikeFunc(mode,n,x1,L1,GradL1,nstate,iuser,ruser)
-    call LikeFunc(mode,n,x2,L2,GradL2,nstate,iuser,ruser)
+    call LikeFunc0(mode,n,x1,L1,GradL1,nstate,iuser,ruser)
+    call LikeFunc0(mode,n,x2,L2,GradL2,nstate,iuser,ruser)
     Hess(:,i1) = (GradL1 - GradL2)/(x1(i1)-x2(i1))
   end do
   Hess = 0.5d0 * (Hess+transpose(Hess))
@@ -4384,7 +4415,7 @@ subroutine SetBounds(x,BL,BU)
 
 end subroutine SetBounds
 
-subroutine PlotLike(LikeFunc,nx,x,xlabels,xlo,xhi,nstate,iuser,ruser)
+subroutine PlotLike(LikeFunc0,nx,x,xlabels,xlo,xhi,nstate,iuser,ruser)
   use nrtype
   use ToolsModule, only : linspace
   use GlobalModule, only : OutDir
@@ -4397,7 +4428,7 @@ subroutine PlotLike(LikeFunc,nx,x,xlabels,xlo,xhi,nstate,iuser,ruser)
   real(dp),     intent(inout)  :: ruser(:)
 
   interface
-    subroutine LikeFunc(mode,n,x,L,GradL,nstate,iuser,ruser)
+    subroutine LikeFunc0(mode,n,x,L,GradL,nstate,iuser,ruser)
       use nrtype
       use GlobalModule, only : Penalty
       integer(i4b), intent(inout) :: mode
@@ -4407,7 +4438,7 @@ subroutine PlotLike(LikeFunc,nx,x,xlabels,xlo,xhi,nstate,iuser,ruser)
       real(dp),     intent(inout) :: ruser(*)
       real(dp),     intent(out)   :: L
       real(dp),     intent(inout) :: GradL(n)
-    end subroutine LikeFunc
+    end subroutine LikeFunc0
   end interface
   integer(i4b)          :: ix,i1,n,mode
   real(dp), allocatable :: x1(:),xplot(:,:),L(:,:),GradL(:)
@@ -4429,7 +4460,7 @@ subroutine PlotLike(LikeFunc,nx,x,xlabels,xlo,xhi,nstate,iuser,ruser)
     do i1=1,n
     !  xplot(i1,ix) = xlo(ix) + (xhi(ix)-xlo(ix))*real(i1-1,dp)/real(n-1,dp)
       x1(ix) = xplot(i1,ix)
-      call LikeFunc(mode,nx,x1,L(i1,ix),GradL,nstate,iuser,ruser)
+      call LikeFunc0(mode,nx,x1,L(i1,ix),GradL,nstate,iuser,ruser)
       write(plot_unit,1762) ix,trim(xlabels(ix)),i1,xplot(i1,ix),L(i1,ix)
 1762 format(i4,',',a20,',',i4,',',d25.16,',',d25.16)
       x1(ix) = x(ix)
@@ -4992,7 +5023,7 @@ subroutine OBJFUN_E04JCF(n,x,L ,iuser,ruser,inform)
   GradL = 0.0d0
   mode  = 0   ! level of likelihood only
   nstate =  0
-  call LikeFunc(mode,n,x,L,GradL,nstate,iuser,ruser)
+  call LikeFunc0(mode,n,x,L,GradL,nstate,iuser,ruser)
   inform = 0
   deallocate(gradL)
 end subroutine OBJFUN_E04JCF
