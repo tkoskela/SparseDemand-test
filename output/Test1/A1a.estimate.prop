@@ -4,7 +4,7 @@
 #  Name of input directory, output directory, and raw data file
 InputDir: ../inputs/Test1
 OutDir : ../output/Test1
-RawData_FILE  :  ../test_data/test1.csv
+RawData_FILE  :  ../output/Test1/test1.csv
 
 TestLikeFlag : 4     # 0 = maximise likelihood
                      # 1 = test likelihood gradient
