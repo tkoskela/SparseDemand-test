@@ -44,6 +44,7 @@
 .SUFFIXES: .a .o .f95 .f90 .mod
 
 # Select correct Macros based on platform in use
+# config directory assumed to be in parent directory of directory the root makefile is in
 WorkDir:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))/..
 include $(WorkDir)/config/LoadLocalDefs.inc
 

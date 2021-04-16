@@ -10,6 +10,7 @@
 .SUFFIXES: .o .f95 .f90 .mod .a
 
 # Select Corrent Platform-specific parameters
+# config directory assumed to be in directory two levels above directory of the root makefile
 WorkDir:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))/../..
 include $(WorkDir)/config/LoadLocalDefs.inc
 
