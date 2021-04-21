@@ -2329,7 +2329,9 @@ end subroutine BroadcastIFree
 ! Written :  2015AUG14 LN
 subroutine ReadWriteParameters(LocalParms,LocalAction)
   use NewTools, only : MatrixToSphere,MatrixInverse
-  use IFPORT
+#ifndef  __GFORTRAN__
+  use IFPORT       ! intel fortran portability library
+#endif
   implicit none
   type(ParmsStructure), intent(inout) :: LocalParms
   character(LEN=*),     intent(in)    :: LocalAction

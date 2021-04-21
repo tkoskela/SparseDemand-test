@@ -12,7 +12,9 @@ program SparseDemand
                                CreateQuadRule
   use OutputModule,     only : DefineFileNames,CopyInputFilename
   use LikelihoodModule, only : RunMonteCarlo,AnalyseResults
+#ifndef  __GFORTRAN__
   use IFPORT,           only : system
+#endif
 
 #if USE_MPI==1
   use GlobalModule,     only : BroadcastParameters
