@@ -837,7 +837,7 @@ call SphereToMatrix(parms%BC,parms%D,parms%K,parms%J,parms%B, &
 ! MuE
 ! iFree%MuE  = elements of xFree corresponding to MuE
 ! iFree%xmue = elements of MuE that are free
-if (size(iFree%MuE>0)) then
+if (size(iFree%MuE)>0) then
   parms%MuE(iFree%MuE) = xFree(iFree%xmue)
 end if
 
