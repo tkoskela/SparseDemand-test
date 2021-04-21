@@ -2249,6 +2249,9 @@ subroutine ComputeElasticities
   real(dp), allocatable     :: eta(:),prob(:)
   real(dp), allocatable     :: e2(:)
 
+  ! dummy index for array construction
+  integer(i4b)              :: i_
+
   nprob      = 3
   SimData1%N = 9  ! simulate and graph for 9 people with varying levels of
                   ! (eta1,eta2)
@@ -2384,7 +2387,7 @@ subroutine ComputeElasticities
   allocate(newq(np,parms%k+1),p(np))
   newq = 0.0d0
   do i1=1,parms%J
-    p    = HHDataSim1%p(i1,1) * (0.5d0+(2.0d0-0.5d0)*real((/0:np-1/),dp)/real(np-1,dp))
+    p    = HHDataSim1%p(i1,1) * (0.5d0+(2.0d0-0.5d0)*real((/(i_, i_=0, np-1)/),dp)/real(np-1,dp))
     do i2=1,np
       HHDataSim2%p(i1,:) = p(i2)
       call ComputeDemand(HHDataSim2)
@@ -2471,6 +2474,9 @@ subroutine ComputeIndividualDemand(SimData1)
   real(dp), allocatable     :: p(:)
   character(len=99)         :: SimFile,fmt1
 
+  ! dummy index for array construction
+  integer(i4b)              :: i_
+
   nHH = SimData1%n
   np  = 30
   allocate(p(np))
@@ -2488,7 +2494,7 @@ subroutine ComputeIndividualDemand(SimData1)
              parms%J,'(g12.4,:,","))'
 
   do i1=1,parms%J
-    p = SimData1%p(i1,1) * (0.5d0+(2.0d0-0.5d0)*real((/0:np-1/),dp)/real(np-1,dp))
+    p = SimData1%p(i1,1) * (0.5d0+(2.0d0-0.5d0)*real((/(i_, i_=0, np-1)/),dp)/real(np-1,dp))
     do i2=1,np
       SimData1%p(i1,:) = p(i2)
       call ComputeDemand(SimData1)
@@ -2569,6 +2575,9 @@ subroutine ComputeDemand(HHData1)
   integer(i4b)       :: err_unit
   integer(i4b)       :: PriceFlag
   character(len=200) :: options_file
+
+  ! dummy index for array construction
+  integer(i4b)              :: i_
 
   ! solve quadratic program
   ! 1) E04NCA or E04NCF  (convex)
@@ -2669,8 +2678,8 @@ subroutine ComputeDemand(HHData1)
     HHData1%utility(i1)     = -OBJ
     HHData1%expenditure(i1) = dot_product(HHData1%p(:,i1),q)
     HHData1%nNonZero(i1)    = count(q>=crit)
-    HHData1%iNonZero(1:HHData1%nNonZero(i1),i1) = pack((/1:parms%J/),q>=crit)
-    HHData1%iZero(1:parms%J-HHData1%nNonZero(i1),i1) = pack((/1:parms%J/),q<crit)
+    HHData1%iNonZero(1:HHData1%nNonZero(i1),i1) = pack((/(i_, i_=1, parms%J)/),q>=crit)
+    HHData1%iZero(1:parms%J-HHData1%nNonZero(i1),i1) = pack((/(i_, i_=1, parms%J)/),q<crit)
     if (HHData1%nNonZero(i1)>0) then
       HHData1%q(1:HHData1%nNonZero(i1),i1) = pack(q,q>=crit)
     end if
@@ -2797,6 +2806,9 @@ subroutine SelectFreeParameters(parms,iFree)
 
   integer(i4b) :: i1,fruit,month,ix,jcol,n1
 
+  ! dummy index for array construction
+  integer(i4b)              :: i_
+
   !  FreeFlags.D           = 1;
   !  FreeFlags.C           = 1;
   !  FreeFlags.MuE         = 0;
@@ -2816,7 +2828,7 @@ subroutine SelectFreeParameters(parms,iFree)
   if (iFree%flagD==1) then
     allocate(iFree%D(parms%J))
     allocate(iFree%xD(parms%J))
-    iFree%D  = (/1:parms%J/)
+    iFree%D  = (/(i_, i_=1, parms%J)/)
     iFree%xD = iFree%D
     iFree%nD = parms%J
   else
@@ -2830,8 +2842,8 @@ subroutine SelectFreeParameters(parms,iFree)
   if (iFree%flagBC==1) then
     allocate(iFree%BC(parms%nBC))
     allocate(iFree%xBC(parms%nBC))
-    iFree%xBC = iFree%nall + (/1:parms%nBC/)
-    iFree%BC = (/1:parms%nBC/)
+    iFree%xBC = iFree%nall + (/(i_, i_=1, parms%nBC)/)
+    iFree%BC = (/(i_, i_=1, parms%nBC)/)
     iFree%nBC = parms%nBC
   else
     iFree%nBC = 0
@@ -2844,8 +2856,8 @@ subroutine SelectFreeParameters(parms,iFree)
   if (iFree%flagMUE==1) then
     allocate(iFree%MuE(parms%K-ifree%mue1+1))
     allocate(iFree%xMuE(parms%K-ifree%mue1+1))
-    iFree%MuE = (/ifree%mue1:parms%K/)
-    iFree%xMuE = iFree%nall + (/1:size(iFree%MuE)/)
+    iFree%MuE = (/(i_, i_=ifree%mue1, parms%K)/)
+    iFree%xMuE = iFree%nall + (/(i_, i_=1, size(iFree%MuE))/)
     iFree%nMuE = size(iFree%MuE)
   else
     iFree%nMUE = 0
@@ -4039,6 +4051,9 @@ subroutine ComputeHess2(x,L,Grad,Hess)
   integer(i4b)              :: TotalTime
   integer(i4b), allocatable :: SubTime(:)
   character(len=10)         :: StartTime
+  
+  ! dummy index for array construction
+  integer(i4b)              :: i_
 
   ! when nx >50, break up computation into iterations
   ! compute in max block size of 50 x 50
@@ -4101,7 +4116,7 @@ subroutine ComputeHess2(x,L,Grad,Hess)
   SubTime   = 0.0d0
 
   do i0=iFree%HessIter0,niter
-    blockindex = (i0-1)*nmax+(/1:nmax/)
+    blockindex = (i0-1)*nmax+(/(i_, i_=1, nmax)/)
     GradLHH = 0.0d0
 
     ! fill in diagonal blocks of hessian of size (50,50)
@@ -4553,6 +4568,9 @@ integer(i4b)              :: Integrand
 integer(i4b), allocatable :: RowGroup(:)
 real(dp)                  :: prob
 
+! dummy index for array construction
+integer(i4b)              :: i_
+
 small = 1e-6
 call UpdateParms(x,iFree,parms)
 
@@ -4583,7 +4601,7 @@ do i1=1,HHData%N
   ! c(index) = constraints corresponding to household i1
   if (d1==parms%K) then
     allocate(index(JK))
-    index = n1 + (/1:JK/)
+    index = (/(i_, i_=1 + n1, JK + n1)/)
     n1=n1+JK
     !------------------------------------------------------------------------
     ! Case 1:   K products were purchased
@@ -4611,8 +4629,8 @@ do i1=1,HHData%N
     !------------------------------------------------------------------------
 
     allocate(index1(d1),index2(parms%K))
-    index1 = (/1:d1/)
-    index2 = d1+(/1:parms%K/)
+    index1 = (/(i_, i_=1, d1)/)
+    index2 = d1+(/(i_, i_=1, parms%K)/)
 
     ! Compute SVD of B1
     ! size(B1) = (K x d1)
