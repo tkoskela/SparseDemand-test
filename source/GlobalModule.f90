@@ -293,7 +293,7 @@ module GlobalModule
     integer(i4b)       :: Algorithm
     real(dp)           :: AbsTol     ! absolute tolerance for D01ESF Bayesian computations
     real(dp)           :: RelTol     ! relative tolerance for D01ESF Bayesian computations
-    real(dp)           :: MaxLevel   ! maximum level for D01ESF Bayesian computations
+    integer(i4b)           :: MaxLevel   ! maximum level for D01ESF Bayesian computations
     character(len=200) :: OptionsFile   ! file with E04WDF options
     character(len=200) :: BasisFile
     character(len=200) :: BackupBasisFile
