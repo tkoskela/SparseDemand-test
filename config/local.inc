@@ -35,7 +35,7 @@ LOCAL_CC_LIBS = -ldl -lstdc++
 
 # Fortran compiler flags
 LOCAL_FC_FLAGS = -cpp -fcheck=bounds -O3  -march=native -funroll-loops -m64 -fopenmp
-LOCAL_FC_DEBUG_FLAGS = -cpp -g -debug extended
+LOCAL_FC_DEBUG_FLAGS = -cpp -g -Wall -Wextra -Wconversion -fcheck=bounds -fimplicit-none -fbacktrace -ffree-line-length-0 -fcheck=all -ffpe-trap=invalid,zero,overflow,underflow -finit-real=nan
 
 # C compiler flags
 LOCAL_CC_FLAGS = -ipo -O3
