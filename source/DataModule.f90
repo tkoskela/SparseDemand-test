@@ -255,7 +255,7 @@ subroutine DrawRandomCoefficients(HHData_local,random_state)
   ! add seasonal shift to mue
   do i1=1,12
     e = e + merge(spread(parms%mue_month(:,i1),1,HHData_local%N),0.0d0, &
-                  spread(HHData_local%month,2,12)==i1)
+                  spread(HHData_local%month,2,parms%K)==i1)
   end do
   HHData_local%e = transpose(e)
 
