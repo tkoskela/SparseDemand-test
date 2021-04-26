@@ -11,7 +11,7 @@ LOCAL_MPI_CC = mpicc
 
 # Local library locations
 LOCAL_MKL_DIR = $(MKL_INCLUDE_DIR)
-LOCAL_NAG_BLOCKS = $(NAG_DIR)/lp64/nag_interface_blocks
+LOCAL_NAG_BLOCKS = $(NAGLIB_BASEDIR)/lp64/nag_interface_blocks
 LOCAL_NR_DIR = $(WorkDir)/GeneralCode/nr
 LOCAL_TOOLS_DIR = $(WorkDir)/GeneralCode/tools
 LOCAL_KNITRO_DIR = $(KNITRODIR)
