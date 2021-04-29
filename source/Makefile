@@ -71,14 +71,12 @@ AR_FLAGS = $(LOCAL_AR_FLAGS)
 
 # Where libraries live
 NR_DIR = $(LOCAL_NR_DIR)
-TOOLS_DIR = $(LOCAL_TOOLS_DIR)
 MKL_DIR = ${LOCAL_MKL_DIR}
 NAG_BLOCKS = ${LOCAL_NAG_BLOCKS}
-OUT_DIR = ../lib
 
 # Compiler and linker options
 FL_LIBS = $(LOCAL_FL_LIBS)
-FC_FLAGS = $(LOCAL_FC_FLAGS) -I${MKL_DIR} -I$(NR_DIR) -I$(TOOLS_DIR) -I${NAG_BLOCKS} -DHOST_ID=$(HOST_ID)
+FC_FLAGS = $(LOCAL_FC_FLAGS) -I${MKL_DIR} -I$(NR_DIR) -I${NAG_BLOCKS} -DHOST_ID=$(HOST_ID)
 
 # Add the following line to FC_FLAGS to use profiling data to
 # improve compiler optimization:
@@ -88,7 +86,7 @@ FC_FLAGS = $(LOCAL_FC_FLAGS) -I${MKL_DIR} -I$(NR_DIR) -I$(TOOLS_DIR) -I${NAG_BLO
 #
 #		 -prof-genx -prof-dir ./profdata
 
-FC_DEBUG_FLAGS = $(LOCAL_FC_DEBUG_FLAGS) -I${MKL_DIR} -I$(NR_DIR) -I$(TOOLS_DIR) -I${NAG_BLOCKS} -DHOST_ID=$(HOST_ID)
+FC_DEBUG_FLAGS = $(LOCAL_FC_DEBUG_FLAGS) -I${MKL_DIR} -I$(NR_DIR) -I${NAG_BLOCKS} -DHOST_ID=$(HOST_ID)
 
 #---------------------------------------
 # Source code for numerical recipes library
@@ -99,12 +97,10 @@ NR_SRC = \
 	ran_state.f90 \
 	numerical_recipes.f90
 
-TOOLS_SRC = \
-	ToolsModule.f90 \
-	PropertyList.f90
-
 # Modules -- not the main program!
 MOD_OBJS = \
+	ToolsModule.o \
+	PropertyList.o \
 	NewTools.o \
 	GlobalModule.o \
 	OutputModule.o \
@@ -141,14 +137,14 @@ dbg:    $(TGT).dbg
 
 all: clean dbg exe
 
-cleanall:	cleantools cleannr clean
+cleanall: cleannr clean
 
 #-----------------------------
 # Rule to build libraries
 
 # The codes $(patsubst ...) adds a prefix to
 # each source file defining the path where it is stored
-# This section also builds the libraries (libnr,libtools) if they have not yet already been built.
+# This section also builds the library libnr if it has not yet already been built.
 #-----------------------------
 
 $(NR_DIR)/libnr.a : $(patsubst %, $(NR_DIR)/%, $(NR_SRC) )
@@ -157,31 +153,18 @@ $(NR_DIR)/libnr.a : $(patsubst %, $(NR_DIR)/%, $(NR_SRC) )
 $(NR_DIR)/libnr_d.a : $(patsubst %, $(NR_DIR)/%, $(NR_SRC) )
 	make -C $(NR_DIR) libnr_d.a
 
-$(TOOLS_DIR)/libtools.a : $(patsubst %, $(TOOLS_DIR)/%, $(TOOLS_SRC) )
-	make -C $(TOOLS_DIR) libtools.a
-
-$(TOOLS_DIR)/libtools_d.a : $(patsubst %, $(TOOLS_DIR)/%, $(TOOLS_SRC) )
-	make -C $(TOOLS_DIR) libtools_d.a
-
 #-----------------------------
 # Rules to build application
-$(TGT).exe : $(NR_DIR)/libnr.a $(TOOLS_DIR)/libtools.a $(OBJS)
-	$(FC) $(FC_FLAGS) $^ -o $@	\
-		$(FL_LIBS)		\
-		$(NR_DIR)/libnr.a $(TOOLS_DIR)/libtools.a
+$(TGT).exe : $(NR_DIR)/libnr.a $(OBJS)
+	$(FC) $(FC_FLAGS) $^ -o $@	$(FL_LIBS) $(NR_DIR)/libnr.a
 
-$(TGT).dbg : $(NR_DIR)/libnr_d.a $(TOOLS_DIR)/libtools_d.a $(DEBUG_OBJS)
-	$(FC) $(FC_DEBUG_FLAGS) $^ -o $@ \
-		$(NR_DIR)/libnr_d.a $(TOOLS_DIR)/libtools_d.a	\
-		$(FL_LIBS)
+$(TGT).dbg : $(NR_DIR)/libnr_d.a  $(DEBUG_OBJS)
+	$(FC) $(FC_DEBUG_FLAGS) $^ -o $@  $(NR_DIR)/libnr_d.a $(FL_LIBS)
 
 #-----------------------------
 # clean up any messes which have been created
 clean:
 	rm -f *.o $(TGT) *.mod a.out *.a *.dbg *.exe
-
-cleantools:
-	cd $(TOOLS_DIR) ; make clean
 
 cleannr:
 	cd $(NR_DIR) ; make clean
