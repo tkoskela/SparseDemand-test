@@ -49,7 +49,6 @@ function InverseNormal_mkl(p,n,ifault) result(x)
   ifault = 0 
   ! inverse normal function from intel_mkl: double precision
   call vdcdfnorminv(n,p,x)
-  !x = p*p
   
 end function InverseNormal_mkl
 
@@ -205,10 +204,7 @@ subroutine linspace(a,b,n,x)
   do i1=2,n-1
    x(i1)=x(i1-1)+step
  enddo
-!  x(2:n-1)=a+(b-a)*real((/1:n-2/),dp)/real(n-1,dp)
-!  x(2:n-1)=a+(b-a)*real((/1,n-2/),dp)/real(n-1,dp)
 end subroutine linspace
 
 end module ToolsModule
-
 
