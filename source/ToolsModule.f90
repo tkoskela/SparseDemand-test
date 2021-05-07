@@ -66,20 +66,7 @@ function InvertLower(x,d) result(InvX)
 
   InvX = 0.0d0
 
-  !  x(1,1) * InvX(1,1) + x(1,2)*InvX(2,1) + x(1,3)*InvX(3,1) = 1.0
- 
-  !  x(2,1) * InvX(1,2) + x(2,2)*InvX(2,2) + x(2,3)*InvX(3,2) = 1.0
-  !  x(2,1) * InvX(1,1) + x(2,2)*InvX(2,1) + x(2,3)*InvX(3,1) = 0.0
-
-
-  !  x(3,1) * InvX(1,3) + x(3,2)*InvX(2,3) + x(3,3)*InvX(3,3) = 1.0
-  !  x(3,1) * InvX(1,1) + x(3,2)*InvX(2,1) + x(3,3)*InvX(3,1) = 0.0
-  !  x(3,1) * InvX(1,2) + x(3,2)*InvX(2,2) + x(3,3)*InvX(3,2) = 0.0
-
-
-  !  x(1,1) * InvX(1,2) + x(1,2)*InvX(2,2) + x(1,3)*InvX(3,2) = 0.0
-  !  x(1,1) * InvX(1,3) + x(1,2)*InvX(2,3) + x(1,3)*InvX(3,3) = 0.0
-  !  x(2,1) * InvX(1,3) + x(2,2)*InvX(2,3) + x(2,3)*InvX(3,3) = 0.0
+  ! Apply backward substitution algorithm to columns of identity matrix
 
   do i1=1,d
     InvX(i1,i1) = 1.0d0 / x(i1,i1)
