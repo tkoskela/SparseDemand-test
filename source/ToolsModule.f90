@@ -23,7 +23,7 @@ contains
 
 
 function normcdf_mkl(x,nx) result(y)
-  use nrtype
+  use ConstantsModule
   implicit none
   integer(i4b), intent(in) :: nx
   real(dp),     intent(in) :: x(nx)
@@ -38,7 +38,7 @@ end function normcdf_mkl
 
 
 function InverseNormal_mkl(p,n,ifault) result(x)
-  use nrtype
+  use ConstantsModule
   implicit none
   integer(i4b), intent(out) :: ifault
   real(dp),     intent(in)   :: p(n)
@@ -56,7 +56,7 @@ end function InverseNormal_mkl
 ! X (d x d)      lower triangular matrix
 ! InvX (d x d)   inverse of X
 function InvertLower(x,d) result(InvX)
-  use nrtype
+  use ConstantsModule
   implicit none
   integer(i4b), intent(in) :: d
   real(dp),     intent(in) :: x(d,d)
@@ -82,7 +82,7 @@ end function InvertLower
 
 
 subroutine gaucheb(x,w)
-  use nrtype
+  use ConstantsModule
   implicit none
   ! Compute nodes and weights for the n-point Gauss-Chebyshev integration
   ! formula
@@ -104,7 +104,7 @@ end subroutine gaucheb
 ! w	= real(8) (n x 1)    weights
 !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 subroutine gauleg(x,w)
-  use nrtype
+  use ConstantsModule
   
   implicit none
   real(dp), intent(out) :: x(:),w(:)
@@ -151,7 +151,7 @@ subroutine kron1(a,b,c)
   ! a	= real(dp) (na x 1)
   ! b	= real(dp) (nb x 1)
   ! c	= real(dp) (na*nb x 1)
-  use nrtype
+  use ConstantsModule
   implicit none
   real(dp), intent(in) :: a(:),b(:)
   real(dp), intent(out) :: c(:)
@@ -176,7 +176,7 @@ end subroutine kron1
 
 
 subroutine linspace(a,b,n,x)
-  use nrtype
+  use ConstantsModule
   implicit none
   real(dp), intent(in) :: a,b
   integer(i4b), intent(in) :: n

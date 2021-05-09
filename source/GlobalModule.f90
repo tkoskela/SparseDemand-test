@@ -2,7 +2,7 @@
 ! 2015AUG14  LN  add ReadWriteParameters and CopyParameters
 
 module GlobalModule
-  use nrtype
+  use ConstantsModule
   use PropertyList   ! tools for loading parameters from file
   implicit none
 

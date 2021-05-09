@@ -1,6 +1,6 @@
 program TestTools
 
-use nrtype
+use ConstantsModule
 use NewTools
 
 implicit none

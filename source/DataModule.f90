@@ -5,7 +5,7 @@ module DataModule
 contains
 
 subroutine CreateData(IMC)
-  use nrtype
+  use ConstantsModule
   use GlobalModule, only : parms0,HHData,ControlOptions,InputDir
   use nag_library, only : X04ABF,X04ACF,X04ADF,  &
                           G05KFF,G05RZF,G05SAF,  &
@@ -230,7 +230,7 @@ subroutine CreateData(IMC)
 end subroutine CreateData
 
 subroutine DrawRandomCoefficients(HHData_local,random_state)
-  use nrtype
+  use ConstantsModule
   use GlobalModule, only : parms,DataStructure
   use nag_library, only  : G05RZF,G05SAF
   implicit none
@@ -284,7 +284,7 @@ subroutine DrawRandomCoefficients(HHData_local,random_state)
 end subroutine DrawRandomCoefficients
 
 subroutine ComputeCurrentB(eta,parms,month)
-  use nrtype
+  use ConstantsModule
   use GlobalModule, only : ParmsStructure   ! data type for parms
   use NewTools,     only : SphereToMatrix   ! map spherical coordinates to B
   use nag_library,  only : S15ABF           ! normal CDF
@@ -337,7 +337,7 @@ end subroutine ComputeCurrentB
 
 #if USE_MPI==1
 subroutine SendData(pid)
-  use nrtype
+  use ConstantsModule
 !  use IFPORT
   use mpi
   use GlobalModule, only : HHData,parms,AllocateHHData,MasterID,nWorkers
@@ -529,7 +529,7 @@ end subroutine SendData
 #endif
 
 subroutine LoadData
-  use nrtype
+  use ConstantsModule
   use GlobalModule, only : HHData,parms
   implicit none
   integer(i4b)                    :: DataUnit,iComma,i1,ix

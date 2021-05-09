@@ -1,5 +1,5 @@
 module OutputModule
-  use nrtype
+  use ConstantsModule
   use GlobalModule, only : OutDir
   implicit none
   

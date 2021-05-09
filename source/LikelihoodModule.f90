@@ -17,7 +17,7 @@ module LikelihoodModule
 ! 650      | subroutine ComputeProb(p,v,w,RowGroup,R,D,Integrand,    &
 ! 818      | subroutine DensityFunc2(x,G0,G1,Q,MuE,S12,C22,omega11,d1,d2,i1,q1,F,GradF)
 ! 1816     ! subroutine Constraint(x,mode,C,GradC)
-use nrtype
+use ConstantsModule
 ! variables used by monfun_E04JCF
 real(dp), allocatable :: last_x(:)
 
@@ -25,7 +25,7 @@ contains
 
 #if USE_MPI>0
 subroutine Like2_master(mode,nx,x,L,GradL,nstate,iuser,ruser)
-  use nrtype
+  use ConstantsModule
   use mpi
   use GlobalModule, only : MasterID,nWorkers
   implicit none
@@ -85,7 +85,7 @@ end subroutine Like2_master
 ! Evaluate worker tasks
 ! task=0:  worker receives (x,mode) and computes likelihood for subset of data points
 subroutine WorkerTask(model,pid)
-  use nrtype
+  use ConstantsModule
   use mpi
   use GlobalModule, only : MasterID,nWorkers,hhdata
   implicit none
@@ -173,7 +173,7 @@ end subroutine WorkerTask
 !
 !-----------------------------------------------------------------------------
 subroutine Like2(mode,nx,x,L,GradL,nstate,iuser,ruser)
-  use nrtype
+  use ConstantsModule
   use GlobalModule, only : iFree,parms,HHData,RandomB,small
   use DataModule,   only : ComputeCurrentB
   implicit none
@@ -231,7 +231,7 @@ end subroutine Like2
 
 #if USE_MPI>0
 subroutine Like2Hess_master(nx,x,L)
-  use nrtype
+  use ConstantsModule
   use mpi
   use GlobalModule, only : MasterID,nWorkers,HHData
   implicit none
@@ -277,7 +277,7 @@ end subroutine Like2Hess_master
 !
 !-----------------------------------------------------------------------------
 subroutine Like2Hess(nx,x,L)
-  use nrtype
+  use ConstantsModule
   use GlobalModule, only : iFree,parms,HHData,RandomB,small
   use DataModule,   only : ComputeCurrentB
   implicit none
@@ -330,7 +330,7 @@ end subroutine Like2Hess
 !
 !-----------------------------------------------------------------------------
 subroutine Like1_wrapper(i1,d1,d2,d3,parms,mode,L1,GradL1)
-  use nrtype
+  use ConstantsModule
   use GlobalModule, only : HHData,ParmsStructure
 
   implicit none
@@ -362,7 +362,7 @@ end subroutine Like1_wrapper
 !
 !-----------------------------------------------------------------------------
 subroutine Like1C(i1,parms,mode,L,GradL)
-  use nrtype
+  use ConstantsModule
   use GlobalModule, only : ParmsStructure,HHData,RandomE
   use NewTools,     only : ComputeLQ
   implicit none
@@ -410,7 +410,7 @@ end subroutine Like1C
 !  CASE 2:  0 < d1 < K
 !--------------------------------------
 subroutine Like1B(iHH,d1,d2,d3,parms,mode,L,GradL)
-  use nrtype
+  use ConstantsModule
   use GlobalModule, only : ParmsStructure,HHData,RandomE
   use NewTools,     only : ComputeSVD,ComputeInverse_LU,ComputeLQ
   use nag_library,  only : F07FDF,F04BAF
@@ -619,7 +619,7 @@ end subroutine Like1B
 ! CASE 1:  d1==K
 !--------------------------------------
 subroutine Like1A(i1,parms,mode,L,GradL)
-  use nrtype
+  use ConstantsModule
   use GlobalModule, only : ParmsStructure,HHData,inf,ReadWriteParameters
   use nag_library, only : F04BAF,F07AAF,F07ADF,F03BAF
   ! F04BAF = matrix inversion using LU decomp
@@ -723,7 +723,7 @@ end subroutine Like1A
 
 
 subroutine Like1(mode,nx,x,L,GradL,nstate,iuser,ruser)
-  use nrtype
+  use ConstantsModule
   use GlobalModule, only : parms,HHData,iFree
   implicit none
 
@@ -791,7 +791,7 @@ deallocate(GradL1)
 end subroutine Like1
 
 subroutine UpdateParms(xFree,iFree,parms)
-  use nrtype
+  use ConstantsModule
   use GlobalModule, only : SelectFreeType,ParmsStructure
   use NewTools,     only : SphereToMatrix,ComputeInverse_LU
   implicit none
@@ -892,7 +892,7 @@ end subroutine UpdateParms
 !
 !-----------------------------------------------------------------------
 subroutine UpdateParms2(x,iFree,parms)
-  use nrtype
+  use ConstantsModule
   use GlobalModule, only : SelectFreeType,ParmsStructure
   use NewTools,     only : SphereToMatrix,ComputeInverse_LU
   implicit none
@@ -1050,7 +1050,7 @@ subroutine LogDensityFunc(e,parms,mue_month,F,GradF_e,GradF_MuE,GradF_InvC)
 !
 ! Revision history
 ! 09DEC2012 LN translated to Fortran from matlab LogDensity.m
-  use nrtype
+  use ConstantsModule
   use nag_library,  only : F04BAF
   use GlobalModule, only : ParmsStructure
   implicit none
@@ -1122,7 +1122,7 @@ subroutine LogDensityFunc(e,parms,mue_month,F,GradF_e,GradF_MuE,GradF_InvC)
 end subroutine LogDensityFunc
 
 subroutine ComputeRowGroup(L,J,d,RowGroup)
-  use nrtype
+  use ConstantsModule
   implicit none
   integer(i4b), intent(in)  :: J,d
   real(dp), intent(in)      :: L(J,d)
@@ -1141,7 +1141,7 @@ subroutine ComputeProb(p,v,w,RowGroup,R,DTilde,Integrand,  &
                        epsilon1,nu1,Omega12,C2,CPsi,Q,S1,  &
                        d1,d2)
 
-  use nrtype
+  use ConstantsModule
   use nag_library, only : S15ABF
   use ToolsModule, only : InverseNormal_mkl
   use GlobalModule, only : DensityGradType   ! Gradient of F w.r.t. parameters
@@ -1312,7 +1312,7 @@ subroutine ComputeProb(p,v,w,RowGroup,R,DTilde,Integrand,  &
 end subroutine ComputeProb
 
 subroutine AllocateGradF(GradF,action,nx,d1,d2)
-use nrtype
+use ConstantsModule
 use GlobalModule, only : DensityGradType
 implicit none
 type(DensityGradType), intent(inout) :: GradF
@@ -1349,7 +1349,7 @@ end select
 end subroutine AllocateGradF
 
 subroutine DensityFunc2(xT,epsilon1,nu1,Omega12,C2,CPsi,Q,S1,d1,d2,F,GradF)
-  use nrtype
+  use ConstantsModule
   use GlobalModule, only : DensityGradType
   use ToolsModule, only : InvertLower
 !  use NewTools, only : det   ! compute determinant of matrix
@@ -1488,7 +1488,7 @@ subroutine DensityFunc2(xT,epsilon1,nu1,Omega12,C2,CPsi,Q,S1,d1,d2,F,GradF)
 end subroutine DensityFunc2
 
 subroutine SparseGridBayes(iFree,iuser,ruser)
-  use nrtype
+  use ConstantsModule
   use GlobalModule, only : SelectFreeType,MaxOptions
   use OutputModule, only : WriteBayes
   use nag_library,  only : D01ESF,D01ZKF
@@ -1579,7 +1579,7 @@ SUBROUTINE IntegrateLikeFunc0(NI, NDIM, NX, XTR, NNTR, ICOLZP, IROWIX, XS, QS, F
 end subroutine IntegrateLikeFunc0
 
 function ChangeX(x0,nx,model) result(x1)
-  use nrtype
+  use ConstantsModule
   use GlobalModule, only : ifree,bayes
   implicit none
   integer(i4b), intent(in) :: nx,model
@@ -1637,7 +1637,7 @@ function ChangeX(x0,nx,model) result(x1)
 end function ChangeX
 
 subroutine LikeFunc0_QuadWrapper(x,nx,iuser,ruser,F)
-  use nrtype
+  use ConstantsModule
   implicit none
   real(dp),     intent(in)    :: x(nx)
   integer(i4b), intent(in)    :: nx
@@ -1662,7 +1662,7 @@ end subroutine LikeFunc0_QuadWrapper
 
 #ifdef BAYES
 subroutine SetupBayesPrior(parms,iFree)
-  use nrtype
+  use ConstantsModule
   use GlobalModule, only : ParmsStructure,SelectFreeType,Bayes
   implicit none
   type (parmsStructure), intent(in) :: parms
@@ -1690,7 +1690,7 @@ end subroutine SetupBayesPrior
 #endif
 
 subroutine RunMonteCarlo(IMC1,IMC2,pid)
-  use nrtype
+  use ConstantsModule
   use GlobalModule, only : parms,parms0,iFree,            &
                            MaxOptions,                    &
                            ResultStructure,               &
@@ -1796,7 +1796,7 @@ end subroutine RunMonteCarlo
 ! in each iteration, max w.r.t. current element of x
 ! one element of x at a time
 subroutine MaxOneAtTime(pid)
-  use nrtype
+  use ConstantsModule
 #if USE_MPI==1
   use mpi
 #endif
@@ -2167,7 +2167,7 @@ end subroutine UpdateIFree
 
 !!   BEGIN ANALYSIS of DEMAND
 subroutine AnalyseResults(IMC)
-  use nrtype
+  use ConstantsModule
   use GlobalModule, only : ControlOptions,parms,ReadWriteParameters
   use DataModule, only   : CreateData,LoadData
   implicit none
@@ -2197,7 +2197,7 @@ subroutine ComputeElasticities
 #ifndef __GFORTRAN__
   use IFPORT
 #endif
-  use nrtype
+  use ConstantsModule
   use GlobalModule, only : parms,HHData,ControlOptions,InputDir, &
                            DataStructure,AllocateLocalHHData,    &
                            DeallocateLocalHHData,LoadBasePrice,  &
@@ -2463,7 +2463,7 @@ subroutine ComputeElasticities
 end subroutine ComputeElasticities
 
 subroutine ComputeIndividualDemand(SimData1)
-  use nrtype
+  use ConstantsModule
   use GlobalModule, only : DataStructure,parms
   use OutputModule, only : MakeFullFileName
   implicit none
@@ -2513,7 +2513,7 @@ subroutine ComputeIndividualDemand(SimData1)
 end subroutine ComputeIndividualDemand
 
 subroutine ComputeAggregateDemand(q,iNonZero,TotalQ,nNonZero,n)
-use nrtype
+use ConstantsModule
 use GlobalModule, only : parms
 implicit none
 real(dp),     intent(in)  :: q(:,:)
@@ -2549,7 +2549,7 @@ subroutine ComputeDemand(HHData1)
   use DataModule,   only : ComputeCurrentB
   use nag_library,  only : X04ABF,X04ACF,X04ADF, &
                            E04WBF,E04NCA,E04NDA
-  use nrtype
+  use ConstantsModule
   implicit none
   type(DataStructure), intent(inout) :: HHData1
 
@@ -2695,7 +2695,7 @@ end subroutine ComputeDemand
 
 subroutine ComputeInitialGuess(parms,iFree,x)
   use GlobalModule, only : ParmsStructure,SelectFreeType
-  use nrtype
+  use ConstantsModule
   implicit none
   type(ParmsStructure), intent(in) :: parms
   type(SelectFreeType), intent(in) :: iFree
@@ -2797,7 +2797,7 @@ end subroutine ComputeInitialGuess
 !              BC_COffDiag(i3)    i3 = R*(R-1)/2 + (i2-R-1)*(R-1) + (1:R-1)
 !            end do
 subroutine SelectFreeParameters(parms,iFree)
-  use nrtype
+  use ConstantsModule
   use GlobalModule, only : ParmsStructure,SelectFreeType
   implicit none
 
@@ -3150,7 +3150,7 @@ subroutine SelectFreeParameters(parms,iFree)
 end subroutine SelectFreeParameters
 
 subroutine MaximizeLikelihood(x,LValue,Grad,Hess,ierr)
-  use nrtype
+  use ConstantsModule
   use GlobalModule, only : MaxOptions,Penalty
   implicit none
   real(dp),     intent(inout) :: x(:)
@@ -3179,7 +3179,7 @@ subroutine MaximizeLikelihood(x,LValue,Grad,Hess,ierr)
 end subroutine MaximizeLikelihood
 
 subroutine ComputeBayes(x,L,Grad,Hess,ierr)
-  use nrtype
+  use ConstantsModule
   use GlobalModule, only : bayes
 
   implicit none
@@ -3226,7 +3226,7 @@ end subroutine ComputeBayes
 
 ! Maximise using Constrained maximization: E04WDF
 subroutine MaximizeLikelihood1(x,LValue,Grad,Hess,ierr)
-  use nrtype
+  use ConstantsModule
 #if USE_MPI==1
   use mpi
 #endif
@@ -3510,7 +3510,7 @@ end subroutine MaximizeLikelihood1
 
 ! compute Bayes estimator using D01ESF
 subroutine BayesLikelihood1(x,LValue,Grad,Hess,ierr)
-  use nrtype
+  use ConstantsModule
 #if USE_MPI==1
   use mpi
 #endif
@@ -3574,7 +3574,7 @@ end subroutine BayesLikelihood1
 
 ! Maximise using Constrained maximization: E04WDF
 subroutine MaximizePenalizedLikelihood(x,LValue,Grad,Hess,ierr)
-  use nrtype
+  use ConstantsModule
   use GlobalModule, only : Penalty,ControlOptions,MaxOptions,InputDir
   use nag_library, only : E04WCF,E04WDF,E04WDP,E04WEF,E04WFF, &
                           X04AAF,X04ABF,X04ACF,X04ADF
@@ -3770,7 +3770,7 @@ end subroutine MaximizePenalizedLikelihood
 
 ! Compute Likefunc0 and its numerical derivative
 subroutine LikeFunc(mode,nx,x,L,GradL,nstate,iuser,ruser)
-  use nrtype
+  use ConstantsModule
   use GlobalModule, only : Penalty,MaxOptions
   implicit none
   integer(i4b), intent(inout) :: mode
@@ -3804,7 +3804,7 @@ end subroutine LikeFunc
 !
 !------------------------------------------------------------------------------
 subroutine LikeFunc0(mode,nx,x,L,GradL,nstate,iuser,ruser)
-  use nrtype
+  use ConstantsModule
   use GlobalModule, only : Penalty
   implicit none
   integer(i4b), intent(inout) :: mode
@@ -3851,7 +3851,7 @@ end subroutine LikeFunc0
 ! PenalizedLikelihood:
 !  compute objective function for penalized likelihood for model == iuser(1)
 subroutine PenalizedLikelihood(mode,nxP,xP,LP,GradLP,nstate,iuser,ruser)
-  use nrtype
+  use ConstantsModule
   use GlobalModule, only : Penalty,HHData
   implicit none
 ! xP       =  (nxP x 1) free parameters
@@ -3918,7 +3918,7 @@ subroutine PenalizedLikelihood(mode,nxP,xP,LP,GradLP,nstate,iuser,ruser)
 end subroutine PenalizedLikelihood
 
 subroutine PenaltyFunction(xPlus,xMinus,P,GradP)
-  use nrtype
+  use ConstantsModule
   use GlobalModule, only : Penalty
   implicit none
   real(dp), intent(in) :: xPlus(:)
@@ -3939,7 +3939,7 @@ subroutine PenaltyFunction(xPlus,xMinus,P,GradP)
 end subroutine PenaltyFunction
 
 subroutine TestGrad(LikeFunc0,nx,x,nstate,iuser,ruser)
-  use nrtype
+  use ConstantsModule
   use OutputModule, only : MakeFullFileName
   implicit none
   integer(i4b), intent(in) :: nx,nstate
@@ -3949,7 +3949,7 @@ subroutine TestGrad(LikeFunc0,nx,x,nstate,iuser,ruser)
 
   interface
     subroutine LikeFunc0(mode,n,x,L,GradL,nstate,iuser,ruser)
-      use nrtype
+      use ConstantsModule
       use GlobalModule, only : Penalty
       integer(i4b), intent(inout) :: mode
       integer(i4b), intent(in)    :: n,nstate
@@ -3994,7 +3994,7 @@ end subroutine TestGrad
 ! subroutine ComputeHess(x,L,GradL,Hess,iuser,ruser)
 !------------------------------------------------------------------------------
 subroutine ComputeHess(x,L,GradL,Hess,iuser,ruser)
-  use nrtype
+  use ConstantsModule
   implicit none
   real(dp),     intent(in)  :: x(:)
   real(dp),     intent(out) :: L
@@ -4037,7 +4037,7 @@ subroutine ComputeHess2(x,L,Grad,Hess)
   use GlobalModule, only : HHData,ifree
   use OutputModule, only : WriteHess
   use IFPORT, only : time
-  use nrtype
+  use ConstantsModule
   implicit none
   real(dp), intent(in)  :: x(:)
   real(dp), intent(out) :: L,Grad(:),Hess(:,:)
@@ -4190,7 +4190,7 @@ subroutine ComputeHess2(x,L,Grad,Hess,ComputeHessFlag)
 #ifndef __GFORTRAN__
   use IFPORT, only : time
 #endif
-  use nrtype
+  use ConstantsModule
   implicit none
   real(dp), intent(in)     :: x(:)
   real(dp), intent(out)    :: L,Grad(:),Hess(:,:)
@@ -4311,7 +4311,7 @@ subroutine ComputeHess2(x,L,Grad,Hess,ComputeHessFlag)
 end subroutine ComputeHess2
 
 subroutine SetBounds(x,BL,BU)
-  use nrtype
+  use ConstantsModule
   use GlobalModule, only : iFree,MaxOptions,bayes,parms
   implicit none
   real(dp), intent(in)  :: x(:)
@@ -4431,7 +4431,7 @@ subroutine SetBounds(x,BL,BU)
 end subroutine SetBounds
 
 subroutine PlotLike(LikeFunc0,nx,x,xlabels,xlo,xhi,nstate,iuser,ruser)
-  use nrtype
+  use ConstantsModule
   use ToolsModule, only : linspace
   use GlobalModule, only : OutDir
   implicit none
@@ -4444,7 +4444,7 @@ subroutine PlotLike(LikeFunc0,nx,x,xlabels,xlo,xhi,nstate,iuser,ruser)
 
   interface
     subroutine LikeFunc0(mode,n,x,L,GradL,nstate,iuser,ruser)
-      use nrtype
+      use ConstantsModule
       use GlobalModule, only : Penalty
       integer(i4b), intent(inout) :: mode
       integer(i4b), intent(in)    :: n,nstate
@@ -4486,7 +4486,7 @@ subroutine PlotLike(LikeFunc0,nx,x,xlabels,xlo,xhi,nstate,iuser,ruser)
 end subroutine PlotLike
 
 subroutine Constraint(x,mode,F,GradF)
-  use nrtype
+  use ConstantsModule
   use GlobalModule, only : parms,iFree,HHData,RandomE
   use nag_library,  only : F04BAF,F07FDF
   use NewTools,     only : ComputeSVD,ComputeInverse_LU,ComputeLQ
@@ -4822,7 +4822,7 @@ deallocate(c1,c2)
 end subroutine Constraint
 
 subroutine NAGConstraintWrapper(mode,nc_nonlin,N,LDCJ,NEEDC,X,CCON,CJAC,nstate,iuser,ruser)
-  use nrtype
+  use ConstantsModule
   implicit none
   integer(i4b), intent(inout) :: mode
   integer(i4b), intent(in)    :: nc_nonlin,n,ldcj
@@ -4853,7 +4853,7 @@ end subroutine NAGConstraintWrapper
 
 ! Compute number of nonlinear constraints
 subroutine ComputeNC(NC)
-  use nrtype
+  use ConstantsModule
   use GlobalModule, only : HHData,parms
   implicit none
   integer(i4b), intent(out) :: NC
@@ -4865,7 +4865,7 @@ end subroutine ComputeNC
 
 
 subroutine Max_E04JCF(x,LValue,Grad,Hess,ierr)
-  use nrtype
+  use ConstantsModule
 #if USE_MPI==1
   use mpi
 #endif
@@ -5025,7 +5025,7 @@ call mpi_bcast(task,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr)
 end subroutine Max_E04JCF
 
 subroutine OBJFUN_E04JCF(n,x,L ,iuser,ruser,inform)
-  use nrtype
+  use ConstantsModule
   implicit NONE
   integer(i4b), intent(in)    :: n
   real(dp),     intent(in)    :: x(n)
@@ -5047,7 +5047,7 @@ subroutine OBJFUN_E04JCF(n,x,L ,iuser,ruser,inform)
 end subroutine OBJFUN_E04JCF
 
 subroutine monfun_E04JCF(n,nf,x,f,rho,iuser,ruser,inform)
-  use nrtype
+  use ConstantsModule
   use OutputModule, only : MakeFullFilename
   implicit none
 

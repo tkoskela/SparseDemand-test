@@ -17,7 +17,7 @@ module NewTools
 contains
 
 subroutine ComputeMatrixType(M,MatrixType)
-  use nrtype
+  use ConstantsModule
   implicit none
   real(dp),         intent(in)  :: M(:,:)
   character(len=*), intent(out) :: MatrixType
@@ -60,7 +60,7 @@ end subroutine ComputeMatrixType
 !      'Symmetric'
 !------------------------------------------------------------------------------
 subroutine MatrixInverse(M,InvM,RawMatrixType)
-  use nrtype
+  use ConstantsModule
   use nag_library, only: X02AJF,F01ABF,F01BLF,F04AEF,F07AAF,F07MDF,F07MJF,F07TJF
   ! X02AJF :  compute machine epsilon
   ! F01ABF :  inverse of symmetric positive definite matrix, iterative
@@ -245,7 +245,7 @@ end subroutine MatrixInverse
 ! --------------------
 ! 09DEC2012 LN  translated from matlab file SphereToMatrix.m
 subroutine SphereToMatrix(phi,r,K,J,B,GradB_phi,GradB_r) 
-  use nrtype
+  use ConstantsModule
   implicit none
   real(dp),     intent(in)  :: phi(:)
   real(dp),     intent(in)  :: r(:)
@@ -323,7 +323,7 @@ end subroutine SphereToMatrix
 ! size(PHI) = N x 1    spherical coordinate representation of column
 !                      N = K*(K-1)/2 + (J-K)*(K-1)
 subroutine MatrixToSphere(C,D,PHI)
-  use nrtype
+  use ConstantsModule
   implicit none
   real(dp), intent(in)  :: C(:,:)
   real(dp), intent(out) :: D(:),PHI(:)
@@ -362,7 +362,7 @@ subroutine MatrixToSphere(C,D,PHI)
 end subroutine MatrixToSphere
 
 subroutine MapToCartesian(r,phi,x,dx)
-  use nrtype
+  use ConstantsModule
   implicit none
 ! Map (r,phi) from spherical coordinates to Cartesian
 ! gradient of map
@@ -421,7 +421,7 @@ subroutine MapToCartesian(r,phi,x,dx)
 end subroutine MapToCartesian
 
 subroutine MapToSpherical(x,R,PHI)
-  use nrtype
+  use ConstantsModule
   implicit none
   real(dp), intent(in)  :: x(:)
   real(dp), intent(out) :: R,PHI(:)
@@ -453,7 +453,7 @@ subroutine MapToSpherical(x,R,PHI)
 end subroutine MapToSpherical
 
 subroutine MapToSpherical_old(x,R,PHI)
-  use nrtype
+  use ConstantsModule
   implicit none
   real(dp), intent(in)  :: x(:)
   real(dp), intent(out) :: R,PHI(:)
@@ -475,7 +475,7 @@ subroutine MapToSpherical_old(x,R,PHI)
 end subroutine MapToSpherical_old
 
 subroutine FindColumn(i1,K,j1)
-  use nrtype
+  use ConstantsModule
   implicit none
 ! Find column in B corresponding to element i1 in phi
 ! That is, phi(i1) maps into column j1
@@ -496,7 +496,7 @@ end subroutine FindColumn
 
 ! Compute inverse of A using LU decomposition
 subroutine ComputeInverse_LU(K,A,InvA,ifail)
-  use nrtype
+  use ConstantsModule
   use nag_library, only : F04BAF
   implicit none
   integer(i4b), intent(in)  :: K
@@ -530,7 +530,7 @@ subroutine ComputeLQ(m,n,A,L,Q,ifail)
 !    size(A) = (m x n)
 !    size(L) = (m x n)   lower triangular
 !    size(Q) = (n x n)   orthogonal
-  use nrtype
+  use ConstantsModule
   use nag_library, only : F08AHF,F08AJF
   implicit none
   integer(i4b), intent(in)  :: m
@@ -564,7 +564,7 @@ end subroutine ComputeLQ
 
 function det(A)
 ! Compute determinant of A
-  use nrtype
+  use ConstantsModule
   use nag_library, only : F07ADF,F03BAF
 
   implicit none
@@ -596,7 +596,7 @@ end function det
 !    B = U*[diag(S) 0]*VT
 subroutine ComputeSVD(B,U,S,VT)
   use nag_library, only : F08KBF  ! singular value decomposition
-  use nrtype
+  use ConstantsModule
   implicit none
   real(dp), intent(in)  :: B(:,:)
   real(dp), intent(out) :: U(:,:)

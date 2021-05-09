@@ -4,7 +4,7 @@ program SparseDemand
 ! Revision history
 ! 22MAR2013 LN  updated and cleaned
 !
-  use nrtype
+  use ConstantsModule
   use GlobalModule,     only : GetInputFile,InitializeParameters, &
                                ControlOptions,HHData,ComputeNMC,  &
                                DeallocateGlobalVariables,         &

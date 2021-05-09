@@ -99,6 +99,7 @@ NR_SRC = \
 
 # Modules -- not the main program!
 MOD_OBJS = \
+    ConstantsModule.o \
 	ToolsModule.o \
 	PropertyList.o \
 	NewTools.o \
