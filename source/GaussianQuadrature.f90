@@ -5,7 +5,10 @@
 !
 ! The (private) procedures `gaussq`, `solve`, `class` and `gausq2` are direct
 ! translations of corresponding procedures from netlib go library to a more
-! 'modern' Fortran style.
+! modern Fortran style, with the logic made clearer by replacement of `goto`
+! statements, all types made explicit, intents added to arguments and a call
+! to an externally defined function `d1mach` replaced with corresponding
+! calls to intrinsic functions. 
 !
 ! The public subroutine `GaussianQuadratureRule` wraps `gaussq` to provide a
 ! more convenient interface, with assumed-shape semantics for passing arrays
@@ -99,10 +102,8 @@ module GaussianQuadrature
 
       integer(i4b), intent(in) :: kind
       real(dp), intent(out) :: nodes(:), weights(:)
-      real(dp), intent(in), optional :: alpha, beta
-      real(dp), intent(in), optional :: endpts(:)
-      real(dp) :: a_alpha, a_beta
-      real(dp) :: a_endpts(2)
+      real(dp), intent(in), optional :: alpha, beta, endpts(:)
+      real(dp) :: a_alpha, a_beta, a_endpts(2)
       integer(i4b) :: n, kpts
       real(dp), allocatable :: b(:)
 
@@ -131,7 +132,7 @@ module GaussianQuadrature
         else if (kpts == 2) then
           a_endpts = endpts
         else
-          stop "'endpts' should be of size 1 or 2" 
+          stop "'endpts' should be of size 1 or 2 if specified" 
         end if
       else
         kpts = 0
@@ -228,15 +229,11 @@ module GaussianQuadrature
       ! Modified 21 Dec 1983 by Eric Grosse
       ! Modified to use more modern Fortran style on 12 May 2021 by Matt Graham
 
-      integer(i4b), intent(in) :: kind
-      integer(i4b), intent(in) :: n
-      real(dp), intent(in) :: alpha
-      real(dp), intent(in) :: beta
+      integer(i4b), intent(in) :: kind, n
+      real(dp), intent(in) :: alpha, beta
       integer (i4b), intent(in) :: kpts
       real(dp), intent(in) :: endpts(2)
-      real(dp), intent(out) :: b(n)
-      real(dp), intent(out) :: t(n)
-      real(dp), intent(out) :: w(n)
+      real(dp), intent(out) :: b(n), t(n), w(n)
 
       integer(i4b) :: i, ierr
       real(dp) :: muzero, t1, gam
@@ -261,7 +258,7 @@ module GaussianQuadrature
       ! Note that the indices of the elements of b run from 1 to n-1 and thus 
       ! the value of b(n) is arbitrary. Now compute the eigenvalues of the 
       ! symmetric tridiagonal matrix, which has been modified as necessary. The 
-      ! method used is a ql-type method with origin shifting.
+      ! method used is a QL-type method with origin shifting.
 
       w(1) = 1.0_dp
       do i = 2, n
@@ -322,16 +319,13 @@ module GaussianQuadrature
       ! symmetric.
       !
       ! The input parameter `alpha` is used only for Laguerre and Jacobi 
-      ! polynomials, and the parameter `beta` is used only for Jacobi 
+      ! polynomials, and the parameter `beta` is used only for Jacobi
       ! polynomials. The Laguerre and Jacobi polynomials require the `gamma` 
       ! function.
 
-      integer(i4b), intent(in) :: kind
-      integer(i4b), intent(in) :: n 
-      real(dp), intent(in) :: alpha
-      real(dp), intent(in) :: beta
-      real(dp), intent(out) :: b(n)
-      real(dp), intent(out) :: a(n)
+      integer(i4b), intent(in) :: kind, n
+      real(dp), intent(in) :: alpha, beta
+      real(dp), intent(out) :: b(n), a(n)
       real(dp), intent(out) :: muzero
 
       integer(i4b) :: i
@@ -437,7 +431,7 @@ module GaussianQuadrature
       !      `n-1` positions. `e(n)` is arbitrary. Overwritten.
       !   z: Contains the first row of the identity matrix. Overwritten.
       !
-      ! On outputs:
+      ! On output:
       !
       !   d: Contains the eigenvalues in ascending order. If an error exit is 
       !      made, the eigenvalues are correct but unordered for indices 
@@ -449,16 +443,14 @@ module GaussianQuadrature
       !      eigenvalue has not been determined after 30 iterations.
 
       integer(i4b), intent(in) :: n
-      real(dp), intent(inout) :: d(n)
-      real(dp), intent(inout) :: e(n)
-      real(dp), intent(inout) :: z(n)
+      real(dp), intent(inout) :: d(n), e(n), z(n)
       integer(i4b), intent(out) :: ierr
 
       integer(i4b) :: i, j, k, l, m, ii, mml
       real(dp) :: b, c, f, g, p, r, s, machep
 
       ! machep = d1mach(4)
-      ! Based on implementation at
+      ! Based on implementation in terms of intrinsics radix and digits at
       ! https://github.com/certik/fortran-utils/blob/
       !   b43bd24cd421509a5bc6d3b9c3eeae8ce856ed88/src/legacy/amos/d1mach.f90 
       machep = radix(1.0_dp)
