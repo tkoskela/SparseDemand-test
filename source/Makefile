@@ -9,7 +9,6 @@
 #
 #   all	  	 - builds everything
 #   clean	 - deletes all .o, .a, binaries, etc.
-#   cleanall     - clean + clean all dependencies
 #   exe		 - optimized application
 #   dbg		 - application with debug symbols
 #
@@ -55,7 +54,6 @@ FC = $(LOCAL_FC)
 
 # Default is not to use MPI libraries
 # USE_MPI = 1 --> build for use with MPI
-
 ifeq ($(USE_MPI),1)
   LOCAL_FL_LIBS += $(LOCAL_MPI_LIBS)
   LOCAL_FC_FLAGS += $(LOCAL_MPI_FLAGS)
@@ -64,19 +62,17 @@ ifeq ($(USE_MPI),1)
 endif
 
 # Archive tools -- use GNU by default
-
 AR = $(LOCAL_AR)
 RANLIB = $(LOCAL_RANLIB)
 AR_FLAGS = $(LOCAL_AR_FLAGS)
 
 # Where libraries live
-NR_DIR = $(LOCAL_NR_DIR)
 MKL_DIR = ${LOCAL_MKL_DIR}
 NAG_BLOCKS = ${LOCAL_NAG_BLOCKS}
 
 # Compiler and linker options
 FL_LIBS = $(LOCAL_FL_LIBS)
-FC_FLAGS = $(LOCAL_FC_FLAGS) -I${MKL_DIR} -I$(NR_DIR) -I${NAG_BLOCKS} -DHOST_ID=$(HOST_ID)
+FC_FLAGS = $(LOCAL_FC_FLAGS) -I${MKL_DIR} -I${NAG_BLOCKS} -DHOST_ID=$(HOST_ID)
 
 # Add the following line to FC_FLAGS to use profiling data to
 # improve compiler optimization:
@@ -86,16 +82,7 @@ FC_FLAGS = $(LOCAL_FC_FLAGS) -I${MKL_DIR} -I$(NR_DIR) -I${NAG_BLOCKS} -DHOST_ID=
 #
 #		 -prof-genx -prof-dir ./profdata
 
-FC_DEBUG_FLAGS = $(LOCAL_FC_DEBUG_FLAGS) -I${MKL_DIR} -I$(NR_DIR) -I${NAG_BLOCKS} -DHOST_ID=$(HOST_ID)
-
-#---------------------------------------
-# Source code for numerical recipes library
-NR_SRC = \
-	nrtype.f90 \
-	nrutil.f90 \
-	nr.f90 \
-	ran_state.f90 \
-	numerical_recipes.f90
+FC_DEBUG_FLAGS = $(LOCAL_FC_DEBUG_FLAGS) -I${MKL_DIR} -I${NAG_BLOCKS} -DHOST_ID=$(HOST_ID)
 
 # Modules -- not the main program!
 MOD_OBJS = \
@@ -103,6 +90,7 @@ MOD_OBJS = \
 	ToolsModule.o \
 	PropertyList.o \
 	NewTools.o \
+	GaussianQuadrature.o \
 	GlobalModule.o \
 	OutputModule.o \
 	DataModule.o \
@@ -130,7 +118,6 @@ FC_DEBUG_FLAGS += -DAPP_NAME='"$(TGT)"'
 
 #---------------------------------------
 # Targets - these are objects which can be built
-#
 
 exe:    $(TGT).exe
 
@@ -138,37 +125,20 @@ dbg:    $(TGT).dbg
 
 all: clean dbg exe
 
-cleanall: cleannr clean
-
-#-----------------------------
-# Rule to build libraries
-
-# The codes $(patsubst ...) adds a prefix to
-# each source file defining the path where it is stored
-# This section also builds the library libnr if it has not yet already been built.
-#-----------------------------
-
-$(NR_DIR)/libnr.a : $(patsubst %, $(NR_DIR)/%, $(NR_SRC) )
-	make -C $(NR_DIR) libnr.a
-
-$(NR_DIR)/libnr_d.a : $(patsubst %, $(NR_DIR)/%, $(NR_SRC) )
-	make -C $(NR_DIR) libnr_d.a
-
 #-----------------------------
 # Rules to build application
-$(TGT).exe : $(NR_DIR)/libnr.a $(OBJS)
-	$(FC) $(FC_FLAGS) $^ -o $@	$(FL_LIBS) $(NR_DIR)/libnr.a
 
-$(TGT).dbg : $(NR_DIR)/libnr_d.a  $(DEBUG_OBJS)
-	$(FC) $(FC_DEBUG_FLAGS) $^ -o $@  $(NR_DIR)/libnr_d.a $(FL_LIBS)
+$(TGT).exe : $(OBJS)
+	$(FC) $(FC_FLAGS) $^ -o $@ $(FL_LIBS)
+
+$(TGT).dbg : $(DEBUG_OBJS)
+	$(FC) $(FC_DEBUG_FLAGS) $^ -o $@ $(FL_LIBS)
 
 #-----------------------------
 # clean up any messes which have been created
+
 clean:
 	rm -f *.o $(TGT) *.mod a.out *.a *.dbg *.exe
-
-cleannr:
-	cd $(NR_DIR) ; make clean
 
 # Pattern Rules
 

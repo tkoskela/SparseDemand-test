@@ -1685,7 +1685,7 @@ end subroutine DefineIntegrationRule
 
 subroutine DefineIntegrationNodes(d,flag,n1,nAll,nodes,weights)
   use ToolsModule, only : kron1
-  use nr, only : gauher,gauleg
+  use GaussianQuadrature, only : GaussianQuadratureRule, hermite, legendre
   use nag_library, only : G05KFF,G05SAF,G05RZF
   implicit none
   ! 0 : Gauss-Hermite               1 : Working
@@ -1718,7 +1718,7 @@ subroutine DefineIntegrationNodes(d,flag,n1,nAll,nodes,weights)
     do i1=1,d
       allocate(x(n1(i1)))
       allocate(w(n1(i1)))
-      call gauher(x,w)
+      call GaussianQuadratureRule(hermite, x, w)
       if (i1==1) then
         allocate(e1(nAll/n1(i1)))
         e1 = 1.0d0
@@ -1784,7 +1784,7 @@ elseif (flag==6) then
     do i1=1,d
       allocate(x(n1(i1)))
       allocate(w(n1(i1)))
-      call gauleg(-1.0d0,1.0d0,x,w)
+      call GaussianQuadratureRule(legendre, x, w)
       if (i1==1) then
         allocate(e1(nAll/n1(i1)))
         e1 = 1.0d0
