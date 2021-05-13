@@ -30,8 +30,6 @@ LOCAL_MKL_DIR     = /share/apps/intel_parallel_studio_xe_2018/compilers_and_libr
 # fll6i26dfl:   gfortran compiler version
 LOCAL_NAG_DIR     = /share/apps/NAG/Fortran/fll6i26dcl
 LOCAL_NAG_BLOCKS  = ${LOCAL_NAG_DIR}/nag_interface_blocks
-LOCAL_NR_DIR      = $(GeneralCode)/nr
-LOCAL_TOOLS_DIR   = $(GeneralCode)/tools
 LOCAL_KNITRO_DIR  = /share/apps/econ/knitro/10.0.1-z
 LOCAL_KNITRO_LIBS = $(LOCAL_KNITRO_DIR)/lib/libknitro.so
 KNITRORELEASE = 1001

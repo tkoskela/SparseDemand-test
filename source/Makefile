@@ -11,14 +11,14 @@
 #   clean	 - deletes all .o, .a, binaries, etc.
 #   exe		 - optimized application
 #   dbg		 - application with debug symbols
+#   tests    - application to run tests
 #
 # Options:
 #
-#   USE_MPI	- defaults to 0 (no MPI).  If defined to 1, build
-#                 application with MPI libraries for execution on
-#                 multiple processors
+#   USE_MPI	- defaults to 0 (no MPI).  If defined to 1, build application with
+#             MPI libraries for execution on multiple processors
 #
-# Example:
+# Examples:
 #
 #   To build an optimized application with MPI:
 #
@@ -32,59 +32,32 @@
 #
 #     make dbg
 #
-# modification history
-# --------------------
-# 2021MAR06 LN   move GeneralCode source code to subdirectory of project
-# 2018JUL25 LN   clean up and edit
-# 09OCT2013 LN   load ApproximationModule.o before ValueModule.o since the latter uses the former
-# 29jun2011 LPN  rename *_module to *Module
-# 11nov2010 LPN  adapt from housing project
 
-.SUFFIXES: .a .o .f95 .f90 .mod
-
-# Select correct Macros based on platform in use
-# config directory assumed to be in parent directory of directory the root makefile is in
-WorkDir:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))/..
-include $(WorkDir)/config/LoadLocalDefs.inc
-
-# Compiler toolkit
-
-# Fortran Compiler
-FC = $(LOCAL_FC)
+# Select correct variable definitions based on platform in use
+# config directory assumed to be in parent of directory the makefile is in
+WORK_DIR = $(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))/..
+include $(WORK_DIR)/config/LoadLocalDefs.inc
 
 # Default is not to use MPI libraries
 # USE_MPI = 1 --> build for use with MPI
 ifeq ($(USE_MPI),1)
-  LOCAL_FL_LIBS += $(LOCAL_MPI_LIBS)
-  LOCAL_FC_FLAGS += $(LOCAL_MPI_FLAGS)
-  LOCAL_FC_DEBUG_FLAGS += $(LOCAL_MPI_DEBUG_FLAGS) -DSLEEP=1
+  TGT = SparseDemand_mpi
   FC = $(LOCAL_MPI_FC)
+  FL_LIBS = $(LOCAL_FL_LIBS) $(LOCAL_MPI_LIBS)
+  FC_FLAGS = $(LOCAL_FC_FLAGS) $(LOCAL_MPI_FLAGS)
+  FC_DEBUG_FLAGS = $(LOCAL_FC_DEBUG_FLAGS) $(LOCAL_MPI_DEBUG_FLAGS)
+else
+  TGT = SparseDemand
+  FC = $(LOCAL_FC)
+  FL_LIBS = $(LOCAL_FL_LIBS)
+  FC_FLAGS = $(LOCAL_FC_FLAGS)
+  FC_DEBUG_FLAGS = $(LOCAL_FC_DEBUG_FLAGS)
 endif
 
-# Archive tools -- use GNU by default
-AR = $(LOCAL_AR)
-RANLIB = $(LOCAL_RANLIB)
-AR_FLAGS = $(LOCAL_AR_FLAGS)
+FC_FLAGS += -I${LOCAL_MKL_DIR} -I${LOCAL_NAG_BLOCKS}
+FC_DEBUG_FLAGS += -I${LOCAL_MKL_DIR} -I ${LOCAL_NAG_BLOCKS}
 
-# Where libraries live
-MKL_DIR = ${LOCAL_MKL_DIR}
-NAG_BLOCKS = ${LOCAL_NAG_BLOCKS}
-
-# Compiler and linker options
-FL_LIBS = $(LOCAL_FL_LIBS)
-FC_FLAGS = $(LOCAL_FC_FLAGS) -I${MKL_DIR} -I${NAG_BLOCKS} -DHOST_ID=$(HOST_ID)
-
-# Add the following line to FC_FLAGS to use profiling data to
-# improve compiler optimization:
-#		 -prof-use -prof-dir ./profdata
-#
-# Add the following line to FC_FLAGS to generate profile data
-#
-#		 -prof-genx -prof-dir ./profdata
-
-FC_DEBUG_FLAGS = $(LOCAL_FC_DEBUG_FLAGS) -I${MKL_DIR} -I${NAG_BLOCKS} -DHOST_ID=$(HOST_ID)
-
-# Modules -- not the main program!
+# Modules
 MOD_OBJS = \
     ConstantsModule.o \
 	ToolsModule.o \
@@ -96,36 +69,30 @@ MOD_OBJS = \
 	DataModule.o \
 	LikelihoodModule.o
 
-# The main program
+# Main program
 PRG_OBJS = main.o
+
+# Test modules
+TEST_MOD_OBJS = tests/GaussianQuadratureTests.o
+
+# Test program
+TEST_PRG_OBJS = tests/RunTests.o
 
 OBJS = $(MOD_OBJS) $(PRG_OBJS)
 DEBUG_OBJS = $(patsubst %.o, %_d.o, $(OBJS))
+TEST_OBJS = $(TEST_MOD_OBJS) $(TEST_PRG_OBJS)
 
-# Application Name -- what to build
-ifeq ($(USE_MPI),1)
-TGT = SparseDemand_mpi
-else
-TGT = SparseDemand
-endif
+# Static pattern rules
 
-# NOTE:  This order of single and double quotes is crucial
-# because any other order will cause mpiifort to fail because
-# its preprocessor is weaker than ifort's.  In particular, it
-# seems to only take one pass and have trouble with quoting...
-FC_FLAGS       += -DAPP_NAME='"$(TGT)"'
-FC_DEBUG_FLAGS += -DAPP_NAME='"$(TGT)"'
+$(OBJS) : %.o : %.f90
+	$(FC) $(FC_FLAGS) -c $< -o $@
 
-#---------------------------------------
-# Targets - these are objects which can be built
+$(DEBUG_OBJS) : %_d.o : %.f90
+	$(FC) $(FC_DEBUG_FLAGS) -c $< -o $@
 
-exe:    $(TGT).exe
+$(TEST_OBJS) : %.o : %.f90
+	$(FC) $(FC_FLAGS) -c $< -o $@
 
-dbg:    $(TGT).dbg
-
-all: clean dbg exe
-
-#-----------------------------
 # Rules to build application
 
 $(TGT).exe : $(OBJS)
@@ -134,16 +101,20 @@ $(TGT).exe : $(OBJS)
 $(TGT).dbg : $(DEBUG_OBJS)
 	$(FC) $(FC_DEBUG_FLAGS) $^ -o $@ $(FL_LIBS)
 
-#-----------------------------
-# clean up any messes which have been created
+RunTests.exe : $(MOD_OBJS) $(TEST_OBJS)
+	$(FC) $(FC_FLAGS) $^ -o $@ $(FL_LIBS)
+
+# Phony targets
+
+.PHONY: exe dbg clean all
+
+exe: $(TGT).exe
+
+dbg: $(TGT).dbg
+
+tests: RunTests.exe
 
 clean:
-	rm -f *.o $(TGT) *.mod a.out *.a *.dbg *.exe
+	rm -f *.o *.mod *.dbg *.exe tests/*.o
 
-# Pattern Rules
-
-$(OBJS) : %.o : %.f90
-	$(FC) $(FC_FLAGS) -c $< -o $@
-
-$(DEBUG_OBJS) : %_d.o : %.f90
-	$(FC) $(FC_DEBUG_FLAGS) -c $< -o $@
+all: clean dbg exe tests
