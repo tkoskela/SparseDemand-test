@@ -125,11 +125,19 @@ module GaussianQuadrature
         a_beta = 0.0_dp
       end if
 
+      n = size(nodes)
+      if (size(weights) /= n) stop "Sizes of 'nodes' and 'weights' do not match"
+
+      allocate(b(n))
+
       if (present(endpts)) then
         kpts = size(endpts)
         if (kpts == 1) then
           a_endpts = [endpts(1), 0.0_dp]
         else if (kpts == 2) then
+          if (kpts > n) then
+            stop "'endpts' cannot be larger than size of 'nodes' and 'weights'"
+          end if
           a_endpts = endpts
         else
           stop "'endpts' should be of size 1 or 2 if specified" 
@@ -138,11 +146,6 @@ module GaussianQuadrature
         kpts = 0
         a_endpts = 0.0_dp
       end if
-
-      n = size(nodes)
-      if (size(weights) /= n) stop "Sizes of 'nodes' and 'weights' do not match"
-
-      allocate(b(n))
 
       call gaussq(kind, n, a_alpha, a_beta, kpts, a_endpts, b, nodes, weights)
 
@@ -246,7 +249,11 @@ module GaussianQuadrature
 
       if (kpts == 1) then
         ! if kpts=1, only `t(n)` must be changed
-        t(n) = solve(endpts(1), n, t, b) * b(n-1)**2 + endpts(1)
+        if (n == 1) then
+          t(n) = endpts(1)
+        else
+          t(n) = solve(endpts(1), n, t, b) * b(n-1)**2 + endpts(1)
+        end if
       else if (kpts == 2)  then
         ! if kpts=2, `t(n)` and `b(n-1)` must be recomputed
         gam = solve(endpts(1), n, t, b)
