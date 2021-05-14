@@ -1,19 +1,19 @@
 program RunTests
 
-    use GaussianQuadratureTests
+  use GaussianQuadratureTests
 
-    implicit none
+  implicit none
 
-    print "(A)", "--------------------------------------"
-    print "(A)", "Running Gaussian quadrature rule tests"
-    print "(A)", "--------------------------------------"
-    call TestLegendreRule()
-    call TestChebyshev1Rule()
-    call TestChebyshev2Rule()
-    call TestHermiteRule()
-    call TestLaguerreRule()
-    call TestJacobiRule()
-    call TestLegendreRadauRule
-    call TestLegendreLobattoRule()
+  print "(A)", "--------------------------------------"
+  print "(A)", "Running Gaussian quadrature rule tests"
+  print "(A)", "--------------------------------------"
+  call TestLegendreRule()
+  call TestChebyshev1Rule()
+  call TestChebyshev2Rule()
+  call TestHermiteRule()
+  call TestLaguerreRule()
+  call TestJacobiRule()
+  call TestLegendreRadauRule
+  call TestLegendreLobattoRule()
 
 end program
