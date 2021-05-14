@@ -10,8 +10,6 @@
 !-----------------------------------------------------------------------------
 ! Subroutines
 !-----------------------------------------------------------------------------
-! subroutine gaucheb(x,w)		Nodes and weights for Gauss-Chebyshev integration
-! subroutine gauleg(x,w,n)		Nodes and weights for Gauss-Legendre integration
 ! subroutine kron1(a,b,c)
 ! subroutine linspace(a,b,n,x)
 !-----------------------------------------------------------------------------
@@ -79,71 +77,6 @@ end function InvertLower
 !-------------------------------------------------------------------------
 ! Subroutines
 !-------------------------------------------------------------------------
-
-
-subroutine gaucheb(x,w)
-  use ConstantsModule
-  implicit none
-  ! Compute nodes and weights for the n-point Gauss-Chebyshev integration
-  ! formula
-  ! x	= real(dp) (n x 1)	vector of points
-  ! w	= real(dp) (n x 1)  vector of weights
-  real(dp), intent(out) :: x(:),w(:)
-  integer(i4b) i1,n
-
-  n=size(x)
-  x=cos(pi_d*(dble((/(i1,i1=n,1,-1)/))-0.5d0)/dble(n))
-  w=pi_d/dble(n)
-end subroutine gaucheb
-
-!%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-! Calculate nodes and weights for Gauss-Legendre integration on [-1,1]
-!
-! n	= integer (1 x 1)    number of nodes to use 
-! x	= real(8) (n x 1)    nodes
-! w	= real(8) (n x 1)    weights
-!%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-subroutine gauleg(x,w)
-  use ConstantsModule
-  
-  implicit none
-  real(dp), intent(out) :: x(:),w(:)
-  real(dp) tol,xm,x1,z,z1,p1,p2,p3,pp
-  integer(i4b) m,i,j,n
- 
-  n=size(x) 
-  tol=3.0d-11
-  x=0.0d0
-  w=0.0d0
-
-  m=(n+1)/2
-  xm=0.0d0
-  x1=1.0d0
-  do i=1,m
-    z=cos(pi*(dble(i)-0.25d0)/(dble(n)+0.5d0))
-    z1=z+1.0d0
-    do 
-      if (abs(z-z1)<=tol) then
-        exit
-      end if
-      p1=1.0d0
-      p2=0.0d0
-      do j=1,n
-        p3=p2
-        p2=p1
-        p1=((2.0d0*dble(j)-1.0d0)*z*p2-(dble(j)-1.0d0)*p3)/dble(j)
-      end do
-      pp=dble(n)*(z*p1-p2)/(z*z-1.0d0)
-      z1=z
-      z=z1-p1/pp
-    end do
-    x(i)=xm-x1*z
-    x(n+1-i)=xm+x1*z
-    w(i)=2.0d0*x1/((1.0d0-z*z)*pp*pp)
-    w(n+1-i)=w(i)
-  end do
-end subroutine gauleg
-
 
 subroutine kron1(a,b,c)
   ! subroutine kron1(a,b,c)
