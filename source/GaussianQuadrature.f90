@@ -388,8 +388,8 @@ module GaussianQuadrature
           ! alpha and beta greater than -1
           ab = alpha + beta
           abi = 2.0_dp + ab
-          muzero = 2.0_dp**(ab + 1.0_dp) * dgamma(alpha + 1.0_dp) &
-                   * dgamma(beta + 1.0_dp) / dgamma(abi)
+          muzero = 2.0_dp**(ab + 1.0_dp) * gamma(alpha + 1.0_dp) &
+                   * gamma(beta + 1.0_dp) / gamma(abi)
           a(1) = (beta - alpha)/abi
           b(1) = dsqrt(4.0_dp * (1.0_dp + alpha) * (1.0_dp + beta) &
                  / ((abi + 1.0_dp) * abi * abi))
@@ -407,7 +407,7 @@ module GaussianQuadrature
           ! Laguerre polynomials l(alpha)(x) on (0, +infinity), 
           ! w(x) = exp(-x) * x**alpha, 
           ! alpha greater than -1.
-          muzero = dgamma(alpha + 1.0_dp)
+          muzero = gamma(alpha + 1.0_dp)
           do i = 1, n - 1
             a(i) = 2.0_dp * i - 1.0_dp + alpha
             b(i) = dsqrt(i * (i + alpha))

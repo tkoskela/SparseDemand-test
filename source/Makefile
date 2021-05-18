@@ -84,6 +84,7 @@ TEST_OBJS = $(TEST_MOD_OBJS) $(TEST_PRG_OBJS)
 
 # Static pattern rules
 
+.DEFAULT_GOAL := exe
 $(OBJS) : %.o : %.f90
 	$(FC) $(FC_FLAGS) -c $< -o $@
 

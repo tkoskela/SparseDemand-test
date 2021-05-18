@@ -32,8 +32,6 @@ LOCAL_MPI_CC          = mpicc
 # Library locations
 LOCAL_MKL_DIR     = $(MKLROOT)/include
 LOCAL_NAG_BLOCKS  = $(NAG_DIR)/nag_interface_blocks
-LOCAL_NR_DIR      = $(WORK_DIR)/GeneralCode/nr
-LOCAL_TOOLS_DIR   = $(WORK_DIR)/GeneralCode/tools
 LOCAL_KNITRO_DIR  = $(KNITRODIR)
 LOCAL_KNITRO_LIBS = $(LOCAL_KNITRO_DIR)/lib/libknitro.so
 KNITRORELEASE = 1200
