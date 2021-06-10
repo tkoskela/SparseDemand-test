@@ -24,7 +24,7 @@ real(dp), allocatable :: last_x(:)
 contains
 
 #if USE_MPI>0
-subroutine Like2_master(mode,nx,x,L,GradL,nstate,iuser,ruser)
+subroutine objfunc_master(mode,nx,x,L,GradL,nstate,iuser,ruser)
   use ConstantsModule
   use mpi
   use GlobalModule, only : MasterID,nWorkers
@@ -80,14 +80,14 @@ subroutine Like2_master(mode,nx,x,L,GradL,nstate,iuser,ruser)
 
   !mode=mode_in
 
-end subroutine Like2_master
+end subroutine objfunc_master
 
 ! Evaluate worker tasks
 ! task=0:  worker receives (x,mode) and computes likelihood for subset of data points
 subroutine WorkerTask(model,pid)
   use ConstantsModule
   use mpi
-  use GlobalModule, only : MasterID,nWorkers,hhdata
+  use GlobalModule, only : MasterID,nWorkers,hhdata,ifree,parms
   implicit none
 
   integer(i4b), intent(in)  :: model,pid
@@ -96,18 +96,16 @@ subroutine WorkerTask(model,pid)
   real(dp)                  :: L
   real(dp),     allocatable :: x(:),GradL(:),VectorL(:)
   integer(i4b)              :: stat(MPI_STATUS_SIZE)
-  integer(i4b), allocatable :: iuser(:)
-  real(dp),     allocatable :: ruser(:)
+  integer(i4b)              :: iuser(2)
+  real(dp)                  :: ruser(1)
 
   integer(i4b)              :: ntemp,nstate,nx
 
-  call mpi_bcast(nx,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr)
-  call mpi_bcast(ntemp,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr)
-  allocate(iuser(ntemp))
-  call mpi_bcast(iuser,ntemp,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr)
-  call mpi_bcast(ntemp,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr)
-  allocate(ruser(ntemp))
-  call mpi_bcast(ruser,ntemp,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr)
+  ! Size of x and user parameters for objective function
+  nx       = ifree%nall
+  iuser(1) = parms%model
+  iuser(2) = HHData%N
+  ruser    = 0.0d0
 
   allocate(x(nx))
   allocate(GradL(nx))
@@ -129,6 +127,11 @@ subroutine WorkerTask(model,pid)
 
       if (model==2) then
         call Like2(mode,nx,x,L,GradL,nstate,iuser,ruser)
+      elseif (model==3) then
+        call EM2(mode,nx,x,L,GradL,nstate,iuser,ruser)
+      end if
+
+      if (model>=2) then
         if (mode==0) then
           call mpi_send(L,1,MPI_DOUBLE_PRECISION,MasterID,mode,MPI_COMM_WORLD,ierr)
         elseif (mode>0) then
@@ -137,20 +140,24 @@ subroutine WorkerTask(model,pid)
       end if
     else if (task==2) then
       ! evaluate Like2Hess
-      ! broadcast parameter vector x and mode
+      ! broadcast parameter vector x, then compute contribution to hessian
       call mpi_bcast(x,nx,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr)
 
       allocate(VectorL(HHData%N))
-      if (model==2) then
+      if (model>=2) then
         call Like2Hess(nx,x,VectorL)
         call mpi_send(VectorL,size(VectorL),MPI_DOUBLE_PRECISION,MasterID,mode,MPI_COMM_WORLD,ierr)
       end if
       deallocate(VectorL)
+    else if (task>=3) then
+      ! broadcast parameter vector x from MasterID
+      ! then Update EM weights using current value of x
+      call mpi_bcast(x,nx,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr)
+      ! task==3:  first iteration
+      ! task==4:  not first iteration
+      call ComputeEMWeights(x,task>=5)
     end if
   end do
-
-  deallocate(x,GradL)
-  deallocate(iuser,ruser)
 end subroutine WorkerTask
 #endif
 !-----------------------------------------------------------------------------
@@ -228,6 +235,173 @@ subroutine Like2(mode,nx,x,L,GradL,nstate,iuser,ruser)
   deallocate(GradL0,GradL1)
 
 end subroutine Like2
+
+subroutine RunEM(x,LValue,Grad,Hess,ifail)
+  use ConstantsModule
+#if USE_MPI==1
+  use mpi
+#endif
+  use GlobalModule, only : parms,MaxOptions,MasterID
+  implicit none
+  real(dp),     intent(inout) :: x(:)
+  real(dp),     intent(out)   :: LValue,Grad(:)
+  real(dp),     intent(out)   :: Hess(:,:)
+  integer(i4b), intent(out)   :: ifail
+
+  integer(i4b)                :: iter,MaxIter,nx,task,ierr
+  real(dp), allocatable       :: x0(:)
+  real(dp)                    :: alpha
+
+  nx = size(x)
+  allocate(x0(nx))
+  x0      = x
+  alpha   = 1.0d0
+  MaxIter = 1000
+
+  do iter=1,MaxIter
+#if USE_MPI==0
+    ! Serial version:   MasterID computes weights
+    !   weights different if iter==1
+    call ComputeEMWeights(x0,iter==1)
+#elif USE_MPI==1
+    ! MPI version:   workers compute weights
+    !   iter==1:  task=3
+    !   iter>1:   task=4
+    task = merge(3,4,iter==1)
+    call mpi_bcast(task,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr)
+    call mpi_bcast(x,nx,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr)
+#endif
+    call MaximizeObjective1(x,LValue,Grad,Hess,ifail)
+
+    print *,iter,maxval(abs(x-x0)),LValue
+    if (maxval(abs(x-x0))<MaxOptions%em_tol) exit
+    x0 = (1.0d0-alpha)*x0 + alpha*x
+  end do
+#if USE_MPI==1
+  ! broadcast signal indicating that all mpi tasks are complete
+  task=0
+  call mpi_bcast(task,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr)
+#endif
+
+end subroutine RunEM
+
+! Compute weights for EM algorithm
+!   weights = density of eta(ihh) conditional on q and parms
+! HHData%em_weights   (nall x N)
+!
+!   weight(iq,ihh) = w(iq) * Like(iq,ihh) / (w' * Like(:,ihh))
+subroutine ComputeEMWeights(x,InitialWeight)
+  use ConstantsModule
+  use GlobalModule, only : iFree,parms,HHData,RandomB
+  use DataModule,   only : ComputeCurrentB
+  implicit none
+  real(dp), intent(in) :: x(:)
+  logical,  intent(in) :: InitialWeight
+
+  integer(i4b)          :: ihh,iq,ib,d1,d2,d3,mode
+  real(dp)              :: L
+  real(dp), allocatable :: GradL(:)
+
+  if (.not. allocated(HHData%em_weights)) then
+    allocate(HHData%em_weights(RandomB(1)%nall,HHData%N),source=0.0d0)
+  end if
+
+  if (InitialWeight) then
+    ! First iteration: initial weights equal RandomB weights
+    do ihh=1,HHData%N
+      ib = merge(ihh,1,size(RandomB)>1)
+      HHData%em_weights(:,ihh) = RandomB(ib)%weights
+    end do
+  else if (.not. InitialWeight) then
+    ! Otherwise: weights equal f(eta | q)
+    call UpdateParms2(x,iFree,parms)
+
+    mode = 0
+    allocate(GradL(size(x)),source=0.0d0)
+
+    do ihh=1,HHData%N
+      d1 = HHData%nNonZero(ihh)
+      d2 = parms%K - d1
+      d3 = parms%J - d1
+      ib = merge(ihh,1,size(RandomB)>1)
+      do iq=1,RandomB(ib)%nall
+        call ComputeCurrentB(RandomB(ib)%nodes(iq,:),parms,HHData%month(iHH))
+        call Like1_wrapper(iHH,d1,d2,d3,parms,mode,L,GradL)
+       HHData%em_weights(iq,ihh) = RandomB(ib)%weights(iq) * L
+      end  do
+      if (all(HHData%em_weights(:,ihh)==0.0d0)) then
+        ! L = 0.d0 for all iq, set weights to RandomB(ib)%weights
+        ! in this case, log likelihood(ihh) = log(L+small)
+        HHData%em_weights(:,ihh) = RandomB(ib)%weights
+      else
+        ! density of eta(ihh) conditional on q(:,ihh) and parms
+        HHData%em_weights(:,ihh) = HHData%em_weights(:,ihh)/sum(HHData%em_weights(:,ihh))
+      end if
+    end do
+  end if  ! if (InitialWeight) then
+end subroutine ComputeEMWeights
+
+!-----------------------------------------------------------------------------
+!
+!  EM2:   EM objective function:  Random coefficients quadratic utility
+!
+!   Compute EM objective and its gradient w.r.t. x.
+!
+!  Revision history
+!   2021.05.16  LN  adapt from Like2
+!
+!-----------------------------------------------------------------------------
+subroutine EM2(mode,nx,x,L,GradL,nstate,iuser,ruser)
+  use ConstantsModule
+  use GlobalModule, only : iFree,parms,HHData,RandomB,small
+  use DataModule,   only : ComputeCurrentB
+  implicit none
+
+  integer(i4b), intent(inout)        :: mode
+  integer(i4b), intent(in)           :: nx
+  real(dp),     intent(in)           :: x(:)
+  real(dp),     intent(out)          :: L
+  real(dp),     intent(inout)        :: GradL(:)
+  integer(i4b), intent(in)           :: nstate
+  integer(i4b), intent(in)           :: iuser(*)
+  real(dp),     intent(in)           :: ruser(*)
+
+  integer(i4b)                       :: d1,d2,d3,iHH,iq,ib
+  real(dp)                           :: L0,L1
+  real(dp), allocatable              :: GradL0(:),GradL1(:)
+
+  call UpdateParms2(x,iFree,parms)
+
+  ! Initial values for likelihood and gradient
+  L     = 0.0d0
+
+  ! Loop through households
+  allocate(GradL0(nx),GradL1(nx),source=0.0d0)
+  do iHH=1,HHData%N
+    L0     = 0.0d0
+    GradL0 = 0.0d0
+
+    d1 = HHData%nNonZero(iHH)
+    d2 = parms%K - d1
+    d3 = parms%J-d1
+    ib = merge(ihh,1,size(RandomB)>1)
+    do iq=1,RandomB(ib)%nall
+      ! update parms%B
+      call ComputeCurrentB(RandomB(ib)%nodes(iq,:),parms,HHData%month(iHH))
+      call Like1_wrapper(iHH,d1,d2,d3,parms,mode,L1,GradL1)
+      if (L1>0.0d0) then
+        L0 = L0 + HHData%em_weights(iq,ihh)*log(L1+small)
+        GradL0 = GradL0 &
+               + HHData%em_weights(iq,ihh)*GradL1/(L1+small)
+      end if
+    end do
+  end do
+
+  L = -L0
+  if (mode>0) then
+    GradL = -GradL0
+  end if
+end subroutine EM2
 
 #if USE_MPI>0
 subroutine Like2Hess_master(nx,x,L)
@@ -373,7 +547,7 @@ subroutine Like1C(i1,parms,mode,L,GradL)
   real(dp),             intent(inout) :: GradL(:)
 
   real(dp)                  :: M1(parms%J,parms%K)
-  real(dp)                  :: DTIlde(parms%J)
+  real(dp)                  :: M2Tilde(parms%J)
 
   ! M1 = LL*Q
   real(dp)                  :: R(parms%J,parms%K),Q(parms%K,parms%K)
@@ -387,7 +561,7 @@ subroutine Like1C(i1,parms,mode,L,GradL)
   ! M1 = LL*Q
   !      LL = (J x K) lower triangular
   call ComputeLQ(parms%J,parms%K,M1,R,Q,ifail)
-  DTilde = HHData%p(:,i1) - matmul(transpose(parms%B),parms%MuE+parms%mue_month(:,HHData%month(i1)))
+  M2Tilde = HHData%p(:,i1) - matmul(transpose(parms%B),parms%MuE+parms%mue_month(:,HHData%month(i1)))
 
   ! Prob = integral of DensityFunc over region of x satisfying R*x<=M2_tilda
   !
@@ -398,7 +572,7 @@ subroutine Like1C(i1,parms,mode,L,GradL)
   call ComputeRowGroup(R,parms%J,parms%K,RowGroup)
    irule = merge(i1,1,size(RandomE(parms%K)%rule)>1)
   call ComputeProb(L,RandomE(parms%K)%rule(irule)%nodes,RandomE(parms%K)%rule(irule)%weights, &
-                   RowGroup,R,DTilde,Integrand)
+                   RowGroup,R,M2Tilde,Integrand)
 
   if (mode>0) then
     GradL = 0.0d0
@@ -436,12 +610,12 @@ subroutine Like1B(iHH,d1,d2,d3,parms,mode,L,GradL)
   real(dp),     allocatable :: B1(:,:)
   real(dp),     allocatable :: U(:,:),S(:),VT(:,:)
   real(dp),     allocatable :: B2Tilde(:,:),B21Tilde(:,:),B22Tilde(:,:)
-  real(dp),     allocatable :: M1(:,:),DTilde(:)
-  real(dp),     allocatable :: Temp1(:)         ! used to compute DTilde and epsilon
-  real(dp),     allocatable :: C(:,:),Omega(:,:)
-  real(dp),     allocatable :: Omega11(:,:),Omega22(:,:),Omega12(:,:),C2(:,:)
-  real(dp),     allocatable :: nu(:),epsilon1(:)
-  real(dp),     allocatable :: Psi(:,:),CPsi(:,:)
+  real(dp),     allocatable :: M1Tilde(:,:),M2Tilde(:)
+  real(dp),     allocatable :: Temp1(:)         ! used to compute M2Tilde and epsilon
+  real(dp),     allocatable :: C(:,:),SigmaTilde(:,:)
+  real(dp),     allocatable :: SigmaTilde11(:,:),SigmaTilde22(:,:),SigmaTilde12(:,:),C2(:,:)
+  real(dp),     allocatable :: muTilde(:),e1Tilde(:)
+  real(dp),     allocatable :: Omega11(:,:),COmega11(:,:)
   real(dp),     allocatable :: R(:,:),Q(:,:)
   integer(i4b), allocatable :: RowGroup(:)
   integer(i4b)              :: integrand
@@ -451,7 +625,7 @@ subroutine Like1B(iHH,d1,d2,d3,parms,mode,L,GradL)
   !           (HHData%nNonZero(iHH) == d1 and d1 < K)
   !           Mapping from q(iNonZero) to e is NOT one-to-one
   !           need to integrate across region of e-space
-  !           satisfying M1*z2<=DTilde
+  !           satisfying M1Tilde*z2<=M2Tilde
   !------------------------------------------------------------------------
   !  d1 = dim(q>0)
   !  d2 = K - d1
@@ -486,128 +660,110 @@ subroutine Like1B(iHH,d1,d2,d3,parms,mode,L,GradL)
   B21Tilde = B2Tilde(index1,:)
   B22Tilde = B2Tilde(index2,:)
 
-  ! Compute nu = U.' * MuE
-  allocate(nu(parms%K))
-  nu = matmul(transpose(U),parms%MuE+parms%mue_month(:,HHData%month(ihh)))
+  ! Compute muTilde = U.' * MuE
+  allocate(muTilde(parms%K))
+  muTilde = matmul(transpose(U),parms%MuE+parms%mue_month(:,HHData%month(ihh)))
 
-  ! Omega = U' * C * C' * U
-  allocate(Omega(parms%K,parms%K))
-  Omega = matmul(parms%CSig,transpose(parms%CSig))
-  Omega = matmul(Omega,U)
-  Omega = matmul(transpose(U),Omega)
+  ! SigmaTilde = U' * C * C' * U
+  allocate(SigmaTilde(parms%K,parms%K))
+  SigmaTilde = matmul(transpose(U),parms%CSig)
+  SigmaTilde = matmul(SigmaTilde,transpose(SigmaTilde))
 
-  allocate(Omega11(d1,d1),Omega22(d2,d2),Omega12(d1,d2),C2(d2,d2))
+  allocate(SigmaTilde11(d1,d1),SigmaTilde22(d2,d2),SigmaTilde12(d1,d2),C2(d2,d2),source=0.0d0)
 
-  Omega11 = Omega(index1,index1)
-  Omega22 = Omega(index2,index2)
-  Omega12 = Omega(index1,index2)
+  SigmaTilde11 = SigmaTilde(index1,index1)
+  SigmaTilde22 = SigmaTilde(index2,index2)
+  SigmaTilde12 = SigmaTilde(index1,index2)
 
-  ! Cholesky decomposition of Omega22: lower triangular form
-  !      C2*C2' = Omega22
-  C2 = Omega22
+  ! Cholesky decomposition of SigmaTilde22: lower triangular form
+  !      C2*C2' = SigmaTilde22
+  do i1=1,d2
+    C2(i1:d2,i1) = SigmaTilde22(i1:d2,i1)
+  end do
   UPLO = 'L'
   call F07FDF(UPLO,d2,C2,d2,ifail)
 
-  allocate(Psi(d1,d1))
+  allocate(Omega11(d1,d1))
 
-  ! Compute  Psi = Omega11 - Omega12*inv(Omega22)*Omega12'
-  Psi = 0.0d0
+  ! Compute  Omega11 = SigmaTilde11 - SigmaTilde12*inv(SigmaTilde22)*SigmaTilde12'
+  Omega11 = 0.0d0
   allocate(iPivot(d2))
   allocate(temp2(d2,d1))
-  temp2 = transpose(Omega12)
-  call F04BAF(d2,d1,Omega22,d2,iPivot,temp2,d2,rCond,errBound,ifail)
-  !  Psi = Omega11 - Omega12*inv(Omega22)*Omega12'
-  !  size( inv(Omega22)*Omega12' ) = (d2 x d1)
-  Psi = Omega11 - matmul(Omega12,temp2)
+  temp2 = transpose(SigmaTilde12)
+  call F04BAF(d2,d1,SigmaTilde22,d2,iPivot,temp2,d2,rCond,errBound,ifail)
+  !  Omega11 = SigmaTilde11 - SigmaTilde12*inv(SigmaTilde22)*SigmaTilde12'
+  !  size( inv(SigmaTilde22)*SigmaTilde12' ) = (d2 x d1)
+  Omega11 = SigmaTilde11 - matmul(SigmaTilde12,temp2)
   deallocate(temp2,iPivot)
 
-  allocate(CPsi(d1,d1))
-  ! Cholesky decomposition of Psi: lower triangular form
-  !      CPsi * CPsi' = Psi
-  CPsi = Psi
+  allocate(COmega11(d1,d1),source=0.0d0)
+  ! Cholesky decomposition of Omega11: lower triangular form
+  !      COmega11 * COmega11' = Omega11
+  do i1=1,d1
+    COmega11(i1:d1,i1) = Omega11(i1:d1,i1)
+  end do
   UPLO = 'L'
-  call F07FDF(UPLO,d1,CPsi,d1,ifail)
+  call F07FDF(UPLO,d1,COmega11,d1,ifail)
   if (ifail>0) then
-    print *, 'Psi is not positive definite'
-    print *, 'Psi'
+    print *, 'Omega11 is not positive definite'
+    print *, 'Omega11'
     do i2=1,d1
-      print *, Psi(i2,:)
+      print *, Omega11(i2,:)
     end do
-    print *,Omega11
+    print *,SigmaTilde11
     do i2=1,d1
-      print *,Omega11(i2,:)
+      print *,SigmaTilde11(i2,:)
     end do
     stop
   end if
 
-  allocate(M1(d3,d2))
-  allocate(DTilde(d3))
-  allocate(epsilon1(d1))
+  allocate(M1Tilde(d3,d2))
+  allocate(M2Tilde(d3))
+  allocate(e1Tilde(d1))
   allocate(Temp1(d1))
 
-  ! size(M1)       = (d3 x d2)
-  ! M1*z2 <= DTilde
+  ! M1Tilde*z2 <= M2Tilde
+  ! size(M1Tilde)  = (d3 x d2)
+  ! size(M2Tilde)  = (d3 x 1)
   ! size(B21Tilde) = (d1 x d3)
   ! size(S)        = (d1 x 1)
   ! size(VT)       = (d1 x d1)
-  ! size(DTilde)   = (d3 x 1)
-  M1    = matmul(transpose(B22Tilde),C2)
-  ! extract p1 = price(iNonZero)
-  Temp1 = matmul(VT,HHData%p(HHData%iNonZero(index1,iHH),iHH))
-
-  ! Compute inv(S1)*VT*p1
-  !   epsilon1 = inv(S1)*VT*p1 + S1*VT*q1
-  !   DTilde   = p2 - B21Tilde.'*inv(S1)*VT*p1 - B22Tilde.'*nu2
-  Temp1 = Temp1/S(index1)
-  epsilon1 = Temp1
-  DTilde  = HHData%p(HHData%iZero(1:d3,iHH),iHH)               &
-           - matmul(transpose(B21Tilde),Temp1)
-
-  ! extract q1 = q(index1)
-  ! nonzero elements of q are stored in q(index1)
-  Temp1 = matmul(VT,HHData%q(index1,iHH))
-  Temp1 = Temp1*S(index1)
-
-  epsilon1 = epsilon1 + Temp1
-  DTilde = DTilde - matmul(transpose(B22Tilde),nu(index2))
+  !
+  ! Temp1   = inv(S1) * VT * p1
+  ! M2Tilde = p2 - transpose(B21Tilde)*Temp1 - transpose(B22Tilde)*muTilde(index2)
+  ! e1Tilde = Temp1 + S1 * VT * q1
+  Temp1    = matmul(VT,HHData%p(HHData%iNonZero(index1,iHH),iHH))
+  Temp1    = Temp1/S(index1)
+  M2Tilde  = HHData%p(HHData%iZero(1:d3,iHH),iHH) &
+           - matmul(transpose(B21Tilde),Temp1)    &
+           - matmul(transpose(B22Tilde),muTilde(index2))
+  e1Tilde = Temp1 + S(index1)*matmul(VT,HHData%q(index1,iHH))
   deallocate(Temp1)
+  M1Tilde  = matmul(transpose(B22Tilde),C2)
 
-  ! M1 = R*Q  : LQ Decomposition of M1
+  ! M1Tilde = R*Q  : LQ Decomposition of M1Tilde
   !             R = lower triangular
   !             Q = orthogonal
-  ! size(M1) = (d3 x d2)
+  ! size(M1Tilde) = (d3 x d2)
   ! size(R)  = (d3 x d2)
   ! size(Q)  = (d2 x d2)
-
   allocate(R(d3,d2),Q(d2,d2))
-  call ComputeLQ(d3,d2,M1,R,Q,ifail)
+  call ComputeLQ(d3,d2,M1Tilde,R,Q,ifail)
 
-  ! L = integral of DensityFunc over region of x satisfying R*x<=DTilde
-  !
   Integrand = 2
-
+  ! Row group is used to classify rows of R based on non-zero elements
+  ! RowGroup(j1) = max(i1) s.t.  R(i1,j1) .ne. 0.0d0
   ! size(RowGroup) = d3
-  ! RowGroup(j1) = max(i1) s.t.  LL(i1,j1) .ne. 0.0d0
-
   allocate(RowGroup(d3))
   call ComputeRowGroup(R,d3,d2,RowGroup)
 
+  ! irule used to select integration rule for current household
   irule = merge(ihh,1,size(RandomE(d2)%rule)>1)
+  ! L = integral of DensityFunc over region of x satisfying R*x<=M2Tilde
+  !
   call ComputeProb(L,RandomE(d2)%rule(irule)%nodes,RandomE(d2)%rule(irule)%weights, &
-                   RowGroup,R,DTilde,Integrand,           &
-                   epsilon1,nu(index1),Omega12,C2,CPsi,Q,S(index1),     &
-                   d1,d2)
-
-  deallocate(B1,index1,index2)
-  deallocate(U,S,VT)
-  deallocate(nu)
-  deallocate(B21Tilde,B22Tilde,B2Tilde)
-  deallocate(M1,DTilde)
-  deallocate(Omega)
-  deallocate(Omega11,Omega22,Omega12,C2)
-  deallocate(Psi,CPsi)
-  deallocate(R,Q)
-  deallocate(RowGroup)
+                   RowGroup,R,M2Tilde,Integrand,e1Tilde,muTilde(index1),            &
+                   SigmaTilde12,C2,COmega11,Q,S(index1),d1,d2)
 
   if (mode>0) then
     GradL = 0.0d0
@@ -711,14 +867,6 @@ subroutine Like1A(i1,parms,mode,L,GradL)
       GradL = 0.0d0
     end if
   end if
-  deallocate(B1,B1T)
-  deallocate(B2)
-  deallocate(iPivot)
-  deallocate(GradF_e,GradF_MuE)
-  deallocate(GradF_InvC)
-  deallocate(e)
-  deallocate(mue_month)
-  deallocate(temp1)
 end subroutine Like1A
 
 
@@ -1115,30 +1263,27 @@ subroutine LogDensityFunc(e,parms,mue_month,F,GradF_e,GradF_MuE,GradF_InvC)
 
   GradF_InvC = GradF_InvC + transpose(temp2)
 
-  deallocate(temp2)
-  deallocate(temp1)
-  deallocate(z,TempInvC)
-  deallocate(iPivot)
 end subroutine LogDensityFunc
 
-subroutine ComputeRowGroup(L,J,d,RowGroup)
+subroutine ComputeRowGroup(L,nrows,d,RowGroup)
   use ConstantsModule
   implicit none
-  integer(i4b), intent(in)  :: J,d
-  real(dp), intent(in)      :: L(J,d)
-  integer(i4b), intent(out) :: RowGroup(J)
+  integer(i4b), intent(in)  :: nrows,d
+  real(dp), intent(in)      :: L(nrows,d)
+  integer(i4b), intent(out) :: RowGroup(nrows)
 
-  integer(i4b) :: j1,ix
+  integer(i4b) :: j1,ix,icol
   ! for each row find the right-most column with a non-zero element
   ! RowGroup(j)==i1 indicates that L(j,i1)~=0 and L(j,i1+1:d)==0
   RowGroup = 0
-  do j1=1,J
-    RowGroup(j1) =  maxval(pack((/(ix,ix=1,d)/),L(j1,1:min(j1,d)) .ne. 0.0d0))
+  do j1=1,nrows
+    icol = min(j1,d)
+    RowGroup(j1) =  maxval(pack((/(ix,ix=1,icol)/),L(j1,1:icol) .ne. 0.0d0))
   end do
 end subroutine ComputeRowGroup
 
-subroutine ComputeProb(p,v,w,RowGroup,R,DTilde,Integrand,  &
-                       epsilon1,nu1,Omega12,C2,CPsi,Q,S1,  &
+subroutine ComputeProb(p,v,w,RowGroup,R,M2Tilde,Integrand,  &
+                       e1Tilde,mu1Tilde,SigmaTilde12,C2,COmega11,Q,S1,  &
                        d1,d2)
 
   use ConstantsModule
@@ -1148,37 +1293,41 @@ subroutine ComputeProb(p,v,w,RowGroup,R,DTilde,Integrand,  &
 
   implicit none
   ! Compute integral of f(x) * exp(-0.5*x'*x)/((2*pi)^d/2) over the region
-  ! R*x <= DTilde.
+  ! R*x <= M2Tilde.
   !
   ! v        = (n x d) integration nodes lieing in [-1,1]^d
   ! w        = (n x 1) w(i1) integration weights for node x(i1,:)
   ! RowGroup = (J x 1) index of group that row j belongs to
-  !                     if RowGroup(j)==i1, then row(j) imposes
+  !                    if RowGroup(j)==i1, then row(j) imposes
   !                    a constraint on x(i1) because R(j,i1)~=0
   !                    and R(j,i1+1:d)==0
   !                    a column in row(j) is i1.
-  ! R        = (J x d2) lower triangular matrix of constraints
-  ! DTilde   = (J x 1) right side of constraints
+  ! R        = (J-d1 x d2) lower triangular matrix of constraints
+  ! M2Tilde  = (J-d1 x 1) right side of constraints
   ! func     = (function handle) integrand
   real(dp),     intent(out) :: p
   real(dp),     intent(in)  :: v(:,:)
   real(dp),     intent(in)  :: w(:)
   integer(i4b), intent(in)  :: RowGroup(:)
   real(dp),     intent(in)  :: R(:,:)
-  real(dp),     intent(in)  :: DTilde(:)
+  real(dp),     intent(in)  :: M2Tilde(:)
   integer(i4b), intent(in)  :: Integrand
-  real(dp),     optional, intent(in) :: epsilon1(:),nu1(:),Omega12(:,:),C2(:,:),CPsi(:,:)
+  real(dp),     optional, intent(in) :: e1Tilde(:),mu1Tilde(:),SigmaTilde12(:,:),C2(:,:),COmega11(:,:)
   real(dp),     optional, intent(in) :: S1(:),Q(:,:)
   integer(i4b), optional, intent(in) :: d1,d2
 
   real(dp)                  :: small,big
+  ! xT is transpose of x. x is defined in .tex document
   real(dp), allocatable     :: u(:,:),xT(:,:),J(:),F(:)
-  integer(i4b)              :: n,QuadDim
+  integer(i4b)              :: n,n1,QuadDim
+  ! variables to handle zero probabilities and infinity
   logical                   :: ZeroProb
+  logical, allocatable      :: iFinite(:)
+  integer(i4b), allocatable :: index1(:)
+  real(dp),     allocatable :: FTemp(:)
   integer(i4b)              :: i1,i2,i3
   logical, allocatable      :: Rows_Pos(:),Rows_Neg(:)
   real(dp), allocatable     :: ULO(:),UHI(:)
-  integer(i4b)              :: n1
   real(dp), allocatable     :: t1(:),t2(:),t3(:)
   real(dp), allocatable     :: R1(:)
   real(dp)                  :: xtemp
@@ -1187,21 +1336,19 @@ subroutine ComputeProb(p,v,w,RowGroup,R,DTilde,Integrand,  &
   ! gradient of F w.r.t. parameters
   type(DensityGradType) :: GradF
 
-  small = tiny(1.0d0)   ! smallest real number
-  big   = huge(1.0d0)   ! biggest real number
-  n     = size(v,1)
-  QuadDim     = size(v,2)
-  allocate(u(n,QuadDim),xT(n,QuadDim),J(n),F(n))
+  small   = tiny(1.0d0)   ! smallest positive real number
+  big     = huge(1.0d0)   ! biggest real number
+  n       = size(v,1)
+  QuadDim = size(v,2)
+  allocate(u(n,QuadDim),xT(n,QuadDim),source=0.0d0)
+  allocate(F(n),source=0.0d0)
+  allocate(J(n),source=1.0d0)
   allocate(ULO(n),UHI(n))
+  ! iFinite(i1) is TRUE if all(x(i1,:)) > -big
+  allocate(iFinite(n),source=.TRUE.)
 
   ! First map v into [0,1]
   u = 0.5d0*(v+1.0d0)
-
-  ! Then map u into xT
-  xT = 0.0d0
-
-  ! J = Jacobian of mapping from v to u
-  J = 1.0d0
 
   ! Loop through dimensions of v
   ZeroProb= .false.
@@ -1213,36 +1360,36 @@ subroutine ComputeProb(p,v,w,RowGroup,R,DTilde,Integrand,  &
 
     if (i1==1) then
       if (any(Rows_Neg)) then
-        xtemp = maxval(pack(DTilde,Rows_Neg)/pack(R(:,i1),Rows_Neg))
+        xtemp = maxval(pack(M2Tilde,Rows_Neg)/pack(R(:,i1),Rows_Neg))
         ! S15ABF(x,ifail) = normcdf of x
         ifail = 0
         ULO = S15ABF(xtemp,ifail)
       else
-        ULo = 0.0d0
+        ULO = 0.0d0
       end if
 
       if (any(Rows_Pos)) then
-        xtemp = minval(pack(DTilde,Rows_Pos)/pack(R(:,i1),Rows_Pos))
+        xtemp = minval(pack(M2Tilde,Rows_Pos)/pack(R(:,i1),Rows_Pos))
         ifail = 0
         UHI = S15ABF(xtemp,ifail)
       else
-        UHi = 1.0d0
+        UHI = 1.0d0
       end if
-      if (all(UHi<=ULo+small)) then
-        ZeroProb= .true.
-        return
+      if (all(UHI<=ULO+small)) then
+        ZeroProb=.TRUE.
+        exit
       end if
-      u(:,1) = (UHi - ULo)*u(:,1)
-      ifail = 0
+      u(:,1)   = (UHi - ULo)*u(:,1)
+      ifail    = 0
       xT(:,i1) = max(InverseNormal_mkl(u(:,1),n,ifail),-big)
 
-      J = J*(UHi-ULo)/2.0d0
+      J = J*(UHI-ULO)/2.0d0
     elseif (i1>1) then
       if (any(Rows_Neg)) then
         n1 = count(Rows_Neg)
         allocate(t1(n1),t2(n1),t3(n1),R1(n1))
         R1 = pack(R(:,i1),Rows_Neg)
-        t1 = pack(DTilde,Rows_Neg)/R1
+        t1 = pack(M2Tilde,Rows_Neg)/R1
         do i3=1,i1-1
           t2 = pack(R(:,i3),Rows_Neg)/R1
           t3 = t1
@@ -1264,7 +1411,7 @@ subroutine ComputeProb(p,v,w,RowGroup,R,DTilde,Integrand,  &
         n1 = count(Rows_Pos)
         allocate(R1(n1),t1(n1),t2(n1),t3(n1))
         R1 = pack(R(:,i1),Rows_Pos)
-        t1 = pack(DTilde,Rows_Pos)/R1
+        t1 = pack(M2Tilde,Rows_Pos)/R1
         do i3=1,i1-1
           t2 = pack(R(:,i3),Rows_Pos)/R1
           t3=t1
@@ -1279,10 +1426,16 @@ subroutine ComputeProb(p,v,w,RowGroup,R,DTilde,Integrand,  &
       else
         UHi = 1.0d0
       end if
+
+      if (all(UHi<=ULo+small)) then
+        ZeroProb= .true.
+        exit
+      end if
+
       u(:,i1) = (UHi-ULo)*u(:,i1)
       ! xT(:,i1) = InverseNormal of u(:,i1)
       xT(:,i1) = max(InverseNormal_mkl(u(:,i1),n,ifail),-big)
-
+      iFinite  = (iFinite .and. xT(:,i1)>-big)
       J = 0.5d0*J*(UHi-ULo)
     end if ! if i1==1
   end do   ! do i1=1,d
@@ -1291,12 +1444,16 @@ subroutine ComputeProb(p,v,w,RowGroup,R,DTilde,Integrand,  &
     p=0.0d0
   else
     if (Integrand==2) then
+      n1 = count(iFinite)
       ! allocate memory for GradF
-      call AllocateGradF(GradF,'allocate',n,d1,d2)
+      call AllocateGradF(GradF,'allocate',n1,d1,d2)
+      allocate(index1(n1),FTemp(n1))
+      index1 = pack((/(i1,i1=1,n)/),iFinite)
 
       ! compute F and GradF
-      call DensityFunc2(xT,epsilon1,nu1,Omega12,C2,CPsi,Q,S1,d1,d2,F,GradF)
 
+      call DensityFunc2(xT(index1,:),e1Tilde,mu1Tilde,SigmaTilde12,C2,COmega11,Q,S1,d1,d2,FTemp,GradF)
+      F(index1) = FTemp
       ! deallocate memory for GradF
       call AllocateGradF(GradF,'deallocate')
 
@@ -1306,9 +1463,6 @@ subroutine ComputeProb(p,v,w,RowGroup,R,DTilde,Integrand,  &
 
     p = dot_product(F*J,w)
   end if
-  deallocate(u,xT,J,F)
-  deallocate(Rows_Pos,Rows_Neg)
-  deallocate(ULO,UHI)
 end subroutine ComputeProb
 
 subroutine AllocateGradF(GradF,action,nx,d1,d2)
@@ -1323,66 +1477,66 @@ select case (action)
 
 case ('allocate')
   allocate(GradF%S1(nx,d1))
-  allocate(GradF%nu1(nx,d1))
-  allocate(GradF%Omega12(nx,d1,d2))
+  allocate(GradF%mu1Tilde(nx,d1))
+  allocate(GradF%SigmaTilde12(nx,d1,d2))
   allocate(GradF%VT(nx,d1,d1))
   allocate(GradF%C2(nx,d2,d2))
   allocate(GradF%Q(nx,d2,d2))
-  allocate(GradF%CPsi(nx,d1,d1))
+  allocate(GradF%COmega11(nx,d1,d1))
   GradF%S1 = 0.0d0
-  GradF%nu1 = 0.0d0
-  GradF%Omega12 = 0.0d0
+  GradF%mu1Tilde = 0.0d0
+  GradF%SigmaTilde12 = 0.0d0
   GradF%VT = 0.0d0
   GradF%C2 =0.0d0
   GradF%Q = 0.0d0
-  GradF%CPsi = 0.0d0
+  GradF%COmega11 = 0.0d0
 case ('deallocate')
   deallocate(GradF%S1)
-  deallocate(GradF%nu1)
-  deallocate(GradF%Omega12)
+  deallocate(GradF%mu1Tilde)
+  deallocate(GradF%SigmaTilde12)
   deallocate(GradF%VT)
   deallocate(GradF%C2)
   deallocate(GradF%Q)
-  deallocate(GradF%CPsi)
+  deallocate(GradF%COmega11)
 
 end select
 end subroutine AllocateGradF
 
-subroutine DensityFunc2(xT,epsilon1,nu1,Omega12,C2,CPsi,Q,S1,d1,d2,F,GradF)
+subroutine DensityFunc2(xT,e1Tilde,mu1Tilde,SigmaTilde12,C2,COmega11,Q,S1,d1,d2,F,GradF)
   use ConstantsModule
   use GlobalModule, only : DensityGradType
   use ToolsModule, only : InvertLower
-!  use NewTools, only : det   ! compute determinant of matrix
   implicit none
   ! Case 2: 0 < d1 < K
   ! density of data to be integrated
   !
-  ! Compute f(q1,x) = f(epsilon1(q1),x)
-  !                   epsilon2 = C2*z2+nu2
-  !                   z2 = x*Q
-  !                   v1 = nu1 + Omega12*(C2.'\z2)
+  ! Compute f(q1,xT) = f(e1Tilde(q1),xT)
+  !                   e2Tilde = C2*z2+nu2
+  !                   z2T = QT * xT   (xT = transpose of x)
+  !                   nu1 = mu1Tilde + SigmaTilde12*(C2.'\z2)
   !
-  ! F        = (nx x 1)   output, one value for each value of x
-  ! xT       = (nx x d2)  variable of integration
-  ! epsilon1 = (d1 x 1)   value of epsilon1
-  !          =            inv(S1)* VT * p1 + S1 * VT * q1
-  ! nu1      = (d1 x 1)   mean of epsilon1
-  ! Omega12  = (d1 x d2)  covariance of (epsilon1,epsilon2)
-  ! C2       = (d2 x d2)  Cholesky decomposition of Omega22, lower triangular
-  ! CPsi     = (d1 x d1)  Cholesky decomposition of variance of epsilon1 conditional on epsilon2
-  ! Q        = (d2 x d2)  orthogonal so that inv(Q) = Q.';
-  ! S1       = (d1 x 1)   non-zero elements of S where U*S*VT = B1
-  ! d1         = (1 x 1)    size of e1 and q1
-  ! d2         = (1 x 1)    size of e2
+  ! F       = (nx x 1)   output, one value for each value of x
+  ! xT      = (nx x d2)  variable of integration (transpose of x)
+  ! e1Tilde = (d1 x 1)   value of e1Tilde
+  !         =            inv(S1)* VT * p1 + S1 * VT * q1
+  ! mu1Tilde      = (d1 x 1)   mean of e1Tilde
+  ! SigmaTilde12  = (d1 x d2)  covariance of (e1Tilde,e2Tilde)
+  ! C2            = (d2 x d2)  Cholesky decomposition of SigmaTilde22, lower triangular
+  ! COmega11      = (d1 x d1)  Cholesky decomposition of variance of e1Tilde conditional on e2Tilde
+  ! Q             = (d2 x d2)  orthogonal so that inv(Q) = Q.';
+  ! S1            = (d1 x 1)   non-zero elements of S where U*S*VT = B1
+  ! d1             = (1 x 1)    size of e1 and q1
+  ! d2             = (1 x 1)    size of e2
   !
   ! Revision history
-  ! 2015JUN07 LN major overhaul reflecting better DensityFunc.m compuations
+  ! 2021MAY19 LN clean and rename some variables
+  ! 2015JUN07 LN major overhaul reflecting better DensityFunc.m computations
   ! 11DEC2012 LN translated from matlab file: DensityFunc.m
   real(dp),     intent(in) :: xT(:,:)
-  real(dp),     intent(in) :: epsilon1(:),nu1(:)
-  real(dp),     intent(in) :: Omega12(:,:)
+  real(dp),     intent(in) :: e1Tilde(:),mu1Tilde(:)
+  real(dp),     intent(in) :: SigmaTilde12(:,:)
   real(dp),     intent(in) :: C2(:,:)
-  real(dp),     intent(in) :: CPsi(:,:)
+  real(dp),     intent(in) :: COmega11(:,:)
   real(dp),     intent(in) :: Q(:,:)
   real(dp),     intent(in) :: S1(:)
   integer(i4b), intent(in) :: d1,d2
@@ -1391,100 +1545,84 @@ subroutine DensityFunc2(xT,epsilon1,nu1,Omega12,C2,CPsi,Q,S1,d1,d2,F,GradF)
 
   integer(i4b)          :: i1,i2
   integer(i4b)          :: nx
-  real(dp), allocatable :: e2(:,:),z1T(:,:)
+  real(dp), allocatable :: e2T(:,:),z1T(:,:)
   real(dp)              :: Jacobian
 
   nx=size(xT,1)
-  ! e2 = (nx x d2)
-  allocate(e2(nx,d2))
-  ! e2 = x*Q*inv(C2')
-  ! z2 = x*Q
+  ! e2T = (nx x d2)
+  allocate(e2T(nx,d2))
+  ! z2 = transpose(Q) * x
+  ! e2 = inv(tranpose(C2)) * transpose(Q) * x
+  ! e2T = xT * Q * inv(C2)
   ! C2 = (d2 x d2) lower triangular
-  e2 = matmul(xT,Q)
+  e2T = matmul(xT,Q)
 
-  ! these loops compute e2_new = inv(C2') * e2'
-  !                            = e2 * inv(C2)
-  !                              size(e2) = nx x d2
+  ! these loops compute e2T  = zT2 * inv(C2)
+  !                size(e2T) = nx x d2
   !
   ! exploit fact that C2 is lower triangular
-  !    x * C2(:,1)            = e2(:,1)
-  !    x(:,2:d2) * C2(2:d2,2) = e2(:,2)
-  !    x(:,d2)   * C2(d2,d2)  = e2(:,d2)
+  !    zT         * C2(:,1)    = e2(:,1)
+  !    zT(:,2:d2) * C2(2:d2,2) = e2(:,2)
+  !    ...
+  !    zT(:,d2)   * C2(d2,d2)  = e2(:,d2)
   do i1=d2,-1,1
     if (i1==d2) then
-      e2(:,i1) = e2(:,i1)/C2(d2,d2)
+      e2T(:,i1) = e2T(:,i1)/C2(d2,d2)
     else if (i1<d2) then
-      e2(:,i1) = (matmul(e2(:,i1+1:d2),C2(i1+1:d2,i1)) -e2(:,i1))/C2(i1,i1)
+      e2T(:,i1) = (matmul(e2T(:,i1+1:d2),C2(i1+1:d2,i1)) -e2T(:,i1))/C2(i1,i1)
     end if
   end do
 
-!  do i1=1,nx
-!  do i2=1,d2
-!    if (i2==1) then
-!      e2(i1,i2) = e2(i1,i2)/C2(i2,i2)
-!    else
-!      e2(i1,i2) =   &
-!      (e2(i1,i2)-dot_product(e2(i1,1:i2-1),C2(1:i2-1,i2)))/C2(i2,i2)
-!    end if
-!  end do
-!  end do
-
   ! size(v1) = (nx x d1)
   allocate(z1T(nx,d1))
-  ! z1T = epsilon1 - nu1 - xT*Q*inv(C2)*Omega12'
-  z1T  = spread(epsilon1 - nu1,1,nx) - matmul(e2,transpose(Omega12))
+  ! z1T = e1Tilde - mu1Tilde - x*Q*inv(C2)*SigmaTilde12'
+  !     = e1Tilde - conditional mean
+  z1T  = spread(e1Tilde - mu1Tilde,1,nx) - matmul(e2T,transpose(SigmaTilde12))
 
-  ! compute z1T_new = z1T * inv(CPsi)
-  ! exploit fact that CPsi is lower triangular
+  ! compute z1T_new = z1T * inv(transpose(COmega11))
+  ! exploit fact that COmega11 is lower triangular
   do i1=1,nx
   do i2=1,d1
     if (i2==1) then
-      z1T(i1,i2) = z1T(i1,i2)/CPsi(i2,i2)
+      z1T(i1,i2) = z1T(i1,i2)/COmega11(i2,i2)
     else
       z1T(i1,i2) =   &
-      (z1T(i1,i2)-dot_product(z1T(i1,1:i2-1),CPsi(1:i2-1,i2)))/CPsi(i2,i2)
+      (z1T(i1,i2)-dot_product(z1T(i1,1:i2-1),COmega11(1:i2-1,i2)))/COmega11(i2,i2)
     end if
   end do
   end do
 
   Jacobian = product(S1)*(2.0d0*pi)**(-real(d1,dp)/2.0d0)
   ! det(S1)   = product(diag(S1)) since S1 is diagonal
-  ! det(CPsi) = product of diagonal since CPsi is lower triangular
+  ! det(COmega11) = product of diagonal since COmega11 is lower triangular
   do i1=1,d1
-    Jacobian = Jacobian/CPsi(i1,i1)
+    Jacobian = Jacobian/COmega11(i1,i1)
   end do
 
   F   = abs(Jacobian)*dexp(-0.5d0*sum(z1T*z1T,2))
 
-  ! gradient w.r.t. nu1
-  !  df/dz1 = -f * z1T_new * inv(CPsi)^T
+  ! gradient w.r.t. mu1Tilde
+  !  df/dz1 = -f * z1T_new * inv(COmega11)^T
   ! size(z1T) = (nx x d1)
   ! size(f)   = (nx x 1)
   ! InvertLower  = invert lower triangular matrix
-  GradF%nu1 = - spread(f,2,d1) * matmul(z1T,transpose(InvertLower(CPsi,d1)))
-  !GradF%nu1 = - spread(f,2,d1) * matmul(z1T,inv(transpose(CPsi)))
-  !print *,"Warning. Need to check on CPsi vs. transpose(CPsi)."
+  GradF%mu1Tilde = - spread(f,2,d1) * matmul(z1T,transpose(InvertLower(COmega11,d1)))
 
   ! gradient of F w.r.t. S1
-  !    = F./S1    (since epsilon1 = inv(S1)*VT*p1 + S1*VT*q1 is fixed
+  !    = F./S1    (since e1Tilde = inv(S1)*VT*p1 + S1*VT*q1 is fixed
   ! size(F) = (nx x 1)
   GradF%S1 = spread(F,2,d1) / spread(S1,1,nx)
 
-  ! Gradient w.r.t. epsilon1 = - gradient w.r.t. nu1
+  ! Gradient w.r.t. e1Tilde = - gradient w.r.t. mu1Tilde
 
-  ! Gradient w.r.t. Omega12 = df/dz1 * dz1/dOmega12
-  !                 dz1/dOmega12 = - inv(C2^T) * Q^T *x
+  ! Gradient w.r.t. SigmaTilde12 = df/dz1 * dz1/dSigmaTilde12
+  !                 dz1/dSigmaTilde12 = - inv(C2^T) * Q^T *x
   !                              =  -e2
   ! size(df/dz1)        = (nx x d1)
   ! size(e2)            = (nx x d1)
-  ! size(GradF%Omega12) = (nx x d1 x d1)
-  GradF%Omega12 = - spread(GradF%nu1,3,d1) * spread(e2,2,d1)
+  ! size(GradF%SigmaTilde12) = (nx x d1 x d1)
+  GradF%SigmaTilde12 = - spread(GradF%mu1Tilde,3,d1) * spread(e2T,2,d1)
 
-  !  Gradient w.r.t. (C2,Q)
-  !  dF/d(C2) = df/dz1 * dz1/d(C2)
-  !             dz1/d(C2) = -
-
-  deallocate(e2,z1T)
 end subroutine DensityFunc2
 
 subroutine SparseGridBayes(iFree,iuser,ruser)
@@ -1542,7 +1680,7 @@ subroutine SparseGridBayes(iFree,iuser,ruser)
     call D01ZKF(OPTSTR, IOPTS, LIOPTS, OPTS, LOPTS, IFAIL)
   end if
   ifail = -1
-  call D01ESF(NI, NDIM, IntegrateLikeFunc0, MAXDLV, DINEST, ERREST, IVALID, IOPTS, OPTS, IUSER, RUSER, IFAIL)
+  call D01ESF(NI, NDIM, Integrateobjfunc0, MAXDLV, DINEST, ERREST, IVALID, IOPTS, OPTS, IUSER, RUSER, IFAIL)
 
   call WriteBayes(DINEST,ERREST,IVALID)
   deallocate(IOPTS)
@@ -1554,7 +1692,7 @@ subroutine SparseGridBayes(iFree,iuser,ruser)
 
 end subroutine SparseGridBayes
 
-SUBROUTINE IntegrateLikeFunc0(NI, NDIM, NX, XTR, NNTR, ICOLZP, IROWIX, XS, QS, FM, IFLAG, IUSER, RUSER)
+SUBROUTINE Integrateobjfunc0(NI, NDIM, NX, XTR, NNTR, ICOLZP, IROWIX, XS, QS, FM, IFLAG, IUSER, RUSER)
   implicit none
   INTEGER(i4b), intent(in)    ::  NI,NDIM,NX,NNTR,ICOLZP(NX+1),IROWIX(NNTR),QS(NNTR)
   integer(i4b), intent(inout) :: IFLAG, IUSER(*)
@@ -1571,12 +1709,12 @@ SUBROUTINE IntegrateLikeFunc0(NI, NDIM, NX, XTR, NNTR, ICOLZP, IROWIX, XS, QS, F
     x0(irowix(icolzp(i1):icolzp(i1+1)-1)) = xs(icolzp(i1):icolzp(i1+1)-1)
     ! change of variable from x0 to x1
     x1 = ChangeX(x0,ndim,iuser(1))
-    call LikeFunc0_QuadWrapper(x1,ndim,iuser,ruser,FM(:,i1))
+    call objfunc0_QuadWrapper(x1,ndim,iuser,ruser,FM(:,i1))
     x0(irowix(icolzp(i1):icolzp(i1+1)-1)) = xtr
   end do
 
   deallocate(x0,x1)
-end subroutine IntegrateLikeFunc0
+end subroutine Integrateobjfunc0
 
 function ChangeX(x0,nx,model) result(x1)
   use ConstantsModule
@@ -1636,7 +1774,7 @@ function ChangeX(x0,nx,model) result(x1)
   end if
 end function ChangeX
 
-subroutine LikeFunc0_QuadWrapper(x,nx,iuser,ruser,F)
+subroutine objfunc0_QuadWrapper(x,nx,iuser,ruser,F)
   use ConstantsModule
   implicit none
   real(dp),     intent(in)    :: x(nx)
@@ -1651,14 +1789,14 @@ subroutine LikeFunc0_QuadWrapper(x,nx,iuser,ruser,F)
   mode=0
   nstate = 0
 
-  call LikeFunc0(mode,nx,x,L,GradL,nstate,iuser,ruser)
+  call objfunc0(mode,nx,x,L,GradL,nstate,iuser,ruser)
   F(1) = L
   F(2:nx+1) = x*L
   do i1=1,nx
     F(1+nx+i1*(i1-1)/2 + (/(ix,ix=1,i1)/)) = x(i1) * F(2:i1+1)
   end do
 
-end subroutine LikeFunc0_QuadWrapper
+end subroutine objfunc0_QuadWrapper
 
 #ifdef BAYES
 subroutine SetupBayesPrior(parms,iFree)
@@ -1765,8 +1903,8 @@ subroutine RunMonteCarlo(IMC1,IMC2,pid)
     call SendData(pid)
 #endif
 
-    if (iFree%OneAtATime==1) then
-       call MaxOneAtTime(pid)
+    if (iFree%nPerIter>0) then
+       call MaxNPerIter(pid)
     else
       if (pid==MasterID) then
         allocate(x(iFree%NALL))
@@ -1775,7 +1913,11 @@ subroutine RunMonteCarlo(IMC1,IMC2,pid)
         allocate(Grad(iFree%NALL),Hess(iFree%NALL,iFree%NALL))
         call ComputeInitialGuess(parms,iFree,x)
         MCX(:,NMC+1) = x
-        call MaximizeLikelihood(x,LValue,Grad,Hess,ifail)
+        if (parms%model<=2) then
+          call MaximizeObjective(x,LValue,Grad,Hess,ifail)
+        elseif (parms%model==3) then
+          call RunEM(x,LValue,Grad,Hess,ifail)
+        end if
         MCX(:,IMC-IMC1+1) = x
         ! update parms
         call UpdateParms2(x,iFree,parms)
@@ -1788,14 +1930,13 @@ subroutine RunMonteCarlo(IMC1,IMC2,pid)
         call WorkerTask(parms%model,pid)
 #endif
       end if ! if (pid==MasterID) then
-    end if   ! if (iFree%OneAtATime==1) then
+    end if   ! if (iFree%nPerIter>0) then
   end do     ! do IMC=IMC1,IMC2
 end subroutine RunMonteCarlo
 
 ! loop over elements of x
-! in each iteration, max w.r.t. current element of x
-! one element of x at a time
-subroutine MaxOneAtTime(pid)
+! in each iteration, max w.r.t. N elements of x
+subroutine MaxNPerIter(pid)
   use ConstantsModule
 #if USE_MPI==1
   use mpi
@@ -1804,15 +1945,16 @@ subroutine MaxOneAtTime(pid)
                            ReadWriteParameters,DeallocateIFree
 
   implicit none
-  integer(i4b), intent(in) :: pid
-  type(SelectFreeType)     :: iFree0
-  integer(i4b)             :: i1,ifail,ierr
-  real(dp), allocatable    :: x(:),Grad(:),Hess(:,:)
-  real(dp)                 :: LValue
+  integer(i4b), intent(in)  :: pid
+  type(SelectFreeType)      :: iFree0
+  integer(i4b)              :: i1,ifail,ierr,niter
+  real(dp), allocatable     :: x(:),Grad(:),Hess(:,:)
+  real(dp)                  :: LValue
 
   call CopyIFree(iFree,iFree0)
 
-  do i1=1,iFree0%NALL
+  niter = (iFree0%nall-1)/iFree0%nPerIter + 1
+  do i1=1,niter
     call DeallocateIFree(iFree)
     call UpdateIFree(i1,iFree0,iFree)
     allocate(x(iFree%NALL))
@@ -1820,7 +1962,11 @@ subroutine MaxOneAtTime(pid)
 
     if (pid==MasterID) then
       call ComputeInitialGuess(parms,iFree,x)
-      call MaximizeLikelihood(x,LValue,Grad,Hess,ifail)
+      if (parms%model<=2) then
+        call MaximizeObjective(x,LValue,Grad,Hess,ifail)
+      else if (parms%model==3) then
+        call RunEM(x,LValue,Grad,Hess,ifail)
+      end if
     elseif (pid .ne. MasterID) then
 #if USE_MPI>0
       call WorkerTask(parms%model,pid)
@@ -1834,7 +1980,7 @@ subroutine MaxOneAtTime(pid)
     ! update parms
     call UpdateParms2(x,iFree,parms)
     ! b) save parms to disk
-    call ReadWriteParameters(parms,'write')
+    if (pid==MasterID) call ReadWriteParameters(parms,'write')
     deallocate(x,Grad,Hess)
   end do
 
@@ -1842,7 +1988,7 @@ subroutine MaxOneAtTime(pid)
   call CopyIFree(iFree0,iFree)
   call DeallocateIFree(iFree0)
 
-end subroutine MaxOneAtTime
+end subroutine MaxNPerIter
 
 ! Copy iFree to iFreeCopy
 subroutine CopyIFree(iFree,iFreeCopy)
@@ -1884,7 +2030,9 @@ subroutine CopyIFree(iFree,iFreeCopy)
   iFreeCopy%flagBD_beta     = iFree%flagBD_beta
   iFreeCopy%flagBD_CDiag    = iFree%flagBD_CDiag
   iFreeCopy%flagBD_COffDiag = iFree%flagBD_COffDiag
-  iFreeCopy%OneAtATime      = iFree%OneAtATime
+  iFreeCopy%nPerIter        = iFree%nPerIter
+  iFreeCopy%RandFlag        = iFree%RandFlag
+  iFreeCopy%seed            = iFree%seed
 
   if (iFree%flagD>0) then
     allocate(iFreeCopy%D(iFree%ND))
@@ -1979,15 +2127,20 @@ subroutine CopyIFree(iFree,iFreeCopy)
 
 end subroutine CopyIFree
 
-! Set iFreeNew equal to element i1 of iFree0
+! Set iFreeNew equal to subset of elements if iFree0
+! subset determined by (i1,iFree0$nPerIter)
 subroutine UpdateIFree(i1,iFree0,iFreeNew)
   use GlobalModule, only : SelectFreeType
+  use NewTools,     only : Sample
   implicit none
   integer(i4b), intent(in) :: i1
   type(SelectFreeType), intent(in)    :: iFree0
   type(SelectFreeType), intent(inout) :: iFreeNew
 
-  iFreeNew%nall         = 1
+  integer(i4b), allocatable :: ix(:),ixtemp(:)
+  integer(i4b)              :: i2,ixmin,ixmax,n,temp(1),i_
+
+  iFreeNew%nall         = 0
   iFreeNew%nD           = 0
   iFreeNew%nBC          = 0
   iFreeNew%nMUE         = 0
@@ -2016,154 +2169,268 @@ subroutine UpdateIFree(i1,iFree0,iFreeNew)
   iFreeNew%flagBD_COffDiag = 0
   iFreeNew%flagBD_month    = 0
 
-  allocate(iFreeNew%xlabels(1))
-  write(iFreeNew%xlabels(1),'(i3.0)') i1
+  allocate(ix(iFree0%nPerIter))
+  if (iFree0%RandFlag==0) then
+    ixmin = 1+iFree0%nPerIter*(i1-1)
+    ixmax = min(iFree0%nPerIter*i1,iFree0%nall)
+    ix = (/(i2,i2=ixmin,ixmax)/)
+  else
+    ix = Sample(i1,iFree0%nall,iFree0%nPerIter,iFree0%seed)
+  end if
+
+  allocate(iFreeNew%xlabels(iFree0%nPerIter))
+  do i2=1,iFree0%nPerIter
+    write(iFreeNew%xlabels(i2),'(i3.0)') ix(i2)
+  end do
 
   if (iFree0%nD>0) then
-    if (any(iFree0%xD==i1)) then
-      allocate(iFreeNew%D(1))
-      allocate(IFreeNew%xD(1))
-      iFreeNew%xD = 1
-      iFreeNew%D  = pack(iFree0%D,iFree0%xD==i1)
-      iFreeNew%nD = 1
+    n = count(ix>= minval(iFree0%xD) .and. ix<=maxval(iFree0%xD))
+    if (n>0) then
+      allocate(ixtemp(n))
+      allocate(iFreeNew%xD(n))
+      allocate(iFreeNew%D(n))
+      iFreeNew%xD = (/(i_, i_=1, n)/)
+      ixtemp = pack(ix,ix>=minval(iFree0%xD) .and. ix<=maxval(iFree0%xD))
+      do i2=1,n
+        temp = pack(iFree0%D,iFree0%xD==ixtemp(i2))
+        iFreeNew%D(i2) = temp(1)
+      end do
+      iFreeNew%nD = n
       iFreeNew%flagD = 1
+      iFreeNew%nall = n
+      deallocate(ixtemp)
     end if
   end if
 
   if (iFree0%nBC>0) then
-    if (any(iFree0%xBC==i1)) then
-      allocate(iFreeNew%BC(1))
-      allocate(IFreeNew%xBC(1))
-      iFreeNew%xBC = 1
-      iFreeNew%BC  = pack(iFree0%BC,iFree0%xBC==i1)
-      iFreeNew%nBC = 1
+    n = count(ix>= minval(iFree0%xBC) .and. ix<=maxval(iFree0%xBC))
+    if (n>0) then
+      allocate(ixtemp(n))
+      allocate(iFreeNew%xBC(n))
+      allocate(iFreeNew%BC(n))
+      iFreeNew%xBC = iFreeNew%nall + (/(i_, i_=1, n)/)
+      ixtemp = pack(ix,ix>=minval(iFree0%xBC) .and. ix<= maxval(iFree0%xBC))
+      do i2=1,n
+        temp = pack(iFree0%BC,iFree0%xBC==ixtemp(i2))
+        iFreeNew%BC(i2) = temp(1)
+      end do
+      iFreeNew%nBC = n
+      iFreeNew%nall = iFreeNew%nall + n
       iFreeNew%flagBC = 1
+      deallocate(ixtemp)
     end if
   end if
 
   if (iFree0%nMUE>0) then
-    if (any(iFree0%xMUE==i1)) then
-      allocate(iFreeNew%MUE(1))
-      allocate(IFreeNew%xMUE(1))
-      iFreeNew%xMUE = 1
-      iFreeNew%MUE  = pack(iFree0%MUE,iFree0%xMUE==i1)
-      iFreeNew%nMUE = 1
+    n = count(ix>= minval(iFree0%xMUE) .and. ix<=maxval(iFree0%xMUE))
+    if (n>0) then
+      allocate(ixtemp(n))
+      allocate(iFreeNew%xMUE(n))
+      allocate(iFreeNew%MUE(n))
+      iFreeNew%xMUE = iFreeNew%nall + (/(i_, i_=1, n)/)
+      ixtemp = pack(ix,ix>= minval(iFree0%xMUE) .and. ix<=maxval(iFree0%xMUE))
+      do i2=1,n
+        temp = pack(iFree0%MUE,iFree0%xMUE==ixtemp(i2))
+        iFreeNew%MUE(i2) = temp(1)
+      end do
+      iFreeNew%nMUE = n
+      iFreeNew%nall = iFreeNew%nall + n
       iFreeNew%flagMUE = 1
+      deallocate(ixtemp)
     end if
   end if
 
   if (iFree0%nMUE_month>0) then
-    if (any(iFree0%xMUE_month==i1)) then
-      allocate(iFreeNew%MUE_month(1))
-      allocate(IFreeNew%xMUE_month(1))
-      iFreeNew%xMUE_month = 1
-      iFreeNew%MUE_month  = pack(iFree0%MUE_month,iFree0%xMUE_month==i1)
-      iFreeNew%nMUE_month = 1
+    n = count(ix>= minval(iFree0%xMUE_month) .and. ix<=maxval(iFree0%xMUE_month))
+    if (n>0) then
+      allocate(ixtemp(n))
+      allocate(iFreeNew%xMUE_month(n))
+      allocate(iFreeNew%MUE_month(n))
+      iFreeNew%xMUE_month = iFreeNew%nall + (/(i_, i_=1, n)/)
+      ixtemp= pack(ix,ix>= minval(iFree0%xMUE_month) .and. ix<=maxval(iFree0%xMUE_month))
+      do i2=1,n
+        temp = pack(iFree0%MUE_month,iFree0%xMUE_month==ixtemp(i2))
+        iFreeNew%MUE_month(i2) = temp(1)
+      end do
+      iFreeNew%nMUE_month = n
+      iFreeNew%nall = iFreeNew%nall + n
       iFreeNew%flagMUE_month = 1
+      deallocate(ixtemp)
     end if
   end if
 
   if (iFree0%nInvCDiag>0) then
-    if (any(iFree0%xInvCDiag==i1)) then
-      allocate(iFreeNew%InvCDiag(1))
-      allocate(IFreeNew%xInvCDiag(1))
-      iFreeNew%xInvCDiag = 1
-      iFreeNew%InvCDiag  = pack(iFree0%InvCDiag,iFree0%xInvCDiag==i1)
-      iFreeNew%nInvCDiag = 1
+    n = count(ix>= minval(iFree0%xInvCDiag) .and. ix<=maxval(iFree0%xInvCDiag))
+    if (n>0) then
+      allocate(ixtemp(n))
+      allocate(iFreeNew%xInvCDiag(n))
+      allocate(iFreeNew%InvCDiag(n))
+      iFreeNew%xInvCDiag = iFreeNew%nall + (/(i_, i_=1, n)/)
+      ixtemp = pack(ix,ix>= minval(iFree0%xInvCDiag) .and. ix<=maxval(iFree0%xInvCDiag))
+      do i2=1,n
+        temp = pack(iFree0%InvCDiag,iFree0%xInvCDiag==ixtemp(i2))
+        iFreeNew%InvCDiag(i2) = temp(1)
+      end do
+      iFreeNew%nInvCDiag = n
+      iFreeNew%nall = iFreeNew%nall + n
       iFreeNew%flagInvCDiag = 1
+      deallocate(ixtemp)
     end if
   end if
 
   if (iFree0%nInvCOffDiag>0) then
-    if (any(iFree0%xInvCOffDiag==i1)) then
-      allocate(iFreeNew%InvCOffDiag(1))
-      allocate(IFreeNew%xInvCOffDiag(1))
-      iFreeNew%xInvCOffDiag = 1
-      iFreeNew%InvCOffDiag  = pack(iFree0%InvCOffDiag,iFree0%xInvCOffDiag==i1)
-      iFreeNew%nInvCOffDiag = 1
+    n = count(ix>= minval(iFree0%xInvCOffDiag) .and. ix<=maxval(iFree0%xInvCOffDiag))
+    if (n>0) then
+      allocate(ixtemp(n))
+      allocate(iFreeNew%xInvCOffDiag(n))
+      allocate(iFreeNew%InvCOffDiag(n))
+      iFreeNew%xInvCOffDiag = iFreeNew%nall + (/(i_, i_=1, n)/)
+      ixtemp = pack(ix,ix>= minval(iFree0%xInvCOffDiag) .and. ix<=maxval(iFree0%xInvCOffDiag))
+      do i2=1,n
+        temp = pack(iFree0%InvCOffDiag,iFree0%xInvCOffDiag==ixtemp(i2))
+        iFreeNew%InvCOffDiag(i2) = temp(1)
+      end do
+      iFreeNew%nInvCOffDiag = n
+      iFreeNew%nall = iFreeNew%nall + n
       iFreeNew%flagInvCOffDiag = 1
+      deallocate(ixtemp)
     end if
   end if
 
   if (iFree0%nBC_beta>0) then
-    if (any(iFree0%xBC_beta==i1)) then
-      allocate(iFreeNew%BC_beta(1))
-      allocate(IFreeNew%xBC_beta(1))
-      iFreeNew%xBC_beta = 1
-      iFreeNew%BC_beta  = pack(iFree0%BC_beta,iFree0%xBC_beta==i1)
-      iFreeNew%nBC_beta = 1
+    n = count(ix>= minval(iFree0%xBC_beta) .and. ix<=maxval(iFree0%xBC_beta))
+    if (n>0) then
+      allocate(ixtemp(n))
+      allocate(iFreeNew%xBC_beta(n))
+      allocate(iFreeNew%BC_beta(n))
+      iFreeNew%xBC_beta = iFreeNew%nall + (/(i_, i_=1, n)/)
+      ixtemp = pack(ix,ix>= minval(iFree0%xBC_beta) .and. ix<=maxval(iFree0%xBC_beta))
+      do i2=1,n
+        temp = pack(iFree0%BC_beta,iFree0%xBC_beta==ixtemp(i2))
+        iFreeNew%BC_beta(i2) = temp(1)
+      end do
+      iFreeNew%nBC_beta = n
+      iFreeNew%nall = iFreeNew%nall + n
       iFreeNew%flagBC_beta = 1
+      deallocate(ixtemp)
     end if
   end if
 
   if (iFree0%nBD_beta>0) then
-    if (any(iFree0%xBD_beta==i1)) then
-      allocate(iFreeNew%BD_beta(1))
-      allocate(IFreeNew%xBD_beta(1))
-      iFreeNew%xBD_beta = 1
-      iFreeNew%BD_beta  = pack(iFree0%BD_beta,iFree0%xBD_beta==i1)
-      iFreeNew%nBD_beta = 1
+    n = count(ix>= minval(iFree0%xBD_beta) .and. ix<=maxval(iFree0%xBD_beta))
+    if (n>0) then
+      allocate(ixtemp(n))
+      allocate(iFreeNew%xBD_beta(n))
+      allocate(iFreeNew%BD_beta(n))
+      iFreeNew%xBD_beta = iFreeNew%nall + (/(i_, i_=1, n)/)
+      ixtemp = pack(ix,ix>= minval(iFree0%xBD_beta) .and. ix<=maxval(iFree0%xBD_beta))
+      do i2=1,n
+        temp = pack(iFree0%BD_beta,iFree0%xBD_beta==ixtemp(i2))
+        iFreeNew%BD_beta(i2) = temp(1)
+      end do
+      iFreeNew%nBD_beta = n
+      iFreeNew%nall = iFreeNew%nall + n
       iFreeNew%flagBD_beta = 1
+      deallocate(ixtemp)
     end if
   end if
 
   if (iFree0%nBD_month>0) then
-    if (any(iFree0%xBD_month==i1)) then
-      allocate(iFreeNew%BD_month(1))
-      allocate(IFreeNew%xBD_month(1))
-      iFreeNew%xBD_month = 1
-      iFreeNew%BD_month  = pack(iFree0%BD_month,iFree0%xBD_month==i1)
-      iFreeNew%nBD_month = 1
+    n = count(ix>= minval(iFree0%xBD_month) .and. ix<=maxval(iFree0%xBD_month))
+    if (n>0) then
+      allocate(ixtemp(n))
+      allocate(iFreeNew%xBD_month(n))
+      allocate(iFreeNew%BD_month(n))
+      iFreeNew%xBD_month = iFreeNew%nall + (/(i_, i_=1, n)/)
+      ixtemp = pack(ix,ix>= minval(iFree0%xBD_month) .and. ix<=maxval(iFree0%xBD_month))
+      do i2=1,n
+        temp = pack(iFree0%BD_month,iFree0%xBD_month==ixtemp(i2))
+        iFreeNew%BD_month(i2) = temp(1)
+      end do
+      iFreeNew%nBD_month = n
+      iFreeNew%nall = iFreeNew%nall + n
       iFreeNew%flagBD_month = 1
+      deallocate(ixtemp)
     end if
   end if
 
   if (iFree0%nBC_CDiag>0) then
-    if (any(iFree0%xBC_CDiag==i1)) then
-      allocate(iFreeNew%BC_CDiag(1))
-      allocate(IFreeNew%xBC_CDiag(1))
-      iFreeNew%xBC_CDiag = 1
-      iFreeNew%BC_CDiag  = pack(iFree0%BC_CDiag,iFree0%xBC_CDiag==i1)
-      iFreeNew%nBC_CDiag = 1
+    n = count(ix>= minval(iFree0%xBC_CDiag) .and. ix<=maxval(iFree0%xBC_CDiag))
+    if (n>0) then
+      allocate(ixtemp(n))
+      allocate(iFreeNew%xBC_CDiag(n))
+      allocate(iFreeNew%BC_CDiag(n))
+      iFreeNew%xBC_CDiag = iFreeNew%nall + (/(i_, i_=1, n)/)
+      ixtemp = pack(ix,ix>= minval(iFree0%xBC_CDiag) .and. ix<=maxval(iFree0%xBC_CDiag))
+      do i2=1,n
+        temp = pack(iFree0%BC_CDiag,iFree0%xBC_CDiag==ixtemp(i2))
+        iFreeNew%BC_CDiag(i2) = temp(1)
+      end do
+      iFreeNew%nBC_CDiag = n
+      iFreeNew%nall = iFreeNew%nall + n
       iFreeNew%flagBC_CDiag = 1
+      deallocate(ixtemp)
     end if
   end if
 
   if (iFree0%nBD_CDiag>0) then
-    if (any(iFree0%xBD_CDiag==i1)) then
-      allocate(iFreeNew%BD_CDiag(1))
-      allocate(IFreeNew%xBD_CDiag(1))
-      iFreeNew%xBD_CDiag = 1
-      iFreeNew%BD_CDiag  = pack(iFree0%BD_CDiag,iFree0%xBD_CDiag==i1)
-      iFreeNew%nBD_CDiag = 1
+    n = count(ix>= minval(iFree0%xBD_CDiag) .and. ix<=maxval(iFree0%xBD_CDiag))
+    if (n>0) then
+      allocate(ixtemp(n))
+      allocate(iFreeNew%xBD_CDiag(n))
+      allocate(iFreeNew%BD_CDiag(n))
+      iFreeNew%xBD_CDiag = iFreeNew%nall + (/(i_, i_=1, n)/)
+      ixtemp = pack(ix,ix>= minval(iFree0%xBD_CDiag) .and. ix<=maxval(iFree0%xBD_CDiag))
+      do i2=1,n
+        temp = pack(iFree0%BD_CDiag,iFree0%xBD_CDiag==ixtemp(i2))
+        iFreeNew%BD_CDiag(i2) = temp(1)
+      end do
+      iFreeNew%nBD_CDiag = n
+      iFreeNew%nall = iFreeNew%nall + n
       iFreeNew%flagBD_CDiag = 1
+      deallocate(ixtemp)
     end if
   end if
 
   if (iFree0%nBC_COffDiag>0) then
-    if (any(iFree0%xBC_COffDiag==i1)) then
-      allocate(iFreeNew%BC_COffDiag(1))
-      allocate(IFreeNew%xBC_COffDiag(1))
-      iFreeNew%xBC_COffDiag = 1
-      iFreeNew%BC_COffDiag  = pack(iFree0%BC_COffDiag,iFree0%xBC_COffDiag==i1)
-      iFreeNew%nBC_COffDiag = 1
+    n = count(ix>= minval(iFree0%xBC_COffDiag) .and. ix<=maxval(iFree0%xBC_COffDiag))
+    if (n>0) then
+      allocate(ixtemp(n))
+      allocate(iFreeNew%xBC_COffDiag(n))
+      allocate(iFreeNew%BC_COffDiag(n))
+      iFreeNew%xBC_COffDiag = iFreeNew%nall + (/(i_, i_=1, n)/)
+      ixtemp = pack(ix,ix>= minval(iFree0%xBC_COffDiag) .and. ix<=maxval(iFree0%xBC_COffDiag))
+      do i2=1,n
+        temp = pack(iFree0%BC_COffDiag,iFree0%xBC_COffDiag==ixtemp(i2))
+        iFreeNew%BC_COffDiag(i2) = temp(1)
+      end do
+      iFreeNew%nBC_COffDiag = n
+      iFreeNew%nall = iFreeNew%nall + n
       iFreeNew%flagBC_COffDiag = 1
+      deallocate(ixtemp)
     end if
   end if
 
   if (iFree0%nBD_COffDiag>0) then
-    if (any(iFree0%xBD_COffDiag==i1)) then
-      allocate(iFreeNew%BD_COffDiag(1))
-      allocate(IFreeNew%xBD_COffDiag(1))
-      iFreeNew%xBD_COffDiag = 1
-      iFreeNew%BD_COffDiag  = pack(iFree0%BD_COffDiag,iFree0%xBD_COffDiag==i1)
-      iFreeNew%nBD_COffDiag = 1
+    n = count(ix>= minval(iFree0%xBD_COffDiag) .and. ix<=maxval(iFree0%xBD_COffDiag))
+    if (n>0) then
+      allocate(ixtemp(n))
+      allocate(iFreeNew%xBD_COffDiag(n))
+      allocate(iFreeNew%BD_COffDiag(n))
+      iFreeNew%xBD_COffDiag = iFreeNew%nall + (/(i_, i_=1, n)/)
+      ixtemp = pack(ix,ix>= minval(iFree0%xBD_COffDiag) .and. ix<=maxval(iFree0%xBD_COffDiag))
+      do i2=1,n
+        temp = pack(iFree0%BD_COffDiag,iFree0%xBD_COffDiag==ixtemp(i2))
+        iFreeNew%BD_COffDiag(i2) = temp(1)
+      end do
+      iFreeNew%nBD_COffDiag = n
+      iFreeNew%nall = iFreeNew%nall + n
       iFreeNew%flagBD_COffDiag = 1
+      deallocate(ixtemp)
     end if
   end if
 
 end subroutine UpdateIFree
-
 
 !!   BEGIN ANALYSIS of DEMAND
 subroutine AnalyseResults(IMC)
@@ -2655,8 +2922,8 @@ subroutine ComputeDemand(HHData1)
   crit = 1e-4
 
   do i1=1,HHData1%N
-    if (parms%model==2) then
-      ! if model==2, each HH TempB is a random coefficient
+    if (parms%model>=2) then
+      ! if model>=2, each HH TempB is a random coefficient
       call ComputeCurrentB(HHData1%eta(:,i1),parms,HHData1%month(i1))
     end if
 
@@ -2729,7 +2996,7 @@ subroutine ComputeInitialGuess(parms,iFree,x)
     x(iFree%xInvCOffDiag) = parms%InvCOffDiag(iFree%InvCOffDiag)
   end if
 
-  if (parms%model==2) then
+  if (parms%model>=2) then
     if (allocated(iFree%BC_beta)) then
       x(iFree%xBC_beta) = parms%BC_beta(iFree%BC_beta)
     end if
@@ -2820,7 +3087,7 @@ subroutine SelectFreeParameters(parms,iFree)
   ! iFree%xD = elements of xFree corresponding to D
   iFree%nall = 0
 
-  if (parms%model==2) then
+  if (parms%model>=2) then
     iFree%flagD=0
     iFree%flagBC=0
   end if
@@ -2907,7 +3174,7 @@ subroutine SelectFreeParameters(parms,iFree)
   end if
   iFree%nall = iFree%nall + iFree%nInvCOffDiag
 
-  if (parms%model==2) then
+  if (parms%model>=2) then
     iFree%nBD_beta     = 0
     iFree%nBD_CDiag    = 0
     iFree%nBD_COffDiag = 0
@@ -3086,7 +3353,7 @@ subroutine SelectFreeParameters(parms,iFree)
       iFree%xBD_month = iFree%nAll + (/(ix,ix=1,ifree%nbd_month)/)
       iFree%nall = iFree%nall + iFree%nBD_month
     end if
-  end if ! if (parms%model==2)
+  end if ! if (parms%model>=2)
 
   !  create labels for x variables
   allocate(iFree%xlabels(iFree%nall))
@@ -3149,9 +3416,12 @@ subroutine SelectFreeParameters(parms,iFree)
   end do
 end subroutine SelectFreeParameters
 
-subroutine MaximizeLikelihood(x,LValue,Grad,Hess,ierr)
+subroutine MaximizeObjective(x,LValue,Grad,Hess,ierr)
   use ConstantsModule
-  use GlobalModule, only : MaxOptions,Penalty
+#if USE_MPI==1
+  use mpi
+#endif
+  use GlobalModule, only : MaxOptions,Penalty,MasterID
   implicit none
   real(dp),     intent(inout) :: x(:)
   real(dp),     intent(out)   :: LValue
@@ -3159,16 +3429,18 @@ subroutine MaximizeLikelihood(x,LValue,Grad,Hess,ierr)
   real(dp),     intent(out)   :: Hess(:,:)
   integer(i4b), intent(out)   :: ierr
 
+  integer(i4b)                :: task
+
   if (MaxOptions%Algorithm==1) then
     ! E04WDF:  Dense optimization: constrained non-linear optimization for dense problem
     if (Penalty%method==0) then
-      call MaximizeLikelihood1(x,LValue,Grad,Hess,ierr)
+      call MaximizeObjective1(x,LValue,Grad,Hess,ierr)
     else if (Penalty%method==1) then
       call MaximizePenalizedLikelihood(x,LValue,Grad,Hess,ierr)
     end if
   elseif (MaxOptions%Algorithm==2) then
     ! E04VHF:  Sparse optimization: constrained non-linear optimization for sparse problem
-!    call MaximizeLikelihood2(x,LValue,Grad,Hess,ierr)
+!    call MaximizeObjective2(x,LValue,Grad,Hess,ierr)
   elseif (MaxOptions%Algorithm==3) then
      call Max_E04JCF(x,LValue,Grad,Hess,ierr)
   elseif (MaxOptions%Algorithm==6) then
@@ -3176,7 +3448,12 @@ subroutine MaximizeLikelihood(x,LValue,Grad,Hess,ierr)
     call BayesLikelihood1(x,LValue,Grad,Hess,ierr)
     !call ComputeBayes(x,LValue,Grad,Hess,ierr)
   end if
-end subroutine MaximizeLikelihood
+#if USE_MPI==1
+  ! broadcast signal indicating that all mpi tasks are complete
+  task=0
+  call mpi_bcast(task,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr)
+#endif
+end subroutine MaximizeObjective
 
 subroutine ComputeBayes(x,L,Grad,Hess,ierr)
   use ConstantsModule
@@ -3207,7 +3484,7 @@ subroutine ComputeBayes(x,L,Grad,Hess,ierr)
   m2 = 0.0d0
 
   do i1=1,bayes%nAll
-    call LikeFunc0(mode,nx,bayes%x(:,i1),L,GradL,nstate,iuser,ruser)
+    call objfunc0(mode,nx,bayes%x(:,i1),L,GradL,nstate,iuser,ruser)
     m0 = m0 + bayes%w(i1) * bayes%prior(i1) * L
     m1 = m1 + bayes%w(i1) * bayes%prior(i1) * L * bayes%x(:,i1)
     do i2=1,nx
@@ -3225,11 +3502,8 @@ subroutine ComputeBayes(x,L,Grad,Hess,ierr)
 end subroutine ComputeBayes
 
 ! Maximise using Constrained maximization: E04WDF
-subroutine MaximizeLikelihood1(x,LValue,Grad,Hess,ierr)
+subroutine MaximizeObjective1(x,LValue,Grad,Hess,ierr)
   use ConstantsModule
-#if USE_MPI==1
-  use mpi
-#endif
   use GlobalModule, only : ControlOptions,parms,InputDir,OutDir,MasterID,HHData,iFree, &
                            MaxOptions,ResultStructure,ReadWriteParameters
   use nag_library,  only : E04WCF,E04WDF,E04WDP,E04WEF,E04WFF, &
@@ -3307,17 +3581,6 @@ subroutine MaximizeLikelihood1(x,LValue,Grad,Hess,ierr)
   iuser(2) = HHData%N
   ruser    = 0.0d0
 
-#if USE_MPI==1
-  ! broadcast (nx,iuser,ruser)
-  call mpi_bcast(nx,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr)
-  ! broadcast length of iuser
-  call mpi_bcast(2,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr)
-  call mpi_bcast(iuser,2,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr)
-  ! broadcast length of ruser
-  call mpi_bcast(1,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr)
-  call mpi_bcast(ruser,1,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr)
-#endif
-
   nc_lin=0                 ! number of linear constraints
   if (ControlOptions%TestLikeFlag<4) then
     ! normal non-linear constraints
@@ -3363,10 +3626,10 @@ subroutine MaximizeLikelihood1(x,LValue,Grad,Hess,ierr)
   nstate = 1
   if (ControlOptions%TestLikeFlag==1) then
     ! test gradient of likelihood
-    call TestGrad(LikeFunc0,nx,x,nstate,iuser,ruser)
+    call TestGrad(objfunc0,nx,x,nstate,iuser,ruser)
   else if (ControlOptions%TestLikeFlag==2) then
     ! plot likelihood function
-    call PlotLike(LikeFunc0,nx,x,iFree%xlabels,BL(1:nx),BU(1:nx),nstate,iuser,ruser)
+    call PlotLike(objfunc0,nx,x,iFree%xlabels,BL(1:nx),BU(1:nx),nstate,iuser,ruser)
   else if (ControlOptions%TestLikeFlag==0 .or. ControlOptions%TestLikeFlag>2) then
     ! Initialize E04WDF by calling E04WCF
     ifail=-1
@@ -3426,7 +3689,7 @@ subroutine MaximizeLikelihood1(x,LValue,Grad,Hess,ierr)
        print *,'LValue0',LValue0
        ifail = -1
        call E04WDF(nx,nc_lin,nc_nonlin,LDA,LDCJ,LDH,A,BL,BU,                     &
-                   NAGConstraintWrapper,LikeFunc,iter,ISTATE,CCON,CJAC,CLAMBDA,  &
+                   NAGConstraintWrapper,objfunc,iter,ISTATE,CCON,CJAC,CLAMBDA,  &
                    LValue,GRAD,HESS,x,IW,LENIW,RW,LENRW,iuser,RUSER,ifail)
        ! update parms
        call UpdateParms2(x,iFree,parms)
@@ -3456,7 +3719,7 @@ subroutine MaximizeLikelihood1(x,LValue,Grad,Hess,ierr)
        print *,'LValue0',LValue0
        ifail = -1
        call E04WDF(nx,nc_lin,nc_nonlin,LDA,LDCJ,LDH,A,BL,BU,                     &
-                   E04WDP,LikeFunc,iter,ISTATE,CCON,CJAC,CLAMBDA,                &
+                   E04WDP,objfunc,iter,ISTATE,CCON,CJAC,CLAMBDA,                &
                    LValue,GRAD,HESS,x,IW,LENIW,RW,LENRW,iuser,RUSER,ifail)
        ! update parms
        call UpdateParms2(x,iFree,parms)
@@ -3497,16 +3760,8 @@ subroutine MaximizeLikelihood1(x,LValue,Grad,Hess,ierr)
     end if
  end if  ! if (ControlOptions%TestLikeFlag==1) then
 
-  deallocate(A,BL,BU,CLAMBDA,ISTATE,CJAC)
-  deallocate(CCON)
-
-#if USE_MPI==1
-  ! broadcast signal indicating that all mpi tasks are complete
-  task=0
-  call mpi_bcast(task,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr)
-#endif
   ierr = 0   ! no error in subroutine
-end subroutine MaximizeLikelihood1
+end subroutine MaximizeObjective1
 
 ! compute Bayes estimator using D01ESF
 subroutine BayesLikelihood1(x,LValue,Grad,Hess,ierr)
@@ -3736,11 +3991,11 @@ subroutine MaximizePenalizedLikelihood(x,LValue,Grad,Hess,ierr)
 
  ! Maximise likelihood
   if (ControlOptions%TestLikeFlag==1) then
-    call TestGrad(LikeFunc0,nxP,xP,1,iuser,ruser)
+    call TestGrad(objfunc0,nxP,xP,1,iuser,ruser)
   else
     print *,'Begin maximization.'
     call E04WDF(nxP,NCLIN,NCNLN,LDA,LDCJ,LDH,A,BL,BU,                &
-                E04WDP,LikeFunc0,iter,ISTATE,CCON,CJAC,CLAMBDA,     &
+                E04WDP,objfunc0,iter,ISTATE,CCON,CJAC,CLAMBDA,     &
                 LValue,GRADP,HESSP,xP,IW,LENIW,RW,LENRW,iuser,RUSER, &
                 IFAIL)
     !call ComputeHess(xP(1:Penalty%nx),LValue,GRAD,Hess,iuser,ruser)
@@ -3768,8 +4023,8 @@ subroutine MaximizePenalizedLikelihood(x,LValue,Grad,Hess,ierr)
   ierr = 0   ! no error in subroutine
 end subroutine MaximizePenalizedLikelihood
 
-! Compute Likefunc0 and its numerical derivative
-subroutine LikeFunc(mode,nx,x,L,GradL,nstate,iuser,ruser)
+! Compute objfunc0 and its numerical derivative
+subroutine objfunc(mode,nx,x,L,GradL,nstate,iuser,ruser)
   use ConstantsModule
   use GlobalModule, only : Penalty,MaxOptions
   implicit none
@@ -3787,23 +4042,23 @@ subroutine LikeFunc(mode,nx,x,L,GradL,nstate,iuser,ruser)
 
   mode1 = 0
 
-  call LikeFunc0(mode1,nx,x,L,GradL,nstate,iuser,ruser)
+  call objfunc0(mode1,nx,x,L,GradL,nstate,iuser,ruser)
   if (mode>0) then
     allocate(x1(nx),GradL1(nx),source=0.0d0)
     x1 = x
     do i1=1,nx
       x1(i1) = x(i1)+MaxOptions%DeltaX
-      call LikeFunc0(mode,nx,x1,L1,GradL1,nstate,iuser,ruser)
+      call objfunc0(mode,nx,x1,L1,GradL1,nstate,iuser,ruser)
       GradL(i1) = (L1-L)/(x1(i1)-x(i1))
     end do
   end if
-end subroutine LikeFunc
+end subroutine objfunc
 
 !------------------------------------------------------------------------------
-! subroutine LikeFunc0
+! subroutine objfunc0
 !
 !------------------------------------------------------------------------------
-subroutine LikeFunc0(mode,nx,x,L,GradL,nstate,iuser,ruser)
+subroutine objfunc0(mode,nx,x,L,GradL,nstate,iuser,ruser)
   use ConstantsModule
   use GlobalModule, only : Penalty
   implicit none
@@ -3834,19 +4089,22 @@ subroutine LikeFunc0(mode,nx,x,L,GradL,nstate,iuser,ruser)
     if (mode>0) then
     !  GradL = GradL/real(N,dp)
     end if
+  elseif (model==3) then
+    call EM2(mode,nx,x,L,GradL,nstate,iuser,ruser)
+    L = L/real(N,dp)
   end if
 #elif USE_MPI==1
   if (model==1) then
  !   call Like1_master(mode,nx,x,L,GradL,nstate,iuser,ruser)
-  elseif (model==2) then
-    call Like2_master(mode,nx,x,L,GradL,nstate,iuser,ruser)
+  elseif (model>=2) then
+    call objfunc_master(mode,nx,x,L,GradL,nstate,iuser,ruser)
     L = L/real(N,dp)
     if (mode>0) then
       ! GradL = GradL/real(N,dp)
     end if
   end if
 #endif
-end subroutine LikeFunc0
+end subroutine objfunc0
 
 ! PenalizedLikelihood:
 !  compute objective function for penalized likelihood for model == iuser(1)
@@ -3938,7 +4196,7 @@ subroutine PenaltyFunction(xPlus,xMinus,P,GradP)
 
 end subroutine PenaltyFunction
 
-subroutine TestGrad(LikeFunc0,nx,x,nstate,iuser,ruser)
+subroutine TestGrad(objfunc0,nx,x,nstate,iuser,ruser)
   use ConstantsModule
   use OutputModule, only : MakeFullFileName
   implicit none
@@ -3948,7 +4206,7 @@ subroutine TestGrad(LikeFunc0,nx,x,nstate,iuser,ruser)
   real(dp),     intent(inout) :: ruser(:)
 
   interface
-    subroutine LikeFunc0(mode,n,x,L,GradL,nstate,iuser,ruser)
+    subroutine objfunc0(mode,n,x,L,GradL,nstate,iuser,ruser)
       use ConstantsModule
       use GlobalModule, only : Penalty
       integer(i4b), intent(inout) :: mode
@@ -3958,7 +4216,7 @@ subroutine TestGrad(LikeFunc0,nx,x,nstate,iuser,ruser)
       real(dp),     intent(inout) :: ruser(*)
       real(dp),     intent(out)   :: L
       real(dp),     intent(inout) :: GradL(n)
-    end subroutine LikeFunc0
+    end subroutine objfunc0
   end interface
 
   integer(i4b)  :: mode
@@ -3968,7 +4226,7 @@ subroutine TestGrad(LikeFunc0,nx,x,nstate,iuser,ruser)
   real(dp)      :: x1(nx),x2(nx)
 
   mode=2
-  call LikeFunc0(mode,nx,x,L0,GradL0,nstate,iuser,ruser)
+  call objfunc0(mode,nx,x,L0,GradL0,nstate,iuser,ruser)
 
   open(UNIT   = 1033, &
        File   = MakeFullFileName('TestGrad.txt'), &
@@ -3980,8 +4238,8 @@ subroutine TestGrad(LikeFunc0,nx,x,nstate,iuser,ruser)
     x1(i1) = x(i1) + 1.0d-6
     x2(i1) = 2.0*x(i1) - x1(i1)
     mode=0
-    call LikeFunc0(mode,nx,x1,L1,DummyGrad,nstate,iuser,ruser)
-    call LikeFunc0(mode,nx,x2,L2,DummyGrad,nstate,iuser,ruser)
+    call objfunc0(mode,nx,x1,L1,DummyGrad,nstate,iuser,ruser)
+    call objfunc0(mode,nx,x2,L2,DummyGrad,nstate,iuser,ruser)
     GradL1(i1) = (L1-L2)/(x1(i1)-x2(i1))
 
     write(1033,1033) i1,x(i1),GradL0(i1),GradL1(i1)
@@ -4017,14 +4275,14 @@ subroutine ComputeHess(x,L,GradL,Hess,iuser,ruser)
   mode=1
   nstate=1
   h=1.0d-6
-  call LikeFunc0(mode,n,x,L,GradL,nstate,iuser,ruser)
+  call objfunc0(mode,n,x,L,GradL,nstate,iuser,ruser)
   do i1=1,n
     x1=x
     x2=x
     x1(i1) = x(i1) + h
     x2(i1) = 2.0d0*x(i1) - x1(i1)
-    call LikeFunc0(mode,n,x1,L1,GradL1,nstate,iuser,ruser)
-    call LikeFunc0(mode,n,x2,L2,GradL2,nstate,iuser,ruser)
+    call objfunc0(mode,n,x1,L1,GradL1,nstate,iuser,ruser)
+    call objfunc0(mode,n,x2,L2,GradL2,nstate,iuser,ruser)
     Hess(:,i1) = (GradL1 - GradL2)/(x1(i1)-x2(i1))
   end do
   Hess = 0.5d0 * (Hess+transpose(Hess))
@@ -4051,7 +4309,7 @@ subroutine ComputeHess2(x,L,Grad,Hess)
   integer(i4b)              :: TotalTime
   integer(i4b), allocatable :: SubTime(:)
   character(len=10)         :: StartTime
-  
+
   ! dummy index for array construction
   integer(i4b)              :: i_
 
@@ -4106,7 +4364,7 @@ subroutine ComputeHess2(x,L,Grad,Hess)
     print *,'ifree%xBC_COffDiag:',iFree%xBC_COffDiag(1),maxval(iFree%xBC_COffDiag)
   end if
 
-#if USE_MPI==0 
+#if USE_MPI==0
   call Like2Hess(nx,x,LHH0)
 #else
   call Like2Hess_master(nx,x,LHH0)
@@ -4430,7 +4688,7 @@ subroutine SetBounds(x,BL,BU)
 
 end subroutine SetBounds
 
-subroutine PlotLike(LikeFunc0,nx,x,xlabels,xlo,xhi,nstate,iuser,ruser)
+subroutine PlotLike(objfunc0,nx,x,xlabels,xlo,xhi,nstate,iuser,ruser)
   use ConstantsModule
   use ToolsModule, only : linspace
   use GlobalModule, only : OutDir
@@ -4443,7 +4701,7 @@ subroutine PlotLike(LikeFunc0,nx,x,xlabels,xlo,xhi,nstate,iuser,ruser)
   real(dp),     intent(inout)  :: ruser(:)
 
   interface
-    subroutine LikeFunc0(mode,n,x,L,GradL,nstate,iuser,ruser)
+    subroutine objfunc0(mode,n,x,L,GradL,nstate,iuser,ruser)
       use ConstantsModule
       use GlobalModule, only : Penalty
       integer(i4b), intent(inout) :: mode
@@ -4453,7 +4711,7 @@ subroutine PlotLike(LikeFunc0,nx,x,xlabels,xlo,xhi,nstate,iuser,ruser)
       real(dp),     intent(inout) :: ruser(*)
       real(dp),     intent(out)   :: L
       real(dp),     intent(inout) :: GradL(n)
-    end subroutine LikeFunc0
+    end subroutine objfunc0
   end interface
   integer(i4b)          :: ix,i1,n,mode
   real(dp), allocatable :: x1(:),xplot(:,:),L(:,:),GradL(:)
@@ -4475,7 +4733,7 @@ subroutine PlotLike(LikeFunc0,nx,x,xlabels,xlo,xhi,nstate,iuser,ruser)
     do i1=1,n
     !  xplot(i1,ix) = xlo(ix) + (xhi(ix)-xlo(ix))*real(i1-1,dp)/real(n-1,dp)
       x1(ix) = xplot(i1,ix)
-      call LikeFunc0(mode,nx,x1,L(i1,ix),GradL,nstate,iuser,ruser)
+      call objfunc0(mode,nx,x1,L(i1,ix),GradL,nstate,iuser,ruser)
       write(plot_unit,1762) ix,trim(xlabels(ix)),i1,xplot(i1,ix),L(i1,ix)
 1762 format(i4,',',a20,',',i4,',',d25.16,',',d25.16)
       x1(ix) = x(ix)
@@ -4555,13 +4813,13 @@ integer(i4b), allocatable :: index2(:)
 real(dp),     allocatable :: S(:),U(:,:),VT(:,:)
 real(dp),     allocatable :: B2Tilde(:,:)
 real(dp),     allocatable :: B21Tilde(:,:),B22Tilde(:,:)
-real(dp),     allocatable :: M1(:,:),DTilde(:)
+real(dp),     allocatable :: M1(:,:),M2Tilde(:)
 
 real(dp),     allocatable :: C(:,:),Omega(:,:)
-real(dp),     allocatable :: Omega11(:,:),Omega22(:,:),Omega12(:,:),C22(:,:)
+real(dp),     allocatable :: Omega11(:,:),Omega22(:,:),SigmaTilde12(:,:),C22(:,:)
 character(1)              :: UPLO
-real(dp),     allocatable :: nu(:),epsilon1(:)
-real(dp),     allocatable :: Psi(:,:),CPsi(:,:)
+real(dp),     allocatable :: nu(:),e1Tilde(:)
+real(dp),     allocatable :: Psi(:,:),COmega11(:,:)
 real(dp),     allocatable :: temp2(:,:)
 real(dp),     allocatable :: R(:,:),Q(:,:)
 integer(i4b)              :: Integrand
@@ -4659,37 +4917,38 @@ do i1=1,HHData%N
     Omega = matmul(Omega,U)
     Omega = matmul(transpose(U),Omega)
 
-    allocate(Omega11(d1,d1),Omega22(d2,d2),Omega12(d1,d2),C22(d2,d2))
+    allocate(Omega11(d1,d1),Omega22(d2,d2),SigmaTilde12(d1,d2),C22(d2,d2))
 
     Omega11 = Omega(index1,index1)
     Omega22 = Omega(index2,index2)
-    Omega12 = Omega(index1,index2)
+    SigmaTilde12 = Omega(index1,index2)
 
     ! Cholesky decomposition of Omega22: lower triangular form
     !      C22*C22' = Omega22
+
     C22 = Omega22
     UPLO = 'L'
     call F07FDF(UPLO,d2,C22,d2,ifail)
 
     allocate(Psi(d1,d1))
 
-    ! Compute  Psi = Omega11 - Omega12*inv(Omega22)*Omega12'
+    ! Compute  Psi = Omega11 - SigmaTilde12*inv(Omega22)*SigmaTilde12'
     Psi = 0.0d0
     allocate(iPivot(d2))
     allocate(temp2(d2,d1))
-    temp2 = transpose(Omega12)
+    temp2 = transpose(SigmaTilde12)
     call F04BAF(d2,d1,Omega22,d2,iPivot,temp2,d2,rCond,errBound,ifail)
-    !  Psi = Omega11 - Omega12*inv(Omega22)*Omega12'
-    !  size( inv(Omega22)*Omega12' ) = (d2 x d1)
-    Psi = Omega11 - matmul(Omega12,temp2)
+    !  Psi = Omega11 - SigmaTilde12*inv(Omega22)*SigmaTilde12'
+    !  size( inv(Omega22)*SigmaTilde12' ) = (d2 x d1)
+    Psi = Omega11 - matmul(SigmaTilde12,temp2)
     deallocate(temp2,iPivot)
 
-    allocate(CPsi(d1,d1))
+    allocate(COmega11(d1,d1))
     ! Cholesky decomposition of omega11: lower triangular form
-    !      CPsi * CPsi' = Psi
-    CPsi = Psi
+    !      COmega11 * COmega11' = Psi
+    COmega11 = Psi
     UPLO = 'L'
-    call F07FDF(UPLO,d1,CPsi,d1,ifail)
+    call F07FDF(UPLO,d1,COmega11,d1,ifail)
     if (ifail>0) then
       print *, 'Psi is not positive definite'
       print *, 'Psi'
@@ -4703,28 +4962,28 @@ do i1=1,HHData%N
       stop
     end if
 
-    allocate(M1(d3,d2),DTilde(d3))
-    ! M1*epsilon2 <= DTilde
+    allocate(M1(d3,d2),M2Tilde(d3))
+    ! M1*epsilon2 <= M2Tilde
     M1 = matmul(transpose(B22Tilde),C22)
 
     allocate(temp1(d1))
-    allocate(epsilon1(d1))
+    allocate(e1Tilde(d1))
     temp1 = matmul(VT,HHData%p(1:d1,i1))
 
     ! Compute inv(S1)*VT*p1
-    !   epsilon1 = inv(S1)*VT*p1 + S1*VT*q1
-    !   DTilde   = p2 - B21Tilde.'*inv(S1)*VT*p1 - B22Tilde.'*S1*VT*q1
+    !   e1Tilde = inv(S1)*VT*p1 + S1*VT*q1
+    !   M2Tilde   = p2 - B21Tilde.'*inv(S1)*VT*p1 - B22Tilde.'*S1*VT*q1
     Temp1 = Temp1/S(1:d1)
 
-    epsilon1 = Temp1
-    DTilde  = HHData%p(HHData%iZero(1:d3,i1),i1)               &
+    e1Tilde = Temp1
+    M2Tilde  = HHData%p(HHData%iZero(1:d3,i1),i1)               &
              - matmul(transpose(B21Tilde),Temp1)
 
     Temp1 = matmul(VT,HHData%q(1:d1,i1))
     Temp1 = Temp1*S(1:d1)
 
-    epsilon1 = epsilon1 + Temp1
-    DTilde = DTilde - matmul(transpose(B2Tilde),Temp1)
+    e1Tilde = e1Tilde + Temp1
+    M2Tilde = M2Tilde - matmul(transpose(B2Tilde),Temp1)
     deallocate(Temp1)
 
     ! M1 = R*Q  : LQ Decomposition of M1
@@ -4747,8 +5006,8 @@ do i1=1,HHData%N
     irule = merge(i1,1,size(RandomE(d2)%rule)>1)
     call ComputeProb(Prob,                                            &
                      RandomE(d2)%rule(irule)%nodes,RandomE(d2)%rule(irule)%weights, &
-                     RowGroup,R,DTilde,Integrand,                     &
-                     epsilon1,nu(index1),Omega12,C22,CPsi,Q(1:d2,:),S(index1),         &
+                     RowGroup,R,M2Tilde,Integrand,                     &
+                     e1Tilde,nu(index1),SigmaTilde12,C22,COmega11,Q(1:d2,:),S(index1),         &
                      d1,d2)
 
     ! Prob>=small
@@ -4759,11 +5018,11 @@ do i1=1,HHData%N
     deallocate(index1,index2)
     deallocate(U,S,VT)
     deallocate(B2Tilde,B21Tilde,B22Tilde)
-    deallocate(M1,DTilde)
+    deallocate(M1,M2Tilde)
     deallocate(C,Omega)
-    deallocate(Omega12,Omega11,Omega22,C22)
-    deallocate(epsilon1,nu)
-    deallocate(Psi,CPsi)
+    deallocate(SigmaTilde12,Omega11,Omega22,C22)
+    deallocate(e1Tilde,nu)
+    deallocate(Psi,COmega11)
     deallocate(iPivot,temp2)
     deallocate(R,Q)
     deallocate(RowGroup)
@@ -4783,14 +5042,14 @@ do i1=1,HHData%N
     allocate(C(parms%K,parms%K))
     call ComputeInverse_LU(parms%K,parms%InvC,C,ifail)
 
-    allocate(M1(d3,d2),DTilde(d3))
+    allocate(M1(d3,d2),M2Tilde(d3))
     M1 = matmul(transpose(parms%B),C)
 
     allocate(R(d3,d2),Q(d3,d2))
     ! M1 = R*Q
     !    R = (d3 x d2) lower triangular
     call ComputeLQ(d3,d2,M1,R,Q,ifail)
-    DTilde = p2 - matmul(transpose(parms%B),parms%MuE)
+    M2Tilde = p2 - matmul(transpose(parms%B),parms%MuE)
 
     ! Prob = integral of DensityFunc over region of x satisfying R*x<=M2_tilda
     !
@@ -4802,11 +5061,11 @@ do i1=1,HHData%N
     irule = merge(i1,1,size(RandomE(d2)%rule)>1)
     call ComputeProb(Prob,RandomE(d2)%rule(irule)%nodes, &
                      RandomE(d2)%rule(irule)%weights, &
-                     RowGroup,R,DTilde,Integrand)
+                     RowGroup,R,M2Tilde,Integrand)
     c2(index) = small - Prob
     deallocate(index)
     deallocate(C)
-    deallocate(M1,DTilde)
+    deallocate(M1,M2Tilde)
     deallocate(R ,Q)
     deallocate(RowGroup)
   end if       ! if HHData%nNonZero(i1)==parms%k
@@ -4890,6 +5149,8 @@ subroutine Max_E04JCF(x,LValue,Grad,Hess,ierr)
   real(dp), allocatable :: x0(:),x1(:),x2(:)
   integer(i4b)          :: inform
   integer(i4b)          :: ntest
+
+  integer(i4b) :: task
 
   nx = size(x,1)
 
@@ -5041,7 +5302,7 @@ subroutine OBJFUN_E04JCF(n,x,L ,iuser,ruser,inform)
   GradL = 0.0d0
   mode  = 0   ! level of likelihood only
   nstate =  0
-  call LikeFunc0(mode,n,x,L,GradL,nstate,iuser,ruser)
+  call objfunc0(mode,n,x,L,GradL,nstate,iuser,ruser)
   inform = 0
   deallocate(gradL)
 end subroutine OBJFUN_E04JCF

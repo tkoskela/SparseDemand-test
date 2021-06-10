@@ -80,12 +80,14 @@ module GlobalModule
     integer(i4b),   allocatable :: HHID(:)
     integer(i4b),   allocatable :: shopid(:)
     integer(i4b),   allocatable :: fascia(:)
+    character(len=12), allocatable :: fasciaChar(:)
     integer(i4b),   allocatable :: internet(:)
     integer(i4b),   allocatable :: SmallStore(:)
     integer(i4b),   allocatable :: date(:),day(:),month(:),week(:)
     integer(i4b)                :: nRawVars    ! number of variables in raw data file
     integer(i4b)                :: EstimationSeed
     integer(i4b)                :: SimulationSeed
+    real(dp),       allocatable :: em_weights(:,:) ! weights for em algorithm
   end type
 
   type ParmsStructure
@@ -259,7 +261,10 @@ module GlobalModule
     integer(i4b)              :: flagBD_COffDiag
     integer(i4b)              :: flagBD_month
 
-    integer(i4b)              :: OneAtATime
+    integer(i4b)              :: nPerIter  ! number free per iteration
+    integer(i4b)              :: RandFlag  ! 1 for random directions
+                                           ! 0 for non-random directions
+    integer(i4b)              :: seed
 
     character(len=20), allocatable :: xlabels(:)
     integer(i4b)              :: nHess0,nHess1 ! used by ComputeHess2
@@ -302,6 +307,7 @@ module GlobalModule
     integer(i4b)       :: LoadBasis  ! 1 to load basis info from OldBasisFile
     integer(i4b)       :: SaveBasisFreq  ! save basis every i1 iterations 
     real(dp)           :: DeltaX     ! finite difference for gradient approx.
+    real(dp)           :: em_tol     ! tolerance for EM convergence
   end type
 
   type BayesType
@@ -352,16 +358,16 @@ module GlobalModule
 
   ! Structure holding gradient of DensityFunc2 w.r.t. parameters
   type DensityGradType
-    ! (S1,nu1,Omega12,V,C2,Q,CPsi)
-    ! z1 = inv(S1) * VT * p1 + S1*VT*q1 - nu1 - Omega12 * inv(C2^T) * Q^T * x
+    ! (S1,mu1Tilde,SigmaTilde12,V,C2,Q,COmega11)
+    ! z1 = inv(S1) * VT * p1 + S1*VT*q1 - mu1Tilde - SigmaTilde12 * inv(C2^T) * Q^T * x
     real(dp), allocatable :: S1(:,:)  ! gradient w.r.t. S1  : (nx x d1)
-    real(dp), allocatable :: nu1(:,:) ! gradient w.r.t. nu1 : (nx x d1)
-    real(dp), allocatable :: Omega12(:,:,:) ! gradient w.r.t. Omega12
-                                            ! (nx x d1 x d2)
-    real(dp), allocatable :: VT(:,:,:)    ! (nx x nV x nV)  (nV = size(V))
-    real(dp), allocatable :: C2(:,:,:)    ! (nx x d2 x d2)
-    real(dp), allocatable :: Q(:,:,:)     ! (nx x d2 x d2)
-    real(dp), allocatable :: CPsi(:,:,:)  ! (nx x d1 x d1)
+    real(dp), allocatable :: mu1Tilde(:,:) ! gradient w.r.t. nu1 : (nx x d1)
+    real(dp), allocatable :: SigmaTilde12(:,:,:) ! gradient w.r.t. SigmaTilde12
+                                             ! (nx x d1 x d2)
+    real(dp), allocatable :: VT(:,:,:)       ! (nx x nV x nV)  (nV = size(V))
+    real(dp), allocatable :: C2(:,:,:)       ! (nx x d2 x d2)
+    real(dp), allocatable :: Q(:,:,:)        ! (nx x d2 x d2)
+    real(dp), allocatable :: COmega11(:,:,:) ! (nx x d1 x d1)
   end type
 
 contains
@@ -426,7 +432,7 @@ contains
     allocate(LocalParms%GradInvCOffDiag(LocalParms%K,nC))
     allocate(LocalParms%GradInvCDiag(LocalParms%K,LocalParms%K))
 
-    if (LocalParms%model==2) then
+    if (LocalParms%model>=2) then
 
       ! parameters used to define BC_C and its gradient
       ! size(BC_C)              = nBC x dim_eta
@@ -482,10 +488,11 @@ contains
     allocate(HHData%week(HHData%N))
     allocate(HHData%shopid(HHData%N))
     allocate(HHData%fascia(HHData%N))
+    allocate(HHData%fasciaChar(HHData%N))
     allocate(HHData%internet(HHData%N))
     allocate(HHData%SmallStore(HHData%N))
 
-    if (parms%model==2) then
+    if (parms%model>=2) then
       allocate(HHData%eta(parms%dim_eta,HHData%N))
     end if
   end subroutine AllocateHHData
@@ -512,10 +519,11 @@ contains
     allocate(LocalHHData%week(LocalHHData%N))
     allocate(LocalHHData%shopid(LocalHHData%N))
     allocate(LocalHHData%fascia(LocalHHData%N))
+    allocate(LocalHHData%fasciaChar(LocalHHData%N))
     allocate(LocalHHData%internet(LocalHHData%N))
     allocate(LocalHHData%SmallStore(LocalHHData%N))
 
-    if (parms%model==2) then
+    if (parms%model>=2) then
       allocate(LocalHHData%eta(parms%dim_eta,LocalHHData%N))
     end if
 end subroutine AllocateLocalHHData
@@ -576,7 +584,7 @@ end subroutine AllocateLocalHHData
     if (parms%model==1) then
       nx  = iFree%nD + iFree%nBC + iFree%nMUE + iFree%nINVCDiag +  &
             iFree%nINVCOffDiag
-    else if  (parms%model==2) then
+    else if  (parms%model>=2) then
       nx = iFree%nBC_beta + iFree%nBC_CDiag + iFree%nBC_COffDiag &
          + iFree%nBD_beta + iFree%nBD_CDiag + iFree%nBD_COffDiag &
          + iFree%nMuE + iFree%nMue_month + iFree%nInvCDiag + iFree%nInvCOffDiag     &
@@ -775,6 +783,7 @@ subroutine DeallocateLocalHHData(LocalHHData)
   deallocate(LocalHHData%HHID,LocalHHData%shopid,LocalHHData%date,LocalHHData%day)
   deallocate(LocalHHData%month,LocalHHData%week)
   deallocate(LocalHHData%fascia,LocalHHData%internet,LocalHHData%SmallStore)
+  deallocate(LocalHHData%fasciaChar)
 
   deallocate(LocalHHData%market,LocalHHData%e)
   deallocate(LocalHHData%ColumnLabels)
@@ -799,6 +808,7 @@ subroutine DeallocateGlobalVariables
   deallocate(HHData%HHID,HHData%shopid,HHData%date,HHData%day)
   deallocate(HHData%month,HHData%week)
   deallocate(HHData%fascia,HHData%internet,HHData%SmallStore)
+  deallocate(HHData%fasciaChar)
   deallocate(HHData%market,HHData%e)
   deallocate(HHData%expenditure)
   deallocate(HHData%utility)
@@ -812,7 +822,7 @@ subroutine DeallocateGlobalVariables
   deallocate(RandomE)
 
   ! deallocate RandomB
-  if (parms%model==2) then
+  if (parms%model>=2) then
     deallocate(RandomB)
   end if
 
@@ -1104,6 +1114,9 @@ subroutine InitializeParameters(InputFile)
   ErrFlag = GetVal(PropList,'DeltaX',cTemp)
   read(cTemp,'(f12.0)') MaxOptions%DeltaX
 
+  ErrFlag = GetVal(PropList,'em_tol',cTemp)
+  read(cTemp,'(f12.0)') MaxOptions%em_tol
+  
   ! NMC : 0 no MC repetitions
   !     > 0 number of MC repetitions
   ErrFlag = GetVal(PropList,'NMC',cTemp)
@@ -1152,7 +1165,7 @@ subroutine InitializeParameters(InputFile)
   ErrFlag = GetVal(PropList,'model',cTemp)
   read(cTemp,'(i3)') parms%model
 
-  if (parms%model==2) then
+  if (parms%model>=2) then
     ErrFlag = GetVal(PropList,'BC_z_dim',cTemp)
     read(cTemp,'(i5)') parms%BC_z_dim
     if (parms%BC_z_dim==0) then
@@ -1232,8 +1245,8 @@ subroutine InitializeParameters(InputFile)
   ! Read in integration rule parameters
   allocate(RandomE(parms%K))
   ErrFlag = GetVal(PropList,'IntegrationFlag',cTemp)
-  write(fmt1,'(a1,i2,a3)') '(',parms%K,'i2)'
-  read(cTemp,fmt1) RandomE(1:parms%k)%flag
+  read(cTemp,'(i2)') RandomE(1)%flag
+  RandomE(1:parms%K)%flag = RandomE(1)%flag
 
   ErrFlag = GetVal(PropList,'nQuadAll',cTemp)
   write(fmt1,'(a1,i2,a3)') '(',parms%K,'i4)'
@@ -1243,14 +1256,14 @@ subroutine InitializeParameters(InputFile)
   write(fmt1,'(a1,i2,a3)') '(',parms%K,'i3)'
   read(cTemp,fmt1) RandomE(1:parms%k)%nQuadRaw
 
-  if (parms%model==2) then
+  if (parms%model>=2) then
     allocate(RandomB(1))
     ! Define RandomB rule
     ErrFlag = GetVal(PropList,'RandomB_flag',cTemp)
     read(cTemp,'(i2)') RandomB(1)%flag
 
     ErrFlag = GetVal(PropList,'RandomB_nall',cTemp)
-    read(cTemp,'(i4)') RandomB(1)%nall
+    read(cTemp,'(i6)') RandomB(1)%nall
 
     allocate(RandomB(1)%nQuad(parms%dim_eta),source=3)
     ErrFlag = GetVal(PropList,'RandomB_nQuad',cTemp)
@@ -1258,17 +1271,13 @@ subroutine InitializeParameters(InputFile)
     write(fmt1,'(a1,i2,a3)') '(',nread,'i3)'
     read(cTemp,fmt1) RandomB(1)%nQuad(1:nRead)
 
-  end if ! (parms%model==2) then
+  end if ! (parms%model>=2) then
 
   ! initialize random number generator for:
   !   1) pseudo-MC integration rule
   !   2) simulate data for monte carlo study
   !   this subroutine sets G05State
   call InitializeG05
-
-  ! define integration rule
-  ! Define RandomE and RandomB
-!  call DefineIntegrationRule
 
   ! read in flags to select free parameters
   if (parms%model==1) then
@@ -1300,7 +1309,7 @@ subroutine InitializeParameters(InputFile)
   ErrFlag = GetVal(PropList,'free_coffdiag1',cTemp)
   read(cTemp,'(i3)') iFree%invcoffdiag1
 
-  if (parms%model==2) then
+  if (parms%model>=2) then
     ErrFlag = GetVal(PropList,'FreeFlagBC_beta',cTemp)
     read(cTemp,'(i2)') iFree%flagBC_beta
 
@@ -1347,8 +1356,14 @@ subroutine InitializeParameters(InputFile)
 
   end if
 
-  ErrFlag = GetVal(PropList,'OneAtATime',cTemp)
-  read(cTemp,'(i2)') iFree%OneAtATime
+  ErrFlag = GetVal(PropList,'nPerIter',cTemp)
+  read(cTemp,'(i2)') iFree%nPerIter
+
+  ErrFlag = GetVal(PropList,'FreeRandFlag',cTemp)
+  read(cTemp,'(i2)') iFree%RandFlag
+  
+  ErrFlag = GetVal(PropList,'FreeSeed',cTemp)
+  read(cTemp,'(i10)') iFree%seed
 
   ! Determine which block of hessian to compute
   ! used in ComputeHess2
@@ -1445,7 +1460,7 @@ end subroutine InitializeParameters
     call MatrixInverse(parms%InvC,parms%CSig,'Lower triangular')
     parms%sig  = matmul(parms%CSig,transpose(parms%CSig))
 
-    if (parms%model==2) then
+    if (parms%model>=2) then
       ! read in (BC_beta,BD_beta)
       tempfile = trim(InputDir) // '/' // trim(ParmFiles%BC_Beta)
       open(UNIT = tempunit,  &
@@ -1566,7 +1581,7 @@ end subroutine InitializeParameters
       end do
 !1420 format(<parms%BC_Z_DIM>f25.16)
       close(tempunit)
-    end if ! if (model==2) then
+    end if ! if (model>=2) then
    
     tempfile = trim(InputDir) // '/' // trim(ParmFiles%sigp)
     open(UNIT = tempunit, &
@@ -1587,36 +1602,56 @@ end subroutine ReadParameters
 subroutine CreateQuadRule(pid,nprocs)
   implicit none
   integer(i4b), intent(in) :: pid,nprocs
-  integer(i4b)             :: N1,R,nskip
-  if (nprocs>1) then
-    N1 = HHData%N / nworkers
-    R  = HHData%N - nworkers*N1
-    ! skip ahead number for random number generator
-    ! to ensure independent integration rules
-    nskip = (pid-1) * (HHData%N/(nprocs-1)+1) &
-           * sum(RandomE%nall) * (parms%K*(parms%K+1))/2
+  integer(i4b)             :: N1,R,nskip,ndraws
+  logical                  :: MC_EFlag,MC_BFlag
 
+  ! Flags for MC vs Gausian rules
+  MC_EFlag = (RandomE(1)%flag==2 .or. RandomE(1)%flag==3 .or. RandomE(1)%flag==7) 
+  MC_BFlag = .FALSE.
+  if (parms%model>=2) then
+    MC_BFlag = (RandomB(1)%flag==2 .or. RandomB(1)%flag==3 .or. RandomB(1)%flag==7) 
+  end if
+
+  if (nprocs>1) then
     if (pid>MasterID) then
+      N1 = HHData%N / nworkers
+      R  = HHData%N - nworkers*N1
+      ! ndraws = number of draws per worker
+      ! nskip  = number of draws to skip ahead to ensure
+      !          independent sequences across processors
+      if (.not. MC_EFlag .and. .not. MC_BFlag) then
+        ! Both rules gaussian
+        ndraws = 0
+      else if (MC_EFlag .and. .not. MC_BFlag) then
+        ! Only RandomE is MC rule
+        ndraws = RandomE(1)%nall * ((parms%K+1)*parms%K)/2 
+      else if (.not. MC_EFlag .and. MC_BFlag) then
+        ! Only RandomB is MC rule
+        ndraws = RandomB(1)%nall * parms%dim_eta
+      else if (MC_EFlag .and. MC_BFlag) then
+        ! Both rules are MC rules
+        ndraws = RandomE(1)%nall * ((parms%K+1)*parms%K)/2 &
+               + RandomB(1)%nall * parms%dim_eta
+      end if
+      nskip = ndraws*((pid-1)*N1+min(pid-1,R))
       N1 = merge(N1+1,N1,pid<=R)
-      call DefineIntegrationRule(N1,pid,nskip)
+      call DefineIntegrationRule(N1,pid,nskip,MC_EFlag,MC_BFlag)
     end if
   else
-    N1 = HHData%N
-    call DefineIntegrationRule(N1,pid,nskip)
+    N1    = HHData%N
+    nskip = 0
+    call DefineIntegrationRule(N1,pid,nskip,MC_EFlag,MC_BFlag)
   end if
 end subroutine CreateQuadRule
 
-subroutine DefineIntegrationRule(N1,pid,nskip)
+subroutine DefineIntegrationRule(N1,pid,nskip,MC_EFlag,MC_BFlag)
   use nag_library, only : G05KJF
   implicit none
   integer(i4b), intent(in)   :: N1,pid,nskip
+  logical,      intent(in)   :: MC_EFlag,MC_BFlag
   integer(i4b)               :: ErrFlag,flag,nall
-  integer(i4b)               :: n,i1,j1
-  character(len=PL_VAL_LEN)  :: cTemp      ! temporary character string
+  integer(i4b)               :: n,hh,k1
   integer(i4b), allocatable  :: nQuad(:)
-  integer(i4b)               :: nRead
-  character(len=20)          :: fmt1
-  integer(i4b)               :: nrules
 
   ! integration rule
   ! 0 = Gauss hermite            0 : not working
@@ -1629,58 +1664,87 @@ subroutine DefineIntegrationRule(N1,pid,nskip)
   ! skip ahead random number generator to ensure all rules are independent
   call G05KJF(nskip,G05State,ErrFlag)
 
-  do i1=1,parms%K
-    if (RandomE(i1)%flag==0 .or. RandomE(i1)%flag==6) then
+  if (.not. MC_EFlag) then
+    ! RandomE rule is Gaussian rule
+    do k1=1,parms%K
       ! Tensor product rules
       ! same rule for all households
-      nrules = 1
-      allocate(RandomE(i1)%rule(nrules))
-      allocate(RandomE(i1)%rule(1)%nQuad(i1))
-      RandomE(i1)%rule(1)%nQuad = RandomE(i1)%nQuadRaw
-      nall = product(RandomE(i1)%rule(1)%nQuad)
-    else
-      ! Monte Carlo rules
-      ! different rule for each household
-      nrules = N1
-      allocate(RandomE(i1)%rule(nrules))
-      nall = RandomE(i1)%nall
-    end if
-    do j1=1,nrules
-      allocate(RandomE(i1)%rule(j1)%nodes(nall,i1))
-      allocate(RandomE(i1)%rule(j1)%weights(nall))
-      call DefineIntegrationNodes(i1,RandomE(i1)%flag,RandomE(i1)%rule(j1)%nQuad,nall, &
-                                  RandomE(i1)%rule(j1)%nodes,RandomE(i1)%rule(j1)%weights)
+      allocate(RandomE(k1)%rule(1))
+      allocate(RandomE(k1)%rule(1)%nQuad(k1))
+      RandomE(k1)%rule(1)%nQuad = RandomE(k1)%nQuadRaw
+      nall = product(RandomE(k1)%rule(1)%nQuad)
+      allocate(RandomE(k1)%rule(1)%nodes(nall,k1))
+      allocate(RandomE(k1)%rule(1)%weights(nall))
+      call DefineIntegrationNodes(k1,RandomE(k1)%flag,RandomE(k1)%rule(1)%nQuad,nall, &
+                                  RandomE(k1)%rule(1)%nodes,RandomE(k1)%rule(1)%weights)
     end do
-  end do
+  else
+    ! allocate memory for MC RandomE rule
+    do k1=1,parms%K
+      allocate(RandomE(k1)%rule(N1))
+    end do
+  end if
 
-  if (parms%model==2) then
-    if (RandomB(1)%flag==0 .or. RandomB(1)%flag==6) then
-      ! Tensor product rule
-      RandomB(1)%nall =product(RandomB(1)%nQuad)
-      allocate(nquad(parms%dim_eta))
-      nquad = RandomB(1)%nquad
-      nrules = 1
-    else
-      ! Monte Carlo rules
-      nrules = N1
-      flag = RandomB(1)%flag
-      nall = RandomB(1)%nall
-      allocate(nquad(parms%dim_eta))
-      nquad = RandomB(1)%nquad
-      deallocate(RandomB)
-      allocate(RandomB(nrules))
-      RandomB%flag = flag
-      RandomB%nall = nall
-    end if
-    do i1=1,nrules
-      allocate(RandomB(i1)%nodes(RandomB(i1)%nall,parms%dim_eta))
-      allocate(RandomB(i1)%weights(RandomB(i1)%nall))
-      call DefineIntegrationNodes(parms%dim_eta,RandomB(i1)%flag, &
-                                  nquad, &
-                                  RandomB(i1)%nall, &
-                                  RandomB(i1)%nodes,RandomB(i1)%weights)
+  if (.not. MC_BFlag) then
+    ! RandomB rule is Gaussian rule
+    RandomB(1)%nall =product(RandomB(1)%nQuad)
+    allocate(nquad(parms%dim_eta))
+    nquad = RandomB(1)%nquad
+    allocate(RandomB(1)%nodes(RandomB(1)%nall,parms%dim_eta))
+    allocate(RandomB(1)%weights(RandomB(1)%nall))
+    call DefineIntegrationNodes(parms%dim_eta,RandomB(1)%flag, &
+                                nquad, &
+                                RandomB(1)%nall, &
+                                RandomB(1)%nodes,RandomB(1)%weights)
+  else
+    ! allocate memory for RandomB MC rule
+    flag = RandomB(1)%flag
+    nall = RandomB(1)%nall
+    allocate(nquad(parms%dim_eta))
+    nquad = RandomB(1)%nquad
+    deallocate(RandomB)
+    allocate(RandomB(N1))
+    RandomB%flag = flag
+    RandomB%nall = nall
+  end if
+
+ 
+  if (MC_EFlag) then
+    ! RandomE is MC rule
+    do hh=1,N1
+      do k1=1,parms%K
+        ! Monte Carlo rules
+        ! different rule for each household
+        nall = RandomE(k1)%nall
+        allocate(RandomE(k1)%rule(hh)%nodes(nall,k1))
+        allocate(RandomE(k1)%rule(hh)%weights(nall))
+        call DefineIntegrationNodes(k1,RandomE(k1)%flag,RandomE(k1)%rule(hh)%nQuad,nall, &
+                                    RandomE(k1)%rule(hh)%nodes,RandomE(k1)%rule(hh)%weights)
+      end do
+
+      if (MC_BFlag) then
+        ! RandomB is also MC rule
+        nall = RandomB(hh)%nall
+        allocate(RandomB(hh)%nodes(nall,parms%dim_eta))
+        allocate(RandomB(hh)%weights(nall))
+        call DefineIntegrationNodes(parms%dim_eta,RandomB(hh)%flag, &
+                                    nquad, &
+                                    nall, &
+                                    RandomB(hh)%nodes,RandomB(hh)%weights)
+      end if
     end do
-  end if ! (parms%model==2) then
+  elseif (.not. MC_EFlag .and. MC_BFlag) then
+    ! Only Random B is MC rule
+    do hh=1,N1
+      nall = RandomB(hh)%nall
+      allocate(RandomB(hh)%nodes(nall,parms%dim_eta))
+      allocate(RandomB(hh)%weights(RandomB(hh)%nall))
+      call DefineIntegrationNodes(parms%dim_eta,RandomB(hh)%flag, &
+                                  nquad, &
+                                  RandomB(hh)%nall, &
+                                  RandomB(hh)%nodes,RandomB(hh)%weights)
+    end do
+  end if !if (MC_EFlag) then
 end subroutine DefineIntegrationRule 
 
 subroutine DefineIntegrationNodes(d,flag,n1,nAll,nodes,weights)
@@ -1825,8 +1889,8 @@ elseif (flag==7) then
   call G05SAF(nall*d,G05State,x,ifail)
   x = 2.0d0*x-1.0d0
   nodes = reshape(x,(/nall,d/))
+  weights = 1.0d0/dble(nall)
   deallocate(x)
-
 end if
 
 end subroutine DefineIntegrationNodes
@@ -1864,7 +1928,7 @@ subroutine BroadcastParameters(pid)
   call mpi_bcast(parms%J,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr(14))
   call mpi_bcast(parms%K,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr(15))
   call mpi_bcast(parms%model,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr(16))
-  if (parms%model==2) then
+  if (parms%model>=2) then
     call mpi_bcast(parms%BC_z_dim,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr(17))
     call mpi_bcast(parms%BD_z_dim,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr(18))
     call mpi_bcast(parms%dim_eta,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr(19))
@@ -1975,7 +2039,7 @@ subroutine BroadcastParms(LocalParms,pid)
   end do
   nerr = nerr+3*LocalParms%K
 
-  if (LocalParms%model==2) then
+  if (LocalParms%model>=2) then
     call mpi_barrier(MPI_COMM_WORLD,ierr_barrier)
     call mpi_bcast(LocalParms%BD_beta,LocalParms%BD_z_dim,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(nerr+1))
     call mpi_bcast(LocalParms%BD_CDiag,LocalParms%J,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr(nerr+2))
@@ -2038,7 +2102,9 @@ subroutine BroadcastIFree(pid)
   call mpi_bcast(iFree%flagBD_CDiag,1,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
   call mpi_bcast(iFree%flagBD_COffDiag,1,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
   call mpi_bcast(iFree%flagBD_month,1,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
-  call mpi_bcast(iFree%OneAtATime,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr)
+  call mpi_bcast(iFree%nPerIter,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr)
+  call mpi_bcast(iFree%RandFlag,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr)
+  call mpi_bcast(iFree%seed,1,MPI_INTEGER,MasterID,MPI_COMM_WORLD,ierr)
 
   call mpi_bcast(iFree%MUE1,1,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
   call mpi_bcast(iFree%MUE_month1,1,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
@@ -2585,7 +2651,7 @@ subroutine CopyParameters(parms_in,parms_out)
   parms_out%InvCDiag = parms_in%InvCDiag
   parms_out%InvCOffDiag = parms_in%InvCOffDiag
   
-  if (parms_out%model==2) then
+  if (parms_out%model>=2) then
     parms_out%BC_beta     = parms_in%BC_beta
     parms_out%BC_C        = parms_in%BC_C
     parms_out%BC_z        = parms_in%BC_z
@@ -2605,7 +2671,7 @@ subroutine CopyParameters(parms_in,parms_out)
 
     parms_out%sigp = parms_in%sigp
 
-  end if ! if (parms_out%model==2) then
+  end if ! if (parms_out%model>=2) then
 
   parms_out%BC_lo        = parms_in%BC_lo
   parms_out%BC_hi        = parms_in%BC_hi

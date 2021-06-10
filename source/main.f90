@@ -132,10 +132,10 @@ program SparseDemand
     end if
   end if
   call DeallocateGlobalVariables
-  print *,"DeallocateGlobalVariables complete."
+  if (pid==MasterID) print *,"DeallocateGlobalVariables complete."
 #if USE_MPI==1
   call mpi_finalize(ierr)
-  print *,"mpi_finalize complete."
+  if (pid==MasterID) print *,"mpi_finalize complete."
 #endif
 end program SparseDemand
 

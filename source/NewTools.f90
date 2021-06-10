@@ -3,18 +3,50 @@
 !               Update MatrixInverse to Nag Mark 25 libraries
 !               edit SphereToMatrix to work on rectangular matrix
 module NewTools
-! Line No. | Procedure name
-!----------|-------------------------------
-! 29       | subroutine MatrixInverse(M,InvM,MatrixType)
-! 138      | subroutine SphereToMatrix(phi,r,K,J,B,GradB_phi,GradB_r) 
-! 215      | subroutine MapToCartesian(r,phi,x,dx)
-! 271      | subroutine FindColumn(i1,K,j1)
-! 292      | subroutine ComputeInverse_LU(K,A,InvA,ifail)
-! 318      ! subroutine ComputeLQ(m,n,A,L,Q,ifail)
-! 351      ! function det(A)
-! 399      ! subroutine ComputeSVD(B,S,U,VT)
 
 contains
+
+function sample(i1,nall,n,inputSeed) result(ix)
+  use ConstantsModule
+  use Ranking
+
+  implicit none
+  integer(i4b), intent(in) :: i1,nall,n
+  integer(i4b), intent(in),optional :: inputSeed
+  integer(i4b)             :: ix(n)
+
+  integer(i4b)              :: nseed,nuni,n1,i2
+  integer(i4b), allocatable :: seed(:)
+  real(dp),     allocatable :: temp(:)
+  integer(i4b), allocatable :: isort(:)
+
+  if (i1==1) then
+    call random_seed(size=nseed)
+    allocate(seed(nseed))
+    if (present(inputSeed)) then
+      seed = inputSeed
+    else
+      seed = 45728474
+    end if
+    call random_seed(put=seed)
+  end if
+
+  allocate(temp(n))
+  call random_number(temp)
+
+  ix = ceiling(temp*nall)
+  allocate(isort(n))
+  call unirank(ix,isort,nuni)
+  ix = ix(isort)
+  do while (nuni<n)
+    n1 = n-nuni
+    call random_number(temp((/(i2,i2=1,n1)/)))
+    ix((/(i2,i2=nuni+1,n)/)) = ceiling(nall*temp((/(i2,i2=1,n1)/)))
+    call unirank(ix,isort,nuni)
+    ix = ix(isort)
+  end do
+
+end function Sample
 
 subroutine ComputeMatrixType(M,MatrixType)
   use ConstantsModule
@@ -75,7 +107,7 @@ subroutine MatrixInverse(M,InvM,RawMatrixType)
   real(dp),                   intent(out) :: InvM(:,:)
   character(len=*), optional, intent(in)  :: RawMatrixType
   character(len=50)                       :: MatrixType
-  !variables used by F01ABF to compute inverse 
+  !variables used by F01ABF to compute inverse
   !   F01ABF:  invert pos.def. symmetric matrix
   real(dp), allocatable :: A(:,:),A1(:,:),B(:,:),Z(:)
   integer(i4b)          :: n,IA,IB,ifail
@@ -165,7 +197,7 @@ subroutine MatrixInverse(M,InvM,RawMatrixType)
       call F01BLF(N,N,tol,B,N,AIJMAX,IRANK,INC,D,U,N,DU,IFAIL)
       deallocate(INC,AIJMAX,D,U,DU)
       B = transpose(B)
-    
+
       A = matmul(B,A)
       ! Compute solution x to (B*A)*x = B
       allocate(pivot(n))
@@ -220,11 +252,11 @@ subroutine MatrixInverse(M,InvM,RawMatrixType)
   end select
 end subroutine MatrixInverse
 
-! subroutine SphereToMatrix(phi,r,K,J,B,GradB_phi,GradB_r) 
-! 
+! subroutine SphereToMatrix(phi,r,K,J,B,GradB_phi,GradB_r)
+!
 ! B is a (K x J) matrix.
 !
-! For i<=K, B(:,i) is upper triangular and 
+! For i<=K, B(:,i) is upper triangular and
 !   B(1,1)   = r(1)
 !   B(1:2,2) = MapToCartesian(r(2),phi(1))
 !   B(1:3,3) = MapToCartesian(r(3),phi(2:3)
@@ -244,7 +276,7 @@ end subroutine MatrixInverse
 ! modification history
 ! --------------------
 ! 09DEC2012 LN  translated from matlab file SphereToMatrix.m
-subroutine SphereToMatrix(phi,r,K,J,B,GradB_phi,GradB_r) 
+subroutine SphereToMatrix(phi,r,K,J,B,GradB_phi,GradB_r)
   use ConstantsModule
   implicit none
   real(dp),     intent(in)  :: phi(:)
@@ -261,16 +293,16 @@ subroutine SphereToMatrix(phi,r,K,J,B,GradB_phi,GradB_r)
   real(dp), allocatable     :: temp1(:),temp2(:,:)
   ! Determine size of x and check it is compatible with dimensions of M
   n = size(phi)
-  
+
   if (n .ne. (K*(K-1)/2+ (K-1)*(J-K))) then
     nPhi = K*(K-1)/2+K*(J-K)
     print *, 'J   K   n   nPhi'
     print *, J,K,n,nPhi
     print *, 'Error in SphereToMatrix. Mismatch between size of phi and dimensions of B.'
-    
+
     stop
   end if
-  
+
   B         = 0.0d0
   if (present(GradB_phi)) then
     GradB_phi = 0.0d0
@@ -287,7 +319,7 @@ subroutine SphereToMatrix(phi,r,K,J,B,GradB_phi,GradB_r)
   do i1 = 2,K
     ! B is upper triangular
     ! B(1:i1,i1) = is set by elements of phi(index) and r(i1)
-   
+
     tempindex((/(ix,ix=1,i1-1)/)) = (i1-1)*(i1-2)/2 + (/(ix,ix=1,i1-1)/)
     GradB0 = 0.0d0
     allocate(temp1(i1),temp2(i1,i1))
@@ -357,7 +389,7 @@ subroutine MatrixToSphere(C,D,PHI)
       PHI((/(ix,ix=j1,j2)/)) = temp
     end do
     deallocate(temp)
-  end if 
+  end if
 
 end subroutine MatrixToSphere
 
@@ -368,7 +400,7 @@ subroutine MapToCartesian(r,phi,x,dx)
 ! gradient of map
 ! r   (1 x 1)
 ! phi (n-1 x 1)   phi(i1) is in [0,pi] for i1<n-1
-!                 phi(n-1) is in [0,2*pi) 
+!                 phi(n-1) is in [0,2*pi)
 !                 However, since we only want positive elements for x(n)
 !                 we restrict phi(n-1) to be in [0,pi]
 ! x   (n x 1)
@@ -381,7 +413,7 @@ subroutine MapToCartesian(r,phi,x,dx)
   real(dp), intent(in)  :: phi(:)
   real(dp), intent(out) :: x(:)
   real(dp), optional,intent(out) :: dx(:,:)
-  
+
   integer(i4b) :: i1,i2,ix
   integer(i4b) :: n
   real(dp), allocatable :: s1(:),c1(:),s1A(:)
@@ -487,7 +519,7 @@ subroutine FindColumn(i1,K,j1)
    integer(i4b), intent(in)  :: i1,K
    integer(i4b), intent(out) :: j1
 if (i1<=K*(K-1)/2) then
-  j1 = floor(0.5d0*(3.0d0+dsqrt(8.0d0*real(i1)-7.0d0)))    
+  j1 = floor(0.5d0*(3.0d0+dsqrt(8.0d0*real(i1)-7.0d0)))
 else
   j1 = ceiling( real(i1)/real(K-1) + 0.5d0*real(K))
 end if
@@ -546,9 +578,6 @@ subroutine ComputeLQ(m,n,A,L,Q,ifail)
   integer(i4b)          :: i1,ix
   real(dp), allocatable :: QTemp(:,:)
 
-!  external F08AHF
-!  external F08AJF
-
   LWork =  5*m
   allocate(tau(min(m,n)),work(LWork))
   allocate(QTemp(m,n))
@@ -602,7 +631,7 @@ subroutine ComputeSVD(B,U,S,VT)
   real(dp), intent(out) :: U(:,:)
   real(dp), intent(out) :: S(:)
   real(dp), intent(out) :: VT(:,:)
-  
+
   real(dp), allocatable :: B1(:,:)
   ! size(B)  = (d1 x d2)
   ! size(S)  = d1  (non zero elements of a (d1 x d2) matrix
@@ -627,4 +656,5 @@ subroutine ComputeSVD(B,U,S,VT)
 
   deallocate(work,B1)
 end subroutine ComputeSVD
+
 end module NewTools

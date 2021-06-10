@@ -62,6 +62,7 @@ MOD_OBJS = \
     ConstantsModule.o \
 	ToolsModule.o \
 	PropertyList.o \
+	Ranking.o \
 	NewTools.o \
 	GaussianQuadrature.o \
 	GlobalModule.o \

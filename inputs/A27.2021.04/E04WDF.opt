@@ -2,7 +2,7 @@ Begin
 *  Central Difference Interval = 0.0001
 *  Difference Interval = 0.0001
   Derivative Level = 0
-*  Function Precision = 1.7e-3
+  Function Precision = 1.7e-6
   Major Optimality Tolerance = 1.0e-02
   Iterations Limit = 50000
   Major Iterations Limit = 500 

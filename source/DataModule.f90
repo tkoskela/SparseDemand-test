@@ -192,8 +192,8 @@ subroutine CreateData(IMC)
   crit = 1e-4
 
   do i1=1,HHData%N
-    if (parms0%model==2) then
-      ! if model==2, each HH TempB is a random coefficient
+    if (parms0%model>=2) then
+      ! if model>=2, each HH TempB is a random coefficient
       call ComputeCurrentB(HHData%eta(:,i1),parms0,HHData%month(i1))
     end if
 
@@ -262,7 +262,7 @@ subroutine DrawRandomCoefficients(HHData_local,random_state)
   deallocate(R,e)
 
   ! Random coefficients in utility
-  if (parms%model==2) then
+  if (parms%model>=2) then
     ! Random coefficients in BD:  eta
     ifail = 0
     LR = parms%dim_eta*(parms%dim_eta+1)+1
@@ -534,7 +534,7 @@ subroutine LoadData
   implicit none
   integer(i4b)                    :: DataUnit,iComma,i1,ix
   character(400)                  :: AllLabels
-  real(dp),           allocatable :: qp(:,:),err(:,:),tiering(:,:),expenditure(:)
+  real(dp),           allocatable :: q(:),qp(:,:),err(:,:),tiering(:,:),expenditure(:)
   character(len=100), allocatable :: RawDataLabels(:)
   integer(i4b),       allocatable :: year(:)
   character(len=50)               :: fmt1
@@ -544,26 +544,9 @@ subroutine LoadData
        file = HHData%RawDataFile, &
        action = 'read')
 
-  ! read in variable labels
-  read(DataUnit,371) AllLabels
-371 format(a)
-
-  ! copy variable labels to a vector of characters
   allocate(RawDataLabels(HHData%nRawVars))
-  do i1=1,HHData%nRawVars
-    ! iComma = end of current data field
-    iComma = index(AllLabels,',')
-    if (iComma>0) then
-      RawDataLabels(i1) = AllLabels(1:icomma-1)
-      AllLabels         = AllLabels(icomma+1:400)
-      !RawDataLabels(i1) = AllLabels((/(ix,ix=1,iComma-1)/))
-      !AllLabels = AllLabels((/(ix,ix=iComma+1,400)/))
-    else
-      RawDataLabels(i1) = AllLabels
-      exit
-    end if
-  end do
-
+  read(DataUnit,*) RawDataLabels
+  
   allocate(qp(HHData%N,2*parms%J))
   allocate(tiering(HHData%N,parms%J))
   allocate(expenditure(HHData%N))
@@ -622,10 +605,35 @@ subroutine LoadData
     HHData%month = (HHData%date - 10000 * year) / 100
     HHData%week  = min(HHData%day/7 +1,52)
     deallocate(year)
+  case('20210417')
+    ! 20210417 Data Format
+    ! 1 hhno       int(5)
+    ! 2 day        int(3)
+    ! 3 month      int(2)
+    ! 4 shopid     int(5)
+    ! 5 fascia     character(11)
+    ! 6 smallStore int(1)
+    ! 7 internet   int(1)
+    ! 8 nitems     int(1)
+    ! 9-35   p     real
+    ! 36-62  q     real
+    allocate(q(parms%J))
+    do i1=1,HHData%N
+      read(DataUnit,*) HHData%HHID(i1),HHData%date(i1),HHData%month(i1),  &
+                       HHData%shopid(i1),HHData%fasciaChar(i1), &
+                       HHData%SmallStore(i1),HHData%internet(i1),HHData%nNonZero(i1), &
+                       HHData%p(:,i1),q
+      HHData%q((/(ix,ix=1,HHData%nNonZero(i1))/),i1) &
+          = pack(q,q>0.0d0)
+      HHData%iNonZero((/(ix,ix=1,HHData%nNonZero(i1))/),i1) &
+          = pack((/(ix,ix=1,parms%J)/),q>0.0d0)
+      HHData%iZero((/(ix,ix=1,parms%J-HHData%nNonZero(i1))/),i1) &
+          = pack((/(ix,ix=1,parms%J)/),q==0.0d0)
+    end do
+    ! Create month and week
+    HHData%week  = min(HHData%day/7 +1,52)
   end select
-  deallocate(qp,err)
   close(DataUnit)
-  deallocate(RawDataLabels)
 
 end subroutine LoadData
 
