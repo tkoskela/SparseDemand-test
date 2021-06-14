@@ -20,7 +20,7 @@ module GlobalModule
     character(len=99) :: TaxParmsFile
   end type
   type(FilenameStructure) :: ParmFiles
- 
+
   type ResultStructure
     real(dp)     :: BIC
     real(dp)     :: MinEigHess
@@ -115,7 +115,7 @@ module GlobalModule
     real(dp), allocatable :: GradBD(:,:)          ! (K x J) gradient of B w.r.t. D
     real(dp), allocatable :: GradInvCOffDiag(:,:) ! (K x n) gradient of InvC w.r.t. OffDiag
     real(dp), allocatable :: GradInvCDiag(:,:)    ! (K x K) gradient of InvC w.r.t. Diag
-    
+
     ! Random B parameters
     !   B      = SphereToMatrix(C,D)
     !   log(D) = BD_Z*BD_beta + BD_C * eta
@@ -129,7 +129,7 @@ module GlobalModule
     !   size(yc)    = K*(K-1)/2 + (J-K) * (K-1)
     !               = nBC
     !   size(BC_Z)  = (nBC x BC_Z_DIM)
-    !       
+    !
     integer(i4b)          :: dim_eta      ! dimension of random coefficients in
                                           ! (BC,BD)
     integer(i4b)          :: BD_z_dim,BC_z_dim  ! dimension of product characteristics
@@ -164,13 +164,13 @@ module GlobalModule
     real(dp), allocatable :: MUE_L(:),MUE_H(:)
     real(dp), allocatable :: InvCDiag_L(:),InvCDiag_H(:)
     real(dp), allocatable :: InvCOffDiag_L(:),InvCOffDiag_H(:)
-    
-    real(dp)              :: BC_lo,BC_hi  ! BC(i1) = bc_lo + (bc_hi-bc_lo) * pi 
+
+    real(dp)              :: BC_lo,BC_hi  ! BC(i1) = bc_lo + (bc_hi-bc_lo) * pi
                                           !                 * normcdf(y)
     real(dp)              :: InvCDiag_LO  ! BL(InvCDiag) = InvCDiag_LO
     real(dp)              :: InvCDiag_HI  ! BU(InvCDiag) = x + InvCDiag_HI
-    real(dp)              :: InvCOffDiag_LO !BL(InvCOffDiag) = pi * InvCOffDiag_LO 
-    real(dp)              :: InvCOffDiag_HI !BL(InvCOffDiag) = pi * InvCOffDiag_HI 
+    real(dp)              :: InvCOffDiag_LO !BL(InvCOffDiag) = pi * InvCOffDiag_LO
+    real(dp)              :: InvCOffDiag_HI !BL(InvCOffDiag) = pi * InvCOffDiag_HI
     real(dp)              :: BC_beta_lo   ! lower bound
     real(dp)              :: BC_beta_hi   ! upper bound
     real(dp)              :: BC_CDiag_lo   ! lower bound
@@ -179,10 +179,10 @@ module GlobalModule
     real(dp)              :: BD_beta_hi   ! upper bound
     real(dp)              :: BD_CDiag_lo   ! lower bound
     real(dp)              :: BD_CDiag_hi   ! upper bound
-   
+
     real(dp)              :: BD_month_lo  ! lower bound
     real(dp)              :: BD_month_hi  ! upper bound
- 
+
     ! parameters used to determine details of analysis of results
     integer(i4b) :: nPrices_plot  ! number of prices to plot when demand plotting
   end type
@@ -227,7 +227,7 @@ module GlobalModule
     integer(i4b)              :: bc_beta1,bc_cdiag1,bc_coffdiag1
     integer(i4b)              :: bd_month1
 
-    integer(i4b)              :: nD 
+    integer(i4b)              :: nD
     integer(i4b)              :: nBC
     integer(i4b)              :: nMuE
     integer(i4b)              :: nMue_month
@@ -237,9 +237,9 @@ module GlobalModule
     integer(i4b)              :: nBD_beta
     integer(i4b)              :: nBD_CDiag
     integer(i4b)              :: nBD_COffDiag
-   
+
     integer(i4b)              :: nBD_month
- 
+
     integer(i4b)              :: nBC_beta
     integer(i4b)              :: nBC_CDiag
     integer(i4b)              :: nBC_COffDiag
@@ -273,7 +273,7 @@ module GlobalModule
   end type
 
   type PenaltyStructureType
-    integer(i4b)              :: method 
+    integer(i4b)              :: method
     integer(i4b)              :: nx   ! size of structural parameters
     integer(i4b)              :: nx1  ! size of unpenalized structural parameters
     integer(i4b)              :: nx2  ! size of penalized structural parameters
@@ -305,7 +305,7 @@ module GlobalModule
     character(len=200) :: OldBasisFile
     integer(i4b)       :: SaveBasis  ! 1 to save basis info in BasisFile
     integer(i4b)       :: LoadBasis  ! 1 to load basis info from OldBasisFile
-    integer(i4b)       :: SaveBasisFreq  ! save basis every i1 iterations 
+    integer(i4b)       :: SaveBasisFreq  ! save basis every i1 iterations
     real(dp)           :: DeltaX     ! finite difference for gradient approx.
     real(dp)           :: em_tol     ! tolerance for EM convergence
   end type
@@ -348,6 +348,9 @@ module GlobalModule
   ! Output directory
   character(len=200)          :: OutDir
   character(len=200)          :: InputDir
+
+  character(len=5), parameter :: OutParmsDir = 'parms'
+  character(len=5), parameter :: TestFileName = 'a.txt'
 
   real(dp)                    :: inf
   real(dp)                    :: small
@@ -540,9 +543,9 @@ end subroutine AllocateLocalHHData
     character(len=PL_VAL_LEN)       :: cTemp      ! temporary character string
     integer(i4b) :: ErrFlag,ierr,ix
     real(dp)     :: lambda
- 
+
     ! method = 1   max L(x1,x2) + P(x2)  subject to   x2 = xPLus-xMinus
-    !                                                 0 <= xPlus 
+    !                                                 0 <= xPlus
     !                                                 0 <= xMinus
 
     ! read data from parameter file
@@ -550,21 +553,21 @@ end subroutine AllocateLocalHHData
     if (pid==MasterID) then
       ErrFlag = GetVal(PropList,'method',cTemp)
       read(cTemp,'(i2)') method
- 
+
       ErrFlag = GetVal(PropList,'nx1',cTemp)
       read(cTemp,'(i4)') nx1
-    
+
       ErrFlag = GetVal(PropList,'lambda',cTemp)
       read(cTemp,'(f11.0)') lambda
-    
+
       ! number of values of lambda to try
       ErrFlag = GetVal(PropList,'nLambda',cTemp)
       read(cTemp,'(i4)') Penalty%nLambda
-    
+
       ! minimum value of lambda
       ErrFlag = GetVal(PropList,'MinLambda',cTemp)
       read(cTemp,'(f11.0)') Penalty%MinLambda
-    
+
       ! max value of lambda
       ErrFlag = GetVal(PropList,'MaxLambda',cTemp)
       read(cTemp,'(f11.0)') Penalty%MaxLambda
@@ -579,7 +582,7 @@ end subroutine AllocateLocalHHData
   call mpi_bcast(lambda,1,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr)
   call mpi_bcast(Penalty%MinLambda,1,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr)
   call mpi_bcast(Penalty%MaxLambda,1,MPI_DOUBLE_PRECISION,MasterID,MPI_COMM_WORLD,ierr)
-#endif 
+#endif
 
     if (parms%model==1) then
       nx  = iFree%nD + iFree%nBC + iFree%nMUE + iFree%nINVCDiag +  &
@@ -594,28 +597,28 @@ end subroutine AllocateLocalHHData
     nx2 = nx-nx1
     nxP = nx + 2*nx2
 
-    Penalty%method    = method 
+    Penalty%method    = method
     Penalty%nx        = nx
     Penalty%nx1       = nx1
     Penalty%nx2       = nx2
     Penalty%nxP       = nxP
     Penalty%lambda    = lambda
-    
+
     ! x_index1 = elements that are NOT penalized
     allocate(Penalty%x_index1(nx1))
     allocate(Penalty%xP_index1(nx1))
 
     Penalty%x_index1 = (/(ix,ix=1,nx1)/)
     Penalty%xP_index1 = Penalty%x_index1
- 
+
     ! x_index2 = elements that are penalized
     allocate(Penalty%x_index2(nx2),Penalty%xP_index2(nx2))
     Penalty%x_index2  = nx1+(/(ix,ix=1,nx2)/)
     Penalty%xP_index2 = Penalty%x_index2
-    
+
     allocate(Penalty%xP_index_xPlus(nx2))
     Penalty%xP_index_xPlus = nx + (/(ix,ix=1,nx2)/)
-  
+
     allocate(Penalty%xP_index_xMinus(nx2))
     Penalty%xP_index_xMinus = nx+nx2+(/(ix,ix=1,nx2)/)
 
@@ -646,7 +649,7 @@ subroutine ComputeNMC(pid,NMC,IMC1,IMC2)
   NMC2 = NMC+1
   N1 = NMC-(nWorkers+1)*NMC1
   N2 = nWorkers+1-N1
-  
+
   allocate(j1(N1),j2(N2))
 !  J1 = (/1:1+(N1-1)*NMC1:NMC1/)
   J1 = (/(ix,ix=1,(N1-1)*NMC1+1,NMC1)/)
@@ -682,7 +685,7 @@ subroutine DeallocateParms(LocalParms)
   if (allocated(LocalParms%MUE)) then
     deallocate(LocalParms%MUE)
   end if
-  
+
   if (allocated(LocalParms%MUE_month)) then
     deallocate(LocalParms%MUE_month)
   end if
@@ -910,7 +913,7 @@ end subroutine DeallocateIFree
 !------------------------------------------------------------------------------
 subroutine GetInputFile(InputFile)
     implicit none
- 
+
     character(LEN=*), intent(out)    :: InputFile              ! name of parameter input file
     integer(i4b)                     :: nArgs                  ! number of cmd. line args.
     integer, parameter               :: MaxArgLength=128       ! max. cmd. line arg. length
@@ -968,7 +971,7 @@ subroutine InitializeParameters(InputFile)
 
     ! check whether outputdirectory exists.
     ! If not, create.
-    TempFile = trim(OutDir) // '/' // 'a.txt'
+    TempFile = trim(OutDir) // '/' // trim(TestFileName)
     open(unit=85,file=TempFile,action='write',iostat=DirStatus)
     close(85)
     if (DirStatus .ne. 0) then
@@ -981,7 +984,7 @@ subroutine InitializeParameters(InputFile)
         stop
       end if
     end if
-    
+
     ! name of input directory
     ErrFlag = GetVal(PropList,'InputDir',InputDir)
     if (ErrFlag /= PL_OK) then
@@ -1011,7 +1014,7 @@ subroutine InitializeParameters(InputFile)
 
    ! number of prices to plot when plotting demand
    ErrFlag = GetVal(PropList,'nPrices_plot',cTemp)
-   read(cTemp,'(i4)') parms%nPrices_plot 
+   read(cTemp,'(i4)') parms%nPrices_plot
 
    ! Parameter filenames
    ErrFlag = GetVal(PropList,'MUE_FILE',ParmFiles%MUE)
@@ -1028,7 +1031,7 @@ subroutine InitializeParameters(InputFile)
    ErrFlag = GetVal(PropList,'SIGP_FILE',ParmFiles%sigp)
    ErrFlag = GetVal(PropList,'BD_Z_FILE',ParmFiles%BD_Z)
    ErrFlag = GetVal(PropList,'BC_Z_FILE',ParmFiles%BC_Z)
-   
+
    ! outputFlag: 0 do not save output
    !             1 save output
    ErrFlag = GetVal(PropList,'OutputFlag',cTemp)
@@ -1053,7 +1056,7 @@ subroutine InitializeParameters(InputFile)
   !                1 save data to file
   ErrFlag = GetVal(PropList,'SaveDataFlag',cTemp)
   read(cTemp,'(i2)') ControlOptions%SaveDataFlag
-  
+
   ! SimulateDataFlag : 0 load data from disk
   !                    1 simulate data
   ErrFlag = GetVal(PropList,'SimulateDataFlag',cTemp)
@@ -1068,7 +1071,7 @@ subroutine InitializeParameters(InputFile)
   !           1 = each processor, subset of data
   ErrFlag = GetVal(PropList,'MPIFlag',cTemp)
   read(cTemp,'(i2)') ControlOptions%MPIFlag
-  
+
   ! HotStart 1 = load parameters from previous results
   !          0 = use default parameter values
   ErrFlag = GetVal(PropList,'HotStart',cTemp)
@@ -1077,11 +1080,11 @@ subroutine InitializeParameters(InputFile)
   ! set maximization options
   ErrFlag = GetVal(PropList,'MaxAlgorithm',cTemp)
   read(cTemp,'(i2)') MaxOptions%Algorithm
-  
+
   ! Absolute tolerance for D01ESF Bayesian estimator
   ErrFlag = GetVal(PropList,'AbsoluteTolerance',cTemp)
   read(cTemp,'(f12.0)') MaxOptions%AbsTol
-  
+
   ! Relative tolerance for D01ESF Bayesian estimator
   ErrFlag = GetVal(PropList,'RelativeTolerance',cTemp)
   read(cTemp,'(f12.0)') MaxOptions%RelTol
@@ -1104,7 +1107,7 @@ subroutine InitializeParameters(InputFile)
 
   ErrFlag = GetVal(PropList,'BasisFile',cTemp)
   MaxOptions%BasisFile = trim(OutDir) // '/' // trim(cTemp)
-  
+
   ErrFlag = GetVal(PropList,'OldBasisFile',cTemp)
   MaxOptions%OldBasisFile = trim(OutDir) // '/' // trim(cTemp)
 
@@ -1116,7 +1119,7 @@ subroutine InitializeParameters(InputFile)
 
   ErrFlag = GetVal(PropList,'em_tol',cTemp)
   read(cTemp,'(f12.0)') MaxOptions%em_tol
-  
+
   ! NMC : 0 no MC repetitions
   !     > 0 number of MC repetitions
   ErrFlag = GetVal(PropList,'NMC',cTemp)
@@ -1139,20 +1142,20 @@ subroutine InitializeParameters(InputFile)
   read(cTemp,'(i4)') HHData%nRawVars
 
   ! file for parms output
-  TempDir = trim(OutDir) // '/parms'
-  TempFile = trim(TempDir) // 'a.txt'
+  TempDir = trim(OutDir) // '/' // trim(OutParmsDir)
+  TempFile = trim(TempDir) // '/' // trim(TestFileName)
   open(unit=85,file=TempFile,action='write',iostat=DirStatus)
   close(85)
   if (DirStatus .ne. 0) then
-      print *, 'Warning: parms directory does not exist.'
-      print *, 'Creating ',trim(TempDir),'.'
-      cmd_string = 'mkdir ' // trim(tempDir)
-      DirStatus = system(trim(cmd_string))
-      if (DirStatus .ne. 0) then
-        print *, 'Error: Failed to create output directory ', trim(TempDir), '.'
-        stop
-      end if
+    print *, 'Warning: ' // trim(OutParmsDir) // ' directory does not exist.'
+    print *, 'Creating ',trim(TempDir),'.'
+    cmd_string = 'mkdir ' // trim(tempDir)
+    DirStatus = system(trim(cmd_string))
+    if (DirStatus .ne. 0) then
+      print *, 'Error: Failed to create output directory ', trim(TempDir), '.'
+      stop
     end if
+  end if
   ! output file for parameters
   parms%file  = trim(TempDir) // '/parms.csv'
   parms%unit = 51
@@ -1178,25 +1181,25 @@ subroutine InitializeParameters(InputFile)
 
     ErrFlag = GetVal(PropList,'BC_lo',cTemp)
     read(cTemp,'(f12.0)') parms%BC_lo
-    
+
     ErrFlag = GetVal(PropList,'BC_hi',cTemp)
     read(cTemp,'(f12.0)') parms%BC_hi
 
     ErrFlag = GetVal(PropList,'InvCDiag_LO',cTemp)
     read(cTemp,'(f12.0)') parms%InvCDiag_LO
-    
+
     ErrFlag = GetVal(PropList,'InvCDiag_HI',cTemp)
     read(cTemp,'(f12.0)') parms%InvCDiag_HI
-    
+
     ErrFlag = GetVal(PropList,'InvCOffDiag_LO',cTemp)
     read(cTemp,'(f12.0)') parms%InvCOffDiag_LO
-    
+
     ErrFlag = GetVal(PropList,'InvCOffDiag_HI',cTemp)
     read(cTemp,'(f12.0)') parms%InvCOffDiag_HI
-    
+
     ErrFlag = GetVal(PropList,'BC_beta_lo',cTemp)
     read(cTemp,'(f12.0)') parms%BC_beta_lo
-    
+
     ErrFlag = GetVal(PropList,'BC_beta_hi',cTemp)
     read(cTemp,'(f12.0)') parms%BC_beta_hi
 
@@ -1208,13 +1211,13 @@ subroutine InitializeParameters(InputFile)
 
     ErrFlag = GetVal(PropList,'BD_beta_lo',cTemp)
     read(cTemp,'(f12.0)') parms%BD_beta_lo
-    
+
     ErrFlag = GetVal(PropList,'BD_beta_hi',cTemp)
     read(cTemp,'(f12.0)') parms%BD_beta_hi
-    
+
     ErrFlag = GetVal(PropList,'BD_CDiag_lo',cTemp)
     read(cTemp,'(f12.0)') parms%BD_CDiag_lo
-   
+
     ErrFlag = GetVal(PropList,'BD_CDiag_hi',cTemp)
     read(cTemp,'(f12.0)') parms%BD_CDiag_hi
 
@@ -1321,16 +1324,16 @@ subroutine InitializeParameters(InputFile)
 
     ErrFlag = GetVal(PropList,'FreeFlagBD_CDiag',cTemp)
     read(cTemp,'(i2)') iFree%flagBD_CDiag
-  
+
     ErrFlag = GetVal(PropList,'FreeFlagBC_COffDiag',cTemp)
     read(cTemp,'(i2)') iFree%flagBC_COffDiag
 
     ErrFlag = GetVal(PropList,'FreeFlagBD_COffDiag',cTemp)
     read(cTemp,'(i2)') iFree%flagBD_COffDiag
-    
+
     ErrFlag = GetVal(PropList,'FreeFlagBD_month',cTemp)
     read(cTemp,'(i2)') iFree%flagBD_month
-    
+
     ! Read in (bc_beta1,bc_cdiag1,bc_coffdiag1)
     ! read in (bd_beta1,bd_cdiag1,bd_coffdiag1)
     ErrFlag = GetVal(PropList,'free_bc_beta1',cTemp)
@@ -1338,19 +1341,19 @@ subroutine InitializeParameters(InputFile)
 
     ErrFlag = GetVal(PropList,'free_bc_cdiag1',cTemp)
     read(ctemp,'(i3)') iFree%bc_cdiag1
-    
+
     ErrFlag = GetVal(PropList,'free_bc_coffdiag1',cTemp)
     read(ctemp,'(i3)') iFree%bc_coffdiag1
-    
+
     ErrFlag = GetVal(PropList,'free_bd_beta1',cTemp)
     read(ctemp,'(i3)') iFree%bd_beta1
 
     ErrFlag = GetVal(PropList,'free_bd_cdiag1',cTemp)
     read(ctemp,'(i3)') iFree%bd_cdiag1
-    
+
     ErrFlag = GetVal(PropList,'free_bd_coffdiag1',cTemp)
     read(ctemp,'(i3)') iFree%bd_coffdiag1
-    
+
     ErrFlag = GetVal(PropList,'free_bd_month1',cTemp)
     read(ctemp,'(i3)') iFree%bd_month1
 
@@ -1361,7 +1364,7 @@ subroutine InitializeParameters(InputFile)
 
   ErrFlag = GetVal(PropList,'FreeRandFlag',cTemp)
   read(cTemp,'(i2)') iFree%RandFlag
-  
+
   ErrFlag = GetVal(PropList,'FreeSeed',cTemp)
   read(cTemp,'(i10)') iFree%seed
 
@@ -1471,7 +1474,7 @@ end subroutine InitializeParameters
         read(tempunit,'(g25.16)') parms%BC_beta(i1)
       end do
       close(tempunit)
-    
+
       tempfile = trim(InputDir) //  '/' // trim(ParmFiles%BD_Beta)
       open(UNIT = tempunit,  &
            FILE = tempfile,  &
@@ -1481,7 +1484,7 @@ end subroutine InitializeParameters
         read(tempunit,'(g25.16)') parms%BD_beta(i1)
       end do
       close(tempunit)
-   
+
       ! read (BC_CDiag,BD_CDiag)
       tempfile = trim(InputDir) // '/' // trim(ParmFiles%BC_CDiag)
       open(UNIT = tempunit,  &
@@ -1505,7 +1508,7 @@ end subroutine InitializeParameters
 
       ! BD_month: default = 0.0
       parms%BD_month = 0.0d0
- 
+
       ! read (BC_COffDiag,BD_COffDiag)
       tempfile = trim(InputDir) // '/' // trim(ParmFiles%BC_COffDiag)
       open(UNIT = tempunit,  &
@@ -1559,7 +1562,7 @@ end subroutine InitializeParameters
            file=tempfile, &
            action='read')
       parms%BD_Z = 0.0d0
-      
+
       write(fmt1,'(a1,i2,a7)') '(',parms%BD_Z_DIM,'g25.16)'
       do i1=1,parms%J
         read(tempunit,fmt1) parms%BD_Z(i1,:)
@@ -1582,7 +1585,7 @@ end subroutine InitializeParameters
 !1420 format(<parms%BC_Z_DIM>f25.16)
       close(tempunit)
     end if ! if (model>=2) then
-   
+
     tempfile = trim(InputDir) // '/' // trim(ParmFiles%sigp)
     open(UNIT = tempunit, &
          FILE = tempfile, &
@@ -1591,12 +1594,12 @@ end subroutine InitializeParameters
     parms%sigp = 0.0d0
     do i1=1,parms%J*parms%J
       row = (i1-1)/parms%J + 1
-      col = i1-parms%J*(row-1)  
+      col = i1-parms%J*(row-1)
       read(tempunit,897) parms%sigp(row,col)
     end do
     897 format(f25.0)
     close(tempunit)
-    
+
 end subroutine ReadParameters
 
 subroutine CreateQuadRule(pid,nprocs)
@@ -1606,10 +1609,10 @@ subroutine CreateQuadRule(pid,nprocs)
   logical                  :: MC_EFlag,MC_BFlag
 
   ! Flags for MC vs Gausian rules
-  MC_EFlag = (RandomE(1)%flag==2 .or. RandomE(1)%flag==3 .or. RandomE(1)%flag==7) 
+  MC_EFlag = (RandomE(1)%flag==2 .or. RandomE(1)%flag==3 .or. RandomE(1)%flag==7)
   MC_BFlag = .FALSE.
   if (parms%model>=2) then
-    MC_BFlag = (RandomB(1)%flag==2 .or. RandomB(1)%flag==3 .or. RandomB(1)%flag==7) 
+    MC_BFlag = (RandomB(1)%flag==2 .or. RandomB(1)%flag==3 .or. RandomB(1)%flag==7)
   end if
 
   if (nprocs>1) then
@@ -1624,7 +1627,7 @@ subroutine CreateQuadRule(pid,nprocs)
         ndraws = 0
       else if (MC_EFlag .and. .not. MC_BFlag) then
         ! Only RandomE is MC rule
-        ndraws = RandomE(1)%nall * ((parms%K+1)*parms%K)/2 
+        ndraws = RandomE(1)%nall * ((parms%K+1)*parms%K)/2
       else if (.not. MC_EFlag .and. MC_BFlag) then
         ! Only RandomB is MC rule
         ndraws = RandomB(1)%nall * parms%dim_eta
@@ -1708,7 +1711,7 @@ subroutine DefineIntegrationRule(N1,pid,nskip,MC_EFlag,MC_BFlag)
     RandomB%nall = nall
   end if
 
- 
+
   if (MC_EFlag) then
     ! RandomE is MC rule
     do hh=1,N1
@@ -1745,7 +1748,7 @@ subroutine DefineIntegrationRule(N1,pid,nskip,MC_EFlag,MC_BFlag)
                                   RandomB(hh)%nodes,RandomB(hh)%weights)
     end do
   end if !if (MC_EFlag) then
-end subroutine DefineIntegrationRule 
+end subroutine DefineIntegrationRule
 
 subroutine DefineIntegrationNodes(d,flag,n1,nAll,nodes,weights)
   use ToolsModule, only : kron1
@@ -1754,7 +1757,7 @@ subroutine DefineIntegrationNodes(d,flag,n1,nAll,nodes,weights)
   implicit none
   ! 0 : Gauss-Hermite               1 : Working
   ! 1 : Sparse-Hermite              2 : NOT working
-  ! 2 : pseudo-Montecarlo           3 : working 
+  ! 2 : pseudo-Montecarlo           3 : working
   ! 3 : quasi-montecarlo            4 : NOT working
   ! 6 : Gauss-Legendre on (-1,1)    6 : working
   ! 7 : pseudo-MC on (-1,1)         7 : working
@@ -2005,7 +2008,7 @@ subroutine BroadcastParms(LocalParms,pid)
   integer(i4b)                        :: i1,nerr,ierr_barrier
   integer(i4b), allocatable           :: ierr(:)
   character(len=20)                   :: fmt1
- 
+
   allocate(ierr(2*LocalParms%J+3*LocalParms%K+12+2*LocalParms%dim_eta &
                 +LocalParms%BD_Z_DIM+LocalParms%BC_Z_DIM+11))
   ierr = 0
@@ -2133,7 +2136,7 @@ subroutine BroadcastIFree(pid)
   call mpi_bcast(iFree%nBC_beta,1,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
   call mpi_bcast(iFree%nBC_CDiag,1,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
   call mpi_bcast(iFree%nBC_COffDiag,1,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
-    
+
   call mpi_bcast(iFree%nAll,1,MPI_Integer,MasterID,MPI_COMM_WORLD,ierr)
   print *,"pid = ",pid," broadcast of size iFree complete."
   call mpi_barrier(MPI_COMM_WORLD,ierr)
@@ -2404,7 +2407,7 @@ subroutine ReadWriteParameters(LocalParms,LocalAction)
 
   integer(i4b)                        :: i1,FileStatus
   character(len=30)                   :: TempString
-  character(len=30)                   :: fmt102,fmt103,fmt104,fmt107,fmt108,fmt109  
+  character(len=30)                   :: fmt102,fmt103,fmt104,fmt107,fmt108,fmt109
   character(len=8)                    :: datestring
   character(len=200)                  :: parms_copy_file
   character(len=400)                  :: cmd_string
@@ -2424,22 +2427,16 @@ subroutine ReadWriteParameters(LocalParms,LocalAction)
   write(fmt102,'(a1,i2,a15)') '(',LocalParms%J,'(f25.16,:,","))'
   write(fmt103,'(a1,i2,a15)') '(',LocalParms%K,'(f25.16,:,","))'
   write(fmt104,'(a1,i2,a15)') '(',LocalParms%K,'(f25.16,:,","))'
-!  102 format(<LocalParms%J-1>(f25.16,','),f25.16)        ! B
-!  103 format(<LocalParms%K-1>(f25.16,','),f25.16)        ! MUE  (K x 1)
-!  104 format(<LocalParms%K-1>(f25.16,','),f25.16)        ! CSIG
   105 format(2(i4,','),i4)                               ! (dim_eta,BC_Z_DIM,BD_Z_DIM)
   106 format(2(i4,','),f25.16,',',f25.16)                ! nBC_COffDiag,nBD_COffDiag,BC_LO,BC_HI
   write(fmt107,'(a1,i2,a15)') '(',LocalParms%BC_Z_DIM,'(f25.16,:,","))'
   write(fmt108,'(a1,i2,a15)') '(',LocalParms%BD_Z_DIM,'(f25.16,:,","))'
   write(fmt109,'(a1,i2,a15)') '(',LocalParms%DIM_ETA,'(f25.16,:,","))'
-!  107 format(<LocalParms%BC_Z_DIM-1>(f25.16,','),f25.16) ! BC_BETA
-!  108 format(<LocalParms%BD_Z_DIM-1>(f25.16,','),f25.16) ! BD_BETA
-!  109 format(<LocalParms%dim_eta-1>(f25.16,','),f25.16)  ! BC_C
   110 format(12(f25.16,:,','))                           ! BD_month
 
   120 format(a17)      ! mue_month(K x 12)
   121 format(12(f25.16,:,','))
- 
+
   if (LocalAction=='read') then
     call date_and_time(date=datestring)
     parms_copy_file = trim(OutDir) // "/parms/parms" // datestring // ".csv"
@@ -2650,7 +2647,7 @@ subroutine CopyParameters(parms_in,parms_out)
   parms_out%invc = parms_in%invc
   parms_out%InvCDiag = parms_in%InvCDiag
   parms_out%InvCOffDiag = parms_in%InvCOffDiag
-  
+
   if (parms_out%model>=2) then
     parms_out%BC_beta     = parms_in%BC_beta
     parms_out%BC_C        = parms_in%BC_C
@@ -2697,9 +2694,9 @@ subroutine LoadBasePrice(p0)
   real(dp), intent(out) :: p0(:)
   integer(i4b) :: i1
   integer(i4b) :: BasePriceUnit
- 
+
   BasePriceUnit = 100
- 
+
   open(unit = BasePriceUnit, &
        file = ParmFiles%BasePriceFile, &
        action = 'read')
@@ -2721,7 +2718,7 @@ subroutine LoadTaxParameters(taxid,taxlabel,taxtype,tax)
   integer(i4b),       allocatable,intent(out) :: taxid(:)
   character(len=100), allocatable,intent(out) :: taxlabel(:)
   character(len=10),  allocatable,intent(out) :: taxtype(:)
-  real(dp),           allocatable,intent(out) :: tax(:,:) 
+  real(dp),           allocatable,intent(out) :: tax(:,:)
 
   integer(i4b)       :: TaxParmsUnit
 
@@ -2749,11 +2746,11 @@ subroutine LoadTaxParameters(taxid,taxlabel,taxtype,tax)
   do while (icomma>0)
     icomma = index(buffer1,",")
     if (icomma>0) then
-      read(buffer1(1:(icomma-1)),'(i4)') itemp(i1) 
+      read(buffer1(1:(icomma-1)),'(i4)') itemp(i1)
       i1=i1+1
       buffer1=buffer1((icomma+1):len_trim(buffer1))
     else
-      read(buffer1,'(i4)') itemp(i1) 
+      read(buffer1,'(i4)') itemp(i1)
     end if
   end do
   ntax = i1
@@ -2788,7 +2785,7 @@ subroutine LoadTaxParameters(taxid,taxlabel,taxtype,tax)
   do i1=1,parms%J
     read(TaxParmsUnit,fmt1) tax(i1,:)
   end do
-! 69 format(<ntax>g13.4)  
+! 69 format(<ntax>g13.4)
 
   deallocate(itemp)
 
