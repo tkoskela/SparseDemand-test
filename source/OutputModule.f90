@@ -2,7 +2,7 @@ module OutputModule
   use ConstantsModule
   use GlobalModule, only : OutDir
   implicit none
-  
+
   ! Output filenames
   character(len=200)          :: Results_FILE
   character(len=200)          :: BayesResults_FILE
@@ -27,7 +27,7 @@ module OutputModule
   ! Output file: unit numbers
   integer(i4b), parameter :: Results_UNIT           = 12
   integer(i4b), parameter :: BayesResults_UNIT      = 13
-  integer(i4b), parameter :: Results1P_UNIT         = 14 
+  integer(i4b), parameter :: Results1P_UNIT         = 14
   integer(i4b), parameter :: Hess_UNIT              = 15
   integer(i4b), parameter :: SaveData_UNIT_q        = 16
   integer(i4b), parameter :: SaveData_UNIT_p        = 17
@@ -98,7 +98,7 @@ subroutine WritePrediction(HHData,HHFit)
 
   ! write HHData%q,HHFit%q
   allocate(q(parms%j))
-  
+
   open(unit=qdata_unit, &
        file=qdata_file(1), &
        action='write')
@@ -139,7 +139,7 @@ end subroutine WritePrediction
 !  Hess   : estimate of Hessian
 !------------------------------------------------------------------------------
 subroutine SaveOutputs(xFree,LValue,Grad,Hess,Stats)
-  use NewTools,     only : MatrixInverse
+  use LinearAlgebra, only : InvertSymmetric
   use GlobalModule, only : iFree,           &
                            HHData,          &
                            ControlOptions,  &
@@ -152,13 +152,13 @@ subroutine SaveOutputs(xFree,LValue,Grad,Hess,Stats)
   real(dp),     intent(in)  :: Grad(:)
   real(dp),     intent(in)  :: Hess(:,:)
   type(ResultStructure), intent(in) :: stats
-  
-  ! variables used to compute standard errors  
+
+  ! variables used to compute standard errors
   integer(i4b)          :: i1
   real(dp), allocatable :: StandardErrors(:)
   real(dp), allocatable :: InvHess(:,:)
-  
-  integer(i4b)          :: n 
+
+  integer(i4b)          :: n
   character(20)         :: cTemp,fmt1
 
   ! Define filenames
@@ -167,12 +167,12 @@ subroutine SaveOutputs(xFree,LValue,Grad,Hess,Stats)
   n = size(xFree,1)
   allocate(InvHess(n,n))
   allocate(StandardErrors(n))
- 
-  call MatrixInverse(Hess,InvHess,'Symmetric')
+
+  call InvertSymmetric(Hess, InvHess)
   do i1=1,n
     StandardErrors(i1) = dsqrt(InvHess(i1,i1))
   end do
-  
+
   !--------------------------------------------------------------------------
   ! Write parameters and std. err.
   !--------------------------------------------------------------------------
@@ -341,7 +341,7 @@ subroutine SaveOutputs(xFree,LValue,Grad,Hess,Stats)
     write(Results_UNIT,'(A12,g11.4)') 'Penalty',Penalty%lambda
   end if
   close(UNIT = Results_UNIT)
-  
+
   !--------------------------------------------------------------------------
   ! Write Hessian for model 1
   !--------------------------------------------------------------------------
@@ -352,7 +352,7 @@ subroutine SaveOutputs(xFree,LValue,Grad,Hess,Stats)
   do i1=1,n
     write(Hess_UNIT,fmt1)  Hess(i1,:)
   end do
-  close(UNIT = Hess_UNIT) 
+  close(UNIT = Hess_UNIT)
   deallocate(InvHess,StandardErrors)
 end subroutine SaveOutputs
 
@@ -371,8 +371,8 @@ subroutine WriteHess(hess)
   do i1=1,n
     write(Hess_UNIT,fmt1)  Hess(i1,:)
   end do
-  close(UNIT = Hess_UNIT) 
-  
+  close(UNIT = Hess_UNIT)
+
 end subroutine WriteHess
 
 subroutine ReadWriteGradLHH(GradLHH,local_action)
@@ -418,7 +418,7 @@ end subroutine ReadWriteGradLHH
 !
 !------------------------------------------------------------------------------
 subroutine SavePenaltyOutputs(iter,model,xFree,LValue,Grad,Hess,Stats)
-  use NewTools,     only : MatrixInverse
+  use LinearAlgebra, only : InvertSymmetric
   use GlobalModule, only : iFree,HHData,   &
                            ControlOptions, &
                            ResultStructure, &
@@ -432,13 +432,13 @@ subroutine SavePenaltyOutputs(iter,model,xFree,LValue,Grad,Hess,Stats)
   real(dp),     intent(in)  :: Grad(:)
   real(dp),     intent(in)  :: Hess(:,:)
   type(ResultStructure), intent(in) :: stats
-  
-  ! variables used to compute standard errors  
+
+  ! variables used to compute standard errors
   integer(i4b)          :: i1
   real(dp), allocatable :: StandardErrors(:)
   real(dp), allocatable :: InvHess(:,:)
-  
-  integer(i4b)          :: n 
+
+  integer(i4b)          :: n
   character(20)         :: cTemp
   ! Define filenames
   call DefinePenaltyFileNames(iter)
@@ -447,14 +447,14 @@ subroutine SavePenaltyOutputs(iter,model,xFree,LValue,Grad,Hess,Stats)
   allocate(InvHess(n,n))
   allocate(StandardErrors(n))
 
-  call MatrixInverse(Hess,InvHess,'Symmetric')
+  call InvertSymmetric(Hess, InvHess)
   do i1=1,n
     StandardErrors(i1) = dsqrt(InvHess(i1,i1))
   end do
 
   !----------------------------------------------------------------------------
   !  Write Model 1 output
-  !---------------------------------------------------------------------------- 
+  !----------------------------------------------------------------------------
   if (model==1) then
 
     !--------------------------------------------------------------------------
@@ -464,7 +464,7 @@ subroutine SavePenaltyOutputs(iter,model,xFree,LValue,Grad,Hess,Stats)
          FILE = Results1P_FILE, &
          ACTION = 'WRITE')
 
-    write(Results1P_UNIT,2) 'Variable','Coef','Gradient','s.e.' 
+    write(Results1P_UNIT,2) 'Variable','Coef','Gradient','s.e.'
     do i1=1,iFree%nD
       ! parms%D(iFree%D) = xFree(iFree%xD)
       write(Results1P_UNIT,1) HHData%ColumnLabels(iFree%xD(i1)), &
@@ -543,6 +543,7 @@ end function MakeFullFileName
 
 subroutine ComputeStats(x,L,Grad,Hess,N,Stats)
   use GlobalModule, only : ResultStructure
+  use LinearAlgebra, only: ComputeEigenSymmetric
   implicit none
   real(dp), intent(in)     :: x(:)
   real(dp), intent(in)     :: L
@@ -551,11 +552,8 @@ subroutine ComputeStats(x,L,Grad,Hess,N,Stats)
   integer(i4b), intent(in) :: N
   type(ResultStructure), intent(inout) :: stats
 
-  ! variables needed to compute eigenvalues of Hess
-  integer(i4b) :: nH,lwork,ifail
-  character(1) :: JOBZ,UPLO
-  real(dp), allocatable :: TempH(:,:),eig(:),work(:)
-  real(dp)              :: dummy(1)
+  real(dp), allocatable :: eig(:)
+  integer(i4b) :: nH
 
   stats%nNonZero   = count(abs(x)>=1e-6)
   stats%BIC        = 2.0*L + stats%nNonZero*dlog(dble(N))
@@ -564,23 +562,12 @@ subroutine ComputeStats(x,L,Grad,Hess,N,Stats)
 
   ! Compute eigenvalues of Hess
   nH =size(Hess,1)
-  allocate(TempH(nH,nH),eig(nH))
-  JOBZ = 'N'  ! 'N' = compute eigenvalues only and not vectors
-  UPLO = 'L'  ! 'L' = ignore lower triangular part of matrix
-  TempH = Hess 
-  
-  ! determine optimal workspsace size fo F08FAF
-  lwork=-1
-  call F08FAF(JOBZ,UPLO,nH,TempH,nH,eig,dummy,lwork,ifail)
-  lwork = max(66*nH,nint(dummy(1)))
-  allocate(work(lwork))
-
-  ! compute eigenvalues
-  call F08FAF(JOBZ,UPLO,nH,TempH,nH,eig,work,lwork,ifail)
+  allocate(eig(nH))
+  call ComputeEigenSymmetric(Hess, eig)
 
   ! minimum eigenvalue
   stats%MinEigHess = minval(abs(eig))
-  deallocate(TempH,eig,work)
+
 end subroutine ComputeStats
 
 subroutine SaveData
@@ -643,7 +630,7 @@ subroutine SaveData
     write(SaveData_UNIT_iZero,fmt1) HHData%iZero(:,i1)
   end do
   close(SaveData_UNIT_iZero)
- 
+
   open(UNIT = SaveData_UNIT_nNonZero,    &
        File = SaveDataFile_nNonZero, &
        Action = 'write')
@@ -723,7 +710,7 @@ subroutine SaveMCOutputs(model,MCX,MCLambda,IMC)
   !    2) size of model selected
   !    3) probability selected model contains all large coefficients
   !    4) size of lambda
-  ! 3) 
+  ! 3)
 end subroutine SaveMCOutputs
 
 subroutine WriteBayes(DINEST,ERREST,IVALID)
@@ -745,7 +732,7 @@ subroutine WriteBayes(DINEST,ERREST,IVALID)
   end do
 
   close(BayesResults_UNIT)
-  
+
 end subroutine WriteBayes
 
 subroutine WriteElasticities(elas)
@@ -840,7 +827,7 @@ subroutine WriteTaxResults1(q0,p0,qtax,ptax,filename)
     write(pstring(i1),'(a1,i2.2)') "p",i1
   end do
 
-  ! write variable names 
+  ! write variable names
   write(fmt1,'(a1,i2,a12)') '(',2*ntax+2,'(a25,:,","))'
   write(taxresults_unit,fmt1) "q0",qstring,"p0",pstring
 
@@ -851,7 +838,7 @@ subroutine WriteTaxResults1(q0,p0,qtax,ptax,filename)
   end do
 
   close(taxresults_unit)
-  deallocate(qstring,pstring) 
+  deallocate(qstring,pstring)
 end subroutine WriteTaxResults1
 
 ! Write tax results: household (expenditure,utility)

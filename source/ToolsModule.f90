@@ -5,7 +5,6 @@
 ! function normcdf_mkl(x,nx) result(y)    Compute normal CDF using Intel MKL
 ! function InverseNormal_mkl(p,n,ifault) result(x)   Compute inverse CDF normal
 !                                                    using Intel MKL
-! function InvertLower(x,d) result(InvX)  Invert lower triangular matrix.
 !
 !-----------------------------------------------------------------------------
 ! Subroutines
@@ -28,7 +27,7 @@ function normcdf_mkl(x,nx) result(y)
   real(dp)                 :: y(nx)
 
   include "mkl_vml.fi"
-  
+
   ! normal cdf from intel_MKL
   call vdcdfnorm(nx,x,y)
 
@@ -44,35 +43,11 @@ function InverseNormal_mkl(p,n,ifault) result(x)
   integer(i4b)               :: n
 
   include "mkl_vml.fi"
-  ifault = 0 
+  ifault = 0
   ! inverse normal function from intel_mkl: double precision
   call vdcdfnorminv(n,p,x)
-  
+
 end function InverseNormal_mkl
-
-
-! X (d x d)      lower triangular matrix
-! InvX (d x d)   inverse of X
-function InvertLower(x,d) result(InvX)
-  use ConstantsModule
-  implicit none
-  integer(i4b), intent(in) :: d
-  real(dp),     intent(in) :: x(d,d)
-  real(dp)                 :: InvX(d,d)
-
-  integer(i4b)             :: i1,i2
-
-  InvX = 0.0d0
-
-  ! Apply backward substitution algorithm to columns of identity matrix
-
-  do i1=1,d
-    InvX(i1,i1) = 1.0d0 / x(i1,i1)
-    do i2=1,i1-1
-      InvX(i1,i2) = -dot_product(x(i1,1:i1-1),InvX(1:i1-1,i2)) / x(i1,i1)
-    end do
-  end do
-end function InvertLower
 
 !-------------------------------------------------------------------------
 ! Subroutines
@@ -88,7 +63,7 @@ subroutine kron1(a,b,c)
   implicit none
   real(dp), intent(in) :: a(:),b(:)
   real(dp), intent(out) :: c(:)
-  
+
   real(dp), allocatable :: atemp1(:,:),atemp2(:),btemp1(:,:),btemp2(:)
   integer(i4b) na,nb
 

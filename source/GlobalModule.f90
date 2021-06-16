@@ -1383,7 +1383,8 @@ end subroutine InitializeParameters
 ! and for                    (betaD,CDDiag,CDOffDiag)
 !                            (betaC,CCDiag,CCOffDiag)
   subroutine ReadParameters
-    use NewTools, only : SphereToMatrix,MatrixInverse
+    use NewTools, only : SphereToMatrix
+    use LinearAlgebra, only : InvertTriangular
     implicit none
     integer(i4b)       :: tempunit
     character(len=200) :: tempfile
@@ -1460,8 +1461,8 @@ end subroutine InitializeParameters
     call SphereToMatrix(parms%InvCOffDiag,parms%InvCDiag,parms%K,parms%K,parms%InvC)
     ! compute CSig = inv(InvC)
     parms%InvC = transpose(parms%InvC)
-    call MatrixInverse(parms%InvC,parms%CSig,'Lower triangular')
-    parms%sig  = matmul(parms%CSig,transpose(parms%CSig))
+    call InvertTriangular(parms%InvC, parms%CSig, .True.)
+    parms%sig  = matmul(parms%CSig, transpose(parms%CSig))
 
     if (parms%model>=2) then
       ! read in (BC_beta,BD_beta)
@@ -2397,7 +2398,8 @@ end subroutine BroadcastIFree
 
 ! Written :  2015AUG14 LN
 subroutine ReadWriteParameters(LocalParms,LocalAction)
-  use NewTools, only : MatrixToSphere,MatrixInverse
+  use NewTools, only : MatrixToSphere
+  use LinearAlgebra, only : InvertTriangular
 #ifndef  __GFORTRAN__
   use IFPORT       ! intel fortran portability library
 #endif
@@ -2494,8 +2496,8 @@ subroutine ReadWriteParameters(LocalParms,LocalAction)
     ! SIG = covariance matrix of epsilon
     ! InvC = inv(CSIG)
     ! (InvCDiag,InvCOffDiag) = spherical representation of tranpose(InvC)
-    LocalParms%SIG = matmul(LocalParms%CSIG,transpose(LocalParms%CSIG))
-    call MatrixInverse(LocalParms%CSIG,LocalParms%InvC,'Lower triangular')
+    LocalParms%SIG = matmul(LocalParms%CSIG, transpose(LocalParms%CSIG))
+    call InvertTriangular(LocalParms%CSIG, LocalParms%InvC, .True.)
     call MatrixToSphere(transpose(LocalParms%InvC),LocalParms%InvCDiag,LocalParms%InvCOffDiag)
 
     ! (dim_eta,BC_Z_DIM,BD_Z_DIM)

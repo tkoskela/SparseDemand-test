@@ -538,7 +538,7 @@ end subroutine Like1_wrapper
 subroutine Like1C(i1,parms,mode,L,GradL)
   use ConstantsModule
   use GlobalModule, only : ParmsStructure,HHData,RandomE
-  use NewTools,     only : ComputeLQ
+  use LinearAlgebra, only : ComputeLQ
   implicit none
   integer(i4b),         intent(in)    :: i1
   type(ParmsStructure), intent(in)    :: parms
@@ -554,13 +554,13 @@ subroutine Like1C(i1,parms,mode,L,GradL)
   integer(i4b)              :: RowGroup(parms%J)
 
   integer(i4b)              :: integrand
-  integer(i4b)              :: ifail,irule
+  integer(i4b)              :: irule
 
   M1 = matmul(transpose(parms%B),parms%CSig)
 
   ! M1 = LL*Q
   !      LL = (J x K) lower triangular
-  call ComputeLQ(parms%J,parms%K,M1,R,Q,ifail)
+  call ComputeLQ(M1, R, Q)
   M2Tilde = HHData%p(:,i1) - matmul(transpose(parms%B),parms%MuE+parms%mue_month(:,HHData%month(i1)))
 
   ! Prob = integral of DensityFunc over region of x satisfying R*x<=M2_tilda
@@ -586,10 +586,8 @@ end subroutine Like1C
 subroutine Like1B(iHH,d1,d2,d3,parms,mode,L,GradL)
   use ConstantsModule
   use GlobalModule, only : ParmsStructure,HHData,RandomE
-  use NewTools,     only : ComputeSVD,ComputeInverse_LU,ComputeLQ
-  use nag_library,  only : F07FDF,F04BAF
-  ! F07FDF = Cholesky decomposition
-  ! F04BAF = matrix inversion using LU decomposition
+  use LinearAlgebra, only : &
+    ComputeSVD, ComputeLQ, InvertTriangular, ComputeCholesky, Solve
 
   implicit none
   integer(i4b),         intent(in)    :: iHH,d1,d2,d3
@@ -598,14 +596,7 @@ subroutine Like1B(iHH,d1,d2,d3,parms,mode,L,GradL)
   real(dp),             intent(out)   :: L
   real(dp),             intent(inout) :: GradL(:)
 
-  ! F07FDF,F04BAF variables
-  character(1)              :: UPLO
-  real(dp)                  :: rCond,ErrBound
-  integer(i4b)              :: ifail
-  integer(i4b), allocatable :: ipivot(:)
-  real(dp),     allocatable :: temp2(:,:)
-
-  integer(i4b)              :: i1,i2,ix,irule
+  integer(i4b)              :: i1,i2,ix,irule,ifail
   integer(i4b), allocatable :: index1(:),index2(:)
   real(dp),     allocatable :: B1(:,:)
   real(dp),     allocatable :: U(:,:),S(:),VT(:,:)
@@ -614,6 +605,7 @@ subroutine Like1B(iHH,d1,d2,d3,parms,mode,L,GradL)
   real(dp),     allocatable :: Temp1(:)         ! used to compute M2Tilde and epsilon
   real(dp),     allocatable :: C(:,:),SigmaTilde(:,:)
   real(dp),     allocatable :: SigmaTilde11(:,:),SigmaTilde22(:,:),SigmaTilde12(:,:),C2(:,:)
+  real(dp),     allocatable :: inv_SigmaTilde22_SigmaTilde12_t(:, :)
   real(dp),     allocatable :: muTilde(:),e1Tilde(:)
   real(dp),     allocatable :: Omega11(:,:),COmega11(:,:)
   real(dp),     allocatable :: R(:,:),Q(:,:)
@@ -647,7 +639,7 @@ subroutine Like1B(iHH,d1,d2,d3,parms,mode,L,GradL)
   allocate(S(d1))
   allocate(VT(d1,d1))
 
-  call ComputeSVD(B1,U,S,VT)
+  call ComputeSVD(B1, U, S, VT)
 
   ! size(B2) = (K x d3)
   ! size(B21) = (d1 x d3)
@@ -675,35 +667,22 @@ subroutine Like1B(iHH,d1,d2,d3,parms,mode,L,GradL)
   SigmaTilde22 = SigmaTilde(index2,index2)
   SigmaTilde12 = SigmaTilde(index1,index2)
 
-  ! Cholesky decomposition of SigmaTilde22: lower triangular form
+  ! Cholesky decomposition of Omega22: lower triangular form
   !      C2*C2' = SigmaTilde22
-  do i1=1,d2
-    C2(i1:d2,i1) = SigmaTilde22(i1:d2,i1)
-  end do
-  UPLO = 'L'
-  call F07FDF(UPLO,d2,C2,d2,ifail)
+  call ComputeCholesky(SigmaTilde22, C2, .True.)
 
   allocate(Omega11(d1,d1))
 
   ! Compute  Omega11 = SigmaTilde11 - SigmaTilde12*inv(SigmaTilde22)*SigmaTilde12'
-  Omega11 = 0.0d0
-  allocate(iPivot(d2))
-  allocate(temp2(d2,d1))
-  temp2 = transpose(SigmaTilde12)
-  call F04BAF(d2,d1,SigmaTilde22,d2,iPivot,temp2,d2,rCond,errBound,ifail)
-  !  Omega11 = SigmaTilde11 - SigmaTilde12*inv(SigmaTilde22)*SigmaTilde12'
+  allocate(inv_SigmaTilde22_SigmaTilde12_t(d2,d1))
+  call Solve(SigmaTilde22, transpose(SigmaTilde12), inv_SigmaTilde22_SigmaTilde12_t)
   !  size( inv(SigmaTilde22)*SigmaTilde12' ) = (d2 x d1)
-  Omega11 = SigmaTilde11 - matmul(SigmaTilde12,temp2)
-  deallocate(temp2,iPivot)
+  Omega11 = SigmaTilde11 - matmul(SigmaTilde12, inv_SigmaTilde22_SigmaTilde12_t)
 
-  allocate(COmega11(d1,d1),source=0.0d0)
+  allocate(COmega11(d1,d1))
   ! Cholesky decomposition of Omega11: lower triangular form
   !      COmega11 * COmega11' = Omega11
-  do i1=1,d1
-    COmega11(i1:d1,i1) = Omega11(i1:d1,i1)
-  end do
-  UPLO = 'L'
-  call F07FDF(UPLO,d1,COmega11,d1,ifail)
+  call ComputeCholesky(Omega11, COmega11, .True., ifail)
   if (ifail>0) then
     print *, 'Omega11 is not positive definite'
     print *, 'Omega11'
@@ -748,7 +727,7 @@ subroutine Like1B(iHH,d1,d2,d3,parms,mode,L,GradL)
   ! size(R)  = (d3 x d2)
   ! size(Q)  = (d2 x d2)
   allocate(R(d3,d2),Q(d2,d2))
-  call ComputeLQ(d3,d2,M1Tilde,R,Q,ifail)
+  call ComputeLQ(M1Tilde, R, Q)
 
   Integrand = 2
   ! Row group is used to classify rows of R based on non-zero elements
@@ -777,10 +756,7 @@ end subroutine Like1B
 subroutine Like1A(i1,parms,mode,L,GradL)
   use ConstantsModule
   use GlobalModule, only : ParmsStructure,HHData,inf,ReadWriteParameters
-  use nag_library, only : F04BAF,F07AAF,F07ADF,F03BAF
-  ! F04BAF = matrix inversion using LU decomp
-  ! F07ADF = LU decomposition
-  ! F03BAF = determinant of matrix after LU decomp
+  use LinearAlgebra, only: LogAbsDet, Solve
 
   implicit none
   integer(i4b),         intent(in)    :: i1
@@ -789,44 +765,30 @@ subroutine Like1A(i1,parms,mode,L,GradL)
   real(dp),             intent(out)   :: L
   real(dp),             intent(inout) :: GradL(:)
 
-  real(dP)                  :: crit
+  real(dp)                  :: crit
 
   real(dp), allocatable     :: B1(:,:),B1T(:,:)
   real(dp), allocatable     :: B2(:,:)
-  real(dp), allocatable     :: e(:)
+  real(dp), allocatable     :: e(:), inv_B1_t_p1(:)
   real(dp), allocatable     :: mue_month(:)
   real(dp)                  :: F
   real(dp), allocatable     :: GradF_e(:),GradF_MuE(:)
   real(dp), allocatable     :: GradF_InvC(:,:)
 
-  ! variables used by F04BAF,F07ADF,F03BAF
-  real(dp)                  :: rcond,errBound
-  integer(i4b), allocatable :: iPivot(:)
-  integer(i4b)              :: ifail
-  real(dp)                  :: D
-  integer(i4b)              :: ID
-  real(dp), allocatable     :: temp1(:)
-  integer(i4b)              :: i2
+  integer(i4b) :: ifail, i2
 
   allocate(B1(parms%K,parms%K),B1T(parms%K,parms%K))
   allocate(B2(parms%K,parms%J-parms%K))
-  allocate(e(parms%K))
+  allocate(e(parms%K), inv_B1_t_p1(parms%K))
   allocate(mue_month(parms%K))
   allocate(GradF_e(parms%K),GradF_MuE(parms%K))
   allocate(GradF_InvC(parms%K,parms%K))
-  allocate(iPivot(parms%K))
-  allocate(temp1(parms%K))
 
   B1 = parms%B(:,HHData%iNonZero(1:parms%K,i1))
   B2 = parms%B(:,HHData%iZero(1:parms%J-parms%K,i1))
 
-  ! Compute  e = inv(B1')*p1 + B1*q1
-  e = HHData%p(HHData%iNonZero(1:parms%K,i1),i1)
-  B1T = transpose(B1)
-  ifail = -1
-  ! B1T is changed by this routine, but don't need B1T after this
-  !call F04BAF(parms%K,1,B1T,parms%K,iPivot,e,parms%K,rCond,errBound,ifail)
-  call F07AAF(parms%K,1,B1T,parms%K,iPivot,e,parms%K,ifail)
+  ! Compute inv(B1')*p1
+  call Solve(transpose(B1), HHData%p(HHData%iNonZero(1:parms%K,i1),i1), inv_B1_t_p1, ifail)
   if (ifail .ne. 0 .and. ifail .ne. parms%K+1) then
     print *,'ifail = ',ifail,'. B1 is singular'
     call ReadWriteParameters(parms,'write')
@@ -838,7 +800,7 @@ subroutine Like1A(i1,parms,mode,L,GradL)
 
   ! crit = min(  p(iZero) - B2' * (inv(B1') * p(iNonZero)
   crit = minval(HHData%p(HHData%iZero(1:parms%J-parms%K,i1),i1) &
-       - matmul(transpose(B2),e))
+       - matmul(transpose(B2), inv_B1_t_p1))
 
   if (crit<0.0d0) then
     L = 0.0d0
@@ -846,22 +808,14 @@ subroutine Like1A(i1,parms,mode,L,GradL)
       GradL = 0.0d0
     end if
   else
-    e = e + matmul(B1,HHData%q(1:parms%K,i1))
+    ! e = inv(B1')*p1 + B1*q1
+    e = inv_B1_t_p1 + matmul(B1,HHData%q(1:parms%K,i1))
 
     ! mue_month = seasonal adjustment to mue
     mue_month = parms%mue_month(:,HHData%month(i1))
-    call LogDensityFunc(e,parms,mue_month, &
-                        F,GradF_e,GradF_MuE,GradF_InvC)
-
-    ! F07ADF:  compute LU factorization of B1
-    ! B1 is changed
-    call F07ADF(parms%K,parms%K,B1,parms%K,iPivot,ifail)
-
-    ! F03BAF:  compute determinant of B1 after factorizing
-    call F03BAF(parms%k,B1,parms%K,iPivot,D,ID,ifail)
-
-    ! log(det(B1)) = log(D) + ID*log(2.0)
-    L = exp(F + log(abs(D)) + real(ID)*log(2.0d0))
+    call LogDensityFunc(e,parms,mue_month, F,GradF_e,GradF_MuE,GradF_InvC)
+    ! add term for log-determinant of B1
+    L = exp(F + LogAbsDet(B1))
 
     if (mode>0) then
       GradL = 0.0d0
@@ -941,7 +895,8 @@ end subroutine Like1
 subroutine UpdateParms(xFree,iFree,parms)
   use ConstantsModule
   use GlobalModule, only : SelectFreeType,ParmsStructure
-  use NewTools,     only : SphereToMatrix,ComputeInverse_LU
+  use NewTools,     only : SphereToMatrix
+  use LinearAlgebra, only: InvertTriangular
   implicit none
 
 ! Revision history
@@ -1004,7 +959,7 @@ if (size(iFree%InvCOffDiag)>0) then
   parms%InvCOffDiag(iFree%InvCOffDiag) = xFree(iFree%xInvCOffDiag)
 end if
 
-! parms%InvC         = (K x K) upper triangular Cholesky decomposition
+! parms%InvC         = (K x K) lower triangular Cholesky decomposition
 !                                 of inverse of Sig
 !                                 inv(sig) = InvC'*InvC
 ! parms%GradInvCOffDiag = (K x n) gradient of InvC w.r.t. InvCOffDiag
@@ -1013,8 +968,7 @@ if (iFree%nInvCDiag>0 .or. iFree%nInvCOffDiag>0) then
   call SphereToMatrix(parms%InvCOffDiag,parms%InvCDiag,parms%K,parms%K, &
                       parms%InvC,parms%GradInvCOffDiag,parms%GradInvCDiag)
   parms%InvC = transpose(parms%InvC)
-  ifail = 0
-  call ComputeInverse_LU(parms%K,parms%InvC,parms%CSig,ifail)
+  call InvertTriangular(parms%InvC, parms%CSig, .True.)
 end if
 
 end subroutine UpdateParms
@@ -1042,7 +996,8 @@ end subroutine UpdateParms
 subroutine UpdateParms2(x,iFree,parms)
   use ConstantsModule
   use GlobalModule, only : SelectFreeType,ParmsStructure
-  use NewTools,     only : SphereToMatrix,ComputeInverse_LU
+  use NewTools,     only : SphereToMatrix
+  use LinearAlgebra, only: InvertTriangular
   implicit none
 
   real(dp),             intent(in)    :: x(:)
@@ -1180,8 +1135,7 @@ subroutine UpdateParms2(x,iFree,parms)
     parms%InvC = transpose(parms%InvC)
 
     ! need C as well
-    ifail = 0
-    call ComputeInverse_LU(parms%K,parms%InvC,parms%CSig,ifail)
+    call InvertTriangular(parms%InvC, parms%CSig, .True.)
   end if
 
   !print *, 'Warning: gradients of SphereToMatrix need to be adjusted for transpose.'
@@ -1199,7 +1153,7 @@ subroutine LogDensityFunc(e,parms,mue_month,F,GradF_e,GradF_MuE,GradF_InvC)
 ! Revision history
 ! 09DEC2012 LN translated to Fortran from matlab LogDensity.m
   use ConstantsModule
-  use nag_library,  only : F04BAF
+  use LinearAlgebra, only : InvertTriangular
   use GlobalModule, only : ParmsStructure
   implicit none
   real(dp),             intent(in)  :: e(:)
@@ -1210,21 +1164,17 @@ subroutine LogDensityFunc(e,parms,mue_month,F,GradF_e,GradF_MuE,GradF_InvC)
   real(dp),             intent(out) :: GradF_MuE(:)
   real(dp),             intent(out) :: GradF_InvC(:,:)
 
-  real(dp), allocatable    :: z(:),TempInvC(:,:)
+  real(dp), allocatable    :: z(:), C(:,:)
   integer(i4b)             :: i1,i2
   real(dp), allocatable    :: temp1(:),temp2(:,:)
   real(dp)                 :: DetInvC
 
-  ! workspace to compute determinant and matrix inverse
   integer(i4b)              :: ifail
-  integer(i4b), allocatable :: iPivot(:)
-  real(dp)                  :: rCond,errBound
 
-  !external F04BAF  ! compute inverse of matrix using LU decomp
 
-  allocate(iPivot(parms%K))
-  allocate(z(parms%K),TempInvC(parms%K,parms%K))
+  allocate(z(parms%K),C(parms%K,parms%K))
   allocate(temp1(parms%K))
+  allocate(temp2(parms%K,parms%K))
 
   z = matmul(parms%InvC,e - parms%MuE-mue_month)
 
@@ -1235,13 +1185,12 @@ subroutine LogDensityFunc(e,parms,mue_month,F,GradF_e,GradF_MuE,GradF_InvC)
   end do
 
   ! Ln(L) = -0.5*z'*z -0.5*K*log(2*pi) + log(det(InvC))
-  F     = -0.5d0*dot_product(z,z) - 0.5d0*real(parms%K,dp)*log(2.0d0*pi) &
-          + log(DetInvC)
+  F = -0.5d0*dot_product(z,z) - 0.5d0*real(parms%K,dp)*log(2.0d0*pi) + log(DetInvC)
 
   GradF_e    = -matmul(transpose(parms%InvC),z)
   GradF_MuE  = -GradF_e
   GradF_InvC = 0.0d0
-  allocate(temp2(parms%K,parms%K))
+
   do i1=1,parms%K
   do i2=1,i1
     temp2 = 0.0d0
@@ -1252,16 +1201,10 @@ subroutine LogDensityFunc(e,parms,mue_month,F,GradF_e,GradF_MuE,GradF_InvC)
   end do
   end do
 
-  temp2 = 0.0d0
-  do i1=1,parms%K
-    temp2(i1,i1) = 1.0d0
-  end do
-  TempInvC = parms%InvC
-  ! compute temp2 = inv(parms%InvC)
-  call F04BAF(parms%K,parms%K,TempInvC,parms%K,iPivot,temp2, &
-              parms%K,rCond,errBound,ifail)
+  ! compute C = inv(parms%InvC)
+  call InvertTriangular(parms%InvC, C, .True.)
 
-  GradF_InvC = GradF_InvC + transpose(temp2)
+  GradF_InvC = GradF_InvC + transpose(C)
 
 end subroutine LogDensityFunc
 
@@ -1505,7 +1448,7 @@ end subroutine AllocateGradF
 subroutine DensityFunc2(xT,e1Tilde,mu1Tilde,SigmaTilde12,C2,COmega11,Q,S1,d1,d2,F,GradF)
   use ConstantsModule
   use GlobalModule, only : DensityGradType
-  use ToolsModule, only : InvertLower
+  use LinearAlgebra, only : SolveTriangular
   implicit none
   ! Case 2: 0 < d1 < K
   ! density of data to be integrated
@@ -1545,7 +1488,7 @@ subroutine DensityFunc2(xT,e1Tilde,mu1Tilde,SigmaTilde12,C2,COmega11,Q,S1,d1,d2,
 
   integer(i4b)          :: i1,i2
   integer(i4b)          :: nx
-  real(dp), allocatable :: e2T(:,:),z1T(:,:)
+  real(dp), allocatable :: e2T(:,:), z1T(:,:), inv_COmega11_z1(:, :)
   real(dp)              :: Jacobian
 
   nx=size(xT,1)
@@ -1605,8 +1548,9 @@ subroutine DensityFunc2(xT,e1Tilde,mu1Tilde,SigmaTilde12,C2,COmega11,Q,S1,d1,d2,
   !  df/dz1 = -f * z1T_new * inv(COmega11)^T
   ! size(z1T) = (nx x d1)
   ! size(f)   = (nx x 1)
-  ! InvertLower  = invert lower triangular matrix
-  GradF%mu1Tilde = - spread(f,2,d1) * matmul(z1T,transpose(InvertLower(COmega11,d1)))
+  allocate(inv_COmega11_z1(d1, nx))
+  call SolveTriangular(COmega11, transpose(z1T), inv_COmega11_z1, .True., .False.)
+  GradF%mu1Tilde = - spread(f,2,d1) * transpose(inv_COmega11_z1)
 
   ! gradient of F w.r.t. S1
   !    = F./S1    (since e1Tilde = inv(S1)*VT*p1 + S1*VT*q1 is fixed
@@ -4746,8 +4690,8 @@ end subroutine PlotLike
 subroutine Constraint(x,mode,F,GradF)
   use ConstantsModule
   use GlobalModule, only : parms,iFree,HHData,RandomE
-  use nag_library,  only : F04BAF,F07FDF
-  use NewTools,     only : ComputeSVD,ComputeInverse_LU,ComputeLQ
+  use LinearAlgebra, only: &
+    ComputeSVD, ComputeLQ, ComputeCholesky, InvertTriangular, Solve
   implicit none
   real(dp),     intent(in)    :: x(:)
   integer(i4b), intent(in)    :: mode
@@ -4800,12 +4744,7 @@ integer(i4b)              :: i1,i2,irule
 integer(i4b)              :: d1,d2,d3
 real(dp),     allocatable :: B1(:,:),B2(:,:)
 real(dp),     allocatable :: p1(:),p2(:)
-
-! workspace for F04BAF: NAG matrix inversion using LU decomp
-real(dp), allocatable     :: temp1(:)
-integer(i4b)              :: ifail
-integer(i4b), allocatable :: iPivot(:)
-real(dp)                  :: rCond,ErrBound
+real(dp), allocatable     :: inv_B1_t_p1(:)
 
 integer(i4b), allocatable :: index(:)
 integer(i4b), allocatable :: index1(:)
@@ -4817,12 +4756,11 @@ real(dp),     allocatable :: M1(:,:),M2Tilde(:)
 
 real(dp),     allocatable :: C(:,:),Omega(:,:)
 real(dp),     allocatable :: Omega11(:,:),Omega22(:,:),SigmaTilde12(:,:),C22(:,:)
-character(1)              :: UPLO
 real(dp),     allocatable :: nu(:),e1Tilde(:)
 real(dp),     allocatable :: Psi(:,:),COmega11(:,:)
-real(dp),     allocatable :: temp2(:,:)
+real(dp),     allocatable :: inv_Omega22_SigmaTilde12_t(:,:), temp1(:)
 real(dp),     allocatable :: R(:,:),Q(:,:)
-integer(i4b)              :: Integrand
+integer(i4b)              :: Integrand, ifail
 integer(i4b), allocatable :: RowGroup(:)
 real(dp)                  :: prob
 
@@ -4866,14 +4804,9 @@ do i1=1,HHData%N
     !           (HHData%nNonZero == K)
     !           -p2 + B2.'* (B1.')\p1 <=0
     !------------------------------------------------------------------------
-    allocate(iPivot(d1))
-    allocate(temp1(d1))
-    temp1 = p1
-    ifail=-1
-    B1=transpose(B1)
-    call F04BAF(d1,1,B1,d1,iPivot,temp1,d1,rCond,errBound,ifail)
-    c1(index) = - p2 + matmul(transpose(B2),temp1)
-    deallocate(temp1,iPivot)
+    allocate(inv_B1_t_p1(d1))
+    call Solve(transpose(B1), p1, inv_B1_t_p1)
+    c1(index) = - p2 + matmul(transpose(B2), inv_B1_t_p1)
     deallocate(index)
   elseif (d1<parms%K .and. d1>0) then
     allocate(index(1))
@@ -4896,7 +4829,7 @@ do i1=1,HHData%N
     allocate(S(d1))
     allocate(U(parms%K,parms%K))
     allocate(VT(d1,d1))
-    call ComputeSVD(B1,U,S,VT)
+    call ComputeSVD(B1, U, S, VT)
 
     ! size(B2Tilde) = (K x J-d1)
     allocate(B2Tilde(parms%K,d3))
@@ -4912,7 +4845,7 @@ do i1=1,HHData%N
     ! C = inv(InvC)
     ! Sig = C*C.'
     allocate(C(parms%K,parms%K),Omega(parms%K,parms%K))
-    call ComputeInverse_LU(parms%K,parms%InvC,C,ifail)
+    call InvertTriangular(parms%InvC, C, .True.)
     Omega = matmul(C,transpose(C))
     Omega = matmul(Omega,U)
     Omega = matmul(transpose(U),Omega)
@@ -4925,30 +4858,18 @@ do i1=1,HHData%N
 
     ! Cholesky decomposition of Omega22: lower triangular form
     !      C22*C22' = Omega22
-
-    C22 = Omega22
-    UPLO = 'L'
-    call F07FDF(UPLO,d2,C22,d2,ifail)
-
+    call ComputeCholesky(Omega22, C22, .True.)
     allocate(Psi(d1,d1))
 
     ! Compute  Psi = Omega11 - SigmaTilde12*inv(Omega22)*SigmaTilde12'
-    Psi = 0.0d0
-    allocate(iPivot(d2))
-    allocate(temp2(d2,d1))
-    temp2 = transpose(SigmaTilde12)
-    call F04BAF(d2,d1,Omega22,d2,iPivot,temp2,d2,rCond,errBound,ifail)
-    !  Psi = Omega11 - SigmaTilde12*inv(Omega22)*SigmaTilde12'
-    !  size( inv(Omega22)*SigmaTilde12' ) = (d2 x d1)
-    Psi = Omega11 - matmul(SigmaTilde12,temp2)
-    deallocate(temp2,iPivot)
+    allocate(inv_Omega22_SigmaTilde12_t(d2, d1))
+    call Solve(Omega22, transpose(SigmaTilde12), inv_Omega22_SigmaTilde12_t)
+    Psi = Omega11 - matmul(SigmaTilde12, inv_Omega22_SigmaTilde12_t)
 
     allocate(COmega11(d1,d1))
     ! Cholesky decomposition of omega11: lower triangular form
     !      COmega11 * COmega11' = Psi
-    COmega11 = Psi
-    UPLO = 'L'
-    call F07FDF(UPLO,d1,COmega11,d1,ifail)
+    call ComputeCholesky(Psi, COmega11, .True., ifail)
     if (ifail>0) then
       print *, 'Psi is not positive definite'
       print *, 'Psi'
@@ -4994,7 +4915,7 @@ do i1=1,HHData%N
     ! size(Q)  = (d2 x d2)
 
     allocate(R(d3,d2),Q(d2,d2))
-    call ComputeLQ(d3,d2,M1,R,Q,ifail)
+    call ComputeLQ(M1, R, Q)
 
     ! Prob = integral of DensityFunc over region of x satisfying R*x<=M2_tilda
     !
@@ -5023,7 +4944,6 @@ do i1=1,HHData%N
     deallocate(SigmaTilde12,Omega11,Omega22,C22)
     deallocate(e1Tilde,nu)
     deallocate(Psi,COmega11)
-    deallocate(iPivot,temp2)
     deallocate(R,Q)
     deallocate(RowGroup)
     !------------------------------------------------------------------------
@@ -5040,7 +4960,7 @@ do i1=1,HHData%N
 
     ! need inverse of InvC
     allocate(C(parms%K,parms%K))
-    call ComputeInverse_LU(parms%K,parms%InvC,C,ifail)
+    call InvertTriangular(parms%InvC, C, .True.)
 
     allocate(M1(d3,d2),M2Tilde(d3))
     M1 = matmul(transpose(parms%B),C)
@@ -5048,7 +4968,7 @@ do i1=1,HHData%N
     allocate(R(d3,d2),Q(d3,d2))
     ! M1 = R*Q
     !    R = (d3 x d2) lower triangular
-    call ComputeLQ(d3,d2,M1,R,Q,ifail)
+    call ComputeLQ(M1, R, Q)
     M2Tilde = p2 - matmul(transpose(parms%B),parms%MuE)
 
     ! Prob = integral of DensityFunc over region of x satisfying R*x<=M2_tilda

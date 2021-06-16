@@ -65,6 +65,7 @@ MOD_OBJS = \
 	Ranking.o \
 	NewTools.o \
 	GaussianQuadrature.o \
+	LinearAlgebra.o \
 	GlobalModule.o \
 	OutputModule.o \
 	DataModule.o \
@@ -74,7 +75,7 @@ MOD_OBJS = \
 PRG_OBJS = main.o
 
 # Test modules
-TEST_MOD_OBJS = tests/GaussianQuadratureTests.o
+TEST_MOD_OBJS = tests/GaussianQuadratureTests.o tests/LinearAlgebraTests.o
 
 # Test program
 TEST_PRG_OBJS = tests/RunTests.o

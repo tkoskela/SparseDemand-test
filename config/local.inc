@@ -3,7 +3,7 @@
 #
 # Expects the environment variable NAGLIB_BASE_DIR to be set to the path of the
 # base directory of local NAG library installation.
-# 
+#
 # One of the environment variables MKLROOT and MKL_INCLUDE_DIR also needs to be
 # set. MKLROOT if set should point to the root directory of the MKL library
 # installation with `include`, `lib` etc. subdirectories. MKL_INCLUDE_DIR if
@@ -27,7 +27,7 @@ endif
 LOCAL_FC = gfortran
 
 # Compiler and linker options
-LOCAL_FL_LIBS = ${NAG_DIR}/lp64/lib/libnag_mkl.a -Wl,--no-as-needed \
+LOCAL_FL_LIBS = ${NAGLIB_BASEDIR}/lp64/lib/libnag_mkl.a -Wl,--no-as-needed \
                 -lmkl_gf_lp64 -lmkl_core -lmkl_gnu_thread -liomp5 -lpthread \
                 -lm -ldl
 
